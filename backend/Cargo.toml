@@ -1,0 +1,31 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-graphql = { version = "5.0.6", features = [
+  "decimal",
+  "chrono",
+  "dataloader",
+] }
+async-graphql-axum = "5.0.6"
+axum = "0.6.8"
+sea-orm = { version = "^0", features = [
+  "sqlx-postgres",
+  "runtime-tokio-native-tls",
+  "macros",
+] }
+tokio = { version = "1.25.0", features = ["full"] }
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.3.4", features = ["cors", "trace"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"
+migration = { path = "../migration" } # depends on your needs
+entity = { path = "../entity" } # depends on your needs
+lazy_static = "1.4.0"
