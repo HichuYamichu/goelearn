@@ -42,7 +42,9 @@ import { ref } from "vue";
 
 const links = [
   { text: "Home", target: "/" },
-  { text: "My Classes", target: "/classes" },
+  { text: "Classes", target: "/classes" },
+  { text: "Calendar", target: "/calendar" },
+  { text: "Assignments", target: "/assignments" },
 ];
 
 const drawer = ref(false);
