@@ -1,5 +1,5 @@
 use ::entity::sea_orm_active_enums::*;
-use ::entity::{user, user::Entity as User};
+use ::entity::user;
 use async_graphql::InputObject;
 use sea_orm::*;
 use uuid::Uuid;

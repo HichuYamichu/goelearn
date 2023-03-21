@@ -1,10 +1,11 @@
-use crate::objects::{LoginInput, LoginResult, SignupInput};
-use ::entity::{user, user::Entity as User};
-use sea_orm::DatabaseConnection;
-use sea_orm::*;
+use crate::{
+    objects::{LoginInput, LoginResult, SignupInput},
+    SECRET,
+};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-use super::AppError;
+use super::{user_repo, AppError};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
@@ -12,13 +13,12 @@ pub struct Claims {
     pub exp: i64,
 }
 
-pub async fn user_login(
+pub async fn login_user(
     creadentials: LoginInput,
-    db: &DatabaseConnection,
+    user_repo: &user_repo::UserRepo,
 ) -> Result<LoginResult, AppError> {
-    let user = User::find()
-        .filter(user::Column::Username.eq(creadentials.username.clone()))
-        .one(db)
+    let user = user_repo
+        .user_by_username(creadentials.username.clone())
         .await?;
 
     let user = match user {
@@ -32,7 +32,16 @@ pub async fn user_login(
         }
     };
 
-    if user.password != creadentials.password {
+    if !user.active {
+        return Err(AppError::Auth);
+    }
+
+    if user.deleted_at.is_some() {
+        return Err(AppError::Auth);
+    }
+
+    let is_match = argon2_async::verify(creadentials.password, user.password).await?;
+    if !is_match {
         return Err(AppError::Auth);
     }
 
@@ -42,15 +51,18 @@ pub async fn user_login(
             sub: user.id.to_string(),
             exp: (chrono::Utc::now() + chrono::Duration::hours(24)).timestamp(),
         },
-        &jsonwebtoken::EncodingKey::from_secret("secret".as_ref()),
+        &jsonwebtoken::EncodingKey::from_secret(SECRET.as_ref()),
     )?;
 
     Ok(LoginResult { token })
 }
 
-pub async fn user_register(
-    creadentials: SignupInput,
-    db: &DatabaseConnection,
-) -> Result<User, DbErr> {
-    todo!()
+pub async fn register_user(
+    mut creadentials: SignupInput,
+    user_repo: &user_repo::UserRepo,
+) -> Result<Uuid, AppError> {
+    let hash = argon2_async::hash(creadentials.password).await?;
+    creadentials.password = hash;
+    let id = user_repo.create_user(creadentials).await?;
+    Ok(id)
 }

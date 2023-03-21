@@ -1,8 +1,10 @@
-use crate::core::{user_repo, Claims};
-use ::entity::sea_orm_active_enums::UserType;
+use crate::{
+    core::{user_repo, Claims},
+    SECRET,
+};
 use async_graphql::*;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
-use sea_orm::*;
+use user_repo::UserRepo;
 use uuid::Uuid;
 
 use super::User;
@@ -24,15 +26,14 @@ impl LoginResult {
     }
 
     pub async fn user(&self, ctx: &Context<'_>) -> Result<User> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
+        let user_repo = ctx.data::<UserRepo>().unwrap();
         let claims = jsonwebtoken::decode::<Claims>(
             &self.token,
-            &DecodingKey::from_secret("secret".as_ref()),
+            &DecodingKey::from_secret(SECRET.as_ref()),
             &Validation::new(Algorithm::HS256),
         )?;
-        // TODO: remove unwrap?
         let id = Uuid::parse_str(&claims.claims.sub).unwrap();
-        let u = user_repo::user_by_id(id, db).await?.unwrap();
+        let u = user_repo.user_by_id(id).await?.unwrap();
 
         Ok(u.into())
     }

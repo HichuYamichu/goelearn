@@ -32,6 +32,7 @@ impl std::fmt::Display for AppError {
 pub enum InternalError {
     DB(DbErr),
     JWT(jsonwebtoken::errors::Error),
+    Argon2(argon2_async::Error),
 }
 
 impl std::fmt::Display for InternalError {
@@ -39,6 +40,7 @@ impl std::fmt::Display for InternalError {
         match self {
             InternalError::DB(err) => write!(f, "Database error: {}", err),
             InternalError::JWT(err) => write!(f, "JWT error: {}", err),
+            InternalError::Argon2(err) => write!(f, "Argon2 error: {}", err),
         }
     }
 }
@@ -52,6 +54,12 @@ impl From<DbErr> for AppError {
 impl From<jsonwebtoken::errors::Error> for AppError {
     fn from(inner: jsonwebtoken::errors::Error) -> Self {
         AppError::InternalError(InternalError::JWT(inner))
+    }
+}
+
+impl From<argon2_async::Error> for AppError {
+    fn from(inner: argon2_async::Error) -> Self {
+        AppError::InternalError(InternalError::Argon2(inner))
     }
 }
 
