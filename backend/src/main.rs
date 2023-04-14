@@ -3,15 +3,19 @@ mod graphql;
 mod object;
 mod rest;
 
+use crate::core::repo::channel::ChannelRepo;
 use crate::core::repo::class::ClassRepo;
+use crate::core::repo::message::MessageRepo;
 use crate::core::repo::{membership::MembershipRepo, user::UserRepo};
 use crate::core::Claims;
+use crate::graphql::Subscription;
+use async_graphql::http::GraphiQLSource;
 use async_graphql::{
     dataloader::DataLoader,
     http::{playground_source, GraphQLPlaygroundConfig},
     EmptySubscription, Schema,
 };
-use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
+use async_graphql_axum::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
 use axum::{
     extract::{FromRef, State},
     response::{Html, IntoResponse},
@@ -35,13 +39,14 @@ use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 
 use crate::rest::user_handler;
 
-pub type AppSchema = Schema<Query, Mutation, EmptySubscription>;
+pub type AppSchema = Schema<Query, Mutation, Subscription>;
 
 lazy_static! {
     static ref ADDR: String = env::var("URL").unwrap_or("0.0.0.0:3000".into());
     static ref DATABASE_URL: String = env::var("DATABASE_URL")
         .unwrap_or("postgres://postgres:changeme@localhost:5432/goelearn".into());
     static ref SECRET: String = env::var("SECRET").expect("SECRET is not set");
+    static ref REDIS_URL: String = env::var("REDIS_URL").unwrap_or("redis://127.0.0.1/".into());
     // static ref DEPTH_LIMIT: Option<usize> = env::var("DEPTH_LIMIT").map_or(None, |data| Some(
     //     data.parse().expect("DEPTH_LIMIT is not a number")
     // ));
@@ -57,6 +62,8 @@ struct AppState {
     user_repo: UserRepo,
     membership_repo: MembershipRepo,
     class_repo: ClassRepo,
+    message_repo: MessageRepo,
+    channel_repo: ChannelRepo,
 }
 
 #[tokio::main]
@@ -77,6 +84,7 @@ pub async fn main() {
     let config = argon2_async::Config::default();
     argon2_async::set_config(config).await;
 
+    let redis_client = redis::Client::open(REDIS_URL.to_string()).unwrap();
     let db: DatabaseConnection = Database::connect(ConnectOptions::new(DATABASE_URL.to_string()))
         .await
         .unwrap();
@@ -85,13 +93,23 @@ pub async fn main() {
     let user_repo = UserRepo::new(db.clone());
     let membership_repo = MembershipRepo::new(db.clone());
     let class_repo = ClassRepo::new(db.clone());
+    let message_repo = MessageRepo::new(db.clone());
+    let channel_repo = ChannelRepo::new(db.clone());
 
-    let schema = Schema::build(Query::default(), Mutation::default(), EmptySubscription).finish();
+    let schema = Schema::build(
+        Query::default(),
+        Mutation::default(),
+        Subscription::default(),
+    )
+    .data(redis_client)
+    .finish();
     let state = AppState {
-        schema,
+        schema: schema.clone(),
         user_repo,
         membership_repo,
         class_repo,
+        message_repo,
+        channel_repo,
     };
 
     let user_routes = Router::new().route("/activate/:user_id", get(user_handler::activate));
@@ -100,6 +118,7 @@ pub async fn main() {
             "/api/v1/graphql",
             get(graphql_playground).post(graphql_handler),
         )
+        .route_service("/ws", GraphQLSubscription::new(schema))
         .nest("/api/v1/user", user_routes)
         .with_state(state)
         .layer(TraceLayer::new_for_http());
@@ -116,12 +135,16 @@ async fn graphql_handler(
     State(membership_repo): State<MembershipRepo>,
     State(user_repo): State<UserRepo>,
     State(class_repo): State<ClassRepo>,
+    State(message_repo): State<MessageRepo>,
+    State(channel_repo): State<ChannelRepo>,
     claims: Option<Claims>,
     req: GraphQLRequest,
 ) -> GraphQLResponse {
     let membership_dataloader = DataLoader::new(membership_repo, tokio::spawn);
     let user_dataloader = DataLoader::new(user_repo, tokio::spawn);
     let class_dataloader = DataLoader::new(class_repo, tokio::spawn);
+    let message_dataloader = DataLoader::new(message_repo, tokio::spawn);
+    let channel_dataloader = DataLoader::new(channel_repo, tokio::spawn);
 
     schema
         .execute(
@@ -129,14 +152,19 @@ async fn graphql_handler(
                 .data(claims)
                 .data(membership_dataloader)
                 .data(user_dataloader)
-                .data(class_dataloader),
+                .data(class_dataloader)
+                .data(message_dataloader)
+                .data(channel_dataloader),
         )
         .await
         .into()
 }
 
 async fn graphql_playground() -> impl IntoResponse {
-    Html(playground_source(GraphQLPlaygroundConfig::new(
-        "/api/v1/graphql",
-    )))
+    Html(
+        GraphiQLSource::build()
+            .endpoint("/api/v1/graphql")
+            .subscription_endpoint("/ws")
+            .finish(),
+    )
 }

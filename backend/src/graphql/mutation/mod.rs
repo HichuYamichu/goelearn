@@ -1,6 +1,10 @@
+mod class;
+mod message;
 mod user;
 
-pub use user::UserMutation;
-
 #[derive(async_graphql::MergedObject, Default)]
-pub struct Mutation(UserMutation);
+pub struct Mutation(
+    user::UserMutation,
+    class::ClassMutation,
+    message::MessageMutation,
+);

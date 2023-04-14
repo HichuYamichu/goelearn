@@ -72,6 +72,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Message::Content).string().not_null())
                     .col(ColumnDef::new(Message::ChannelId).uuid().not_null())
                     .col(ColumnDef::new(Message::AuthorId).uuid().not_null())
+                    .col(ColumnDef::new(Message::CreatedAt).timestamp().not_null())
                     .to_owned(),
             )
             .await?;
@@ -224,6 +225,7 @@ pub enum Message {
     Content,
     ChannelId,
     AuthorId,
+    CreatedAt,
 }
 
 #[derive(Iden)]

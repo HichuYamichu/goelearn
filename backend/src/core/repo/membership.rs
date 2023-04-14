@@ -1,6 +1,6 @@
 use ::entity::{membership, membership::Entity as Membership};
 use async_graphql::dataloader::Loader;
-use async_graphql::FieldError;
+
 use async_trait::async_trait;
 
 use sea_orm::DatabaseConnection;
@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::core::AppError;
+
 
 #[derive(Debug, Clone)]
 pub struct MembershipRepo {
@@ -35,10 +35,10 @@ impl Loader<MembershipByUserId> for MembershipRepo {
         keys: &[MembershipByUserId],
     ) -> Result<HashMap<MembershipByUserId, Self::Value>, Self::Error> {
         let memberships = Membership::find()
-            .filter(membership::Column::UserId.is_in(keys.into_iter().map(|k| k.0).into_iter()))
+            .filter(membership::Column::UserId.is_in(keys.iter().map(|k| k.0).into_iter()))
             .all(&self.conn)
             .await
-            .map_err(|e| Arc::new(e.into()))?;
+            .map_err(Arc::new)?;
 
         Ok(memberships
             .into_iter()
@@ -60,7 +60,7 @@ impl Loader<MembershipByClassId> for MembershipRepo {
         keys: &[MembershipByClassId],
     ) -> Result<HashMap<MembershipByClassId, Self::Value>, Self::Error> {
         let memberships = Membership::find()
-            .filter(membership::Column::ClassId.is_in(keys.into_iter().map(|k| k.0).into_iter()))
+            .filter(membership::Column::ClassId.is_in(keys.iter().map(|k| k.0).into_iter()))
             .all(&self.conn)
             .await?;
 

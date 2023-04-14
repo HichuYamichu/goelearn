@@ -3,7 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use sea_orm::error::DbErr;
+use sea_orm::{error::DbErr, TransactionError};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -24,10 +24,10 @@ impl std::fmt::Display for AppError {
         match self {
             AppError::Auth => write!(f, "Authentication error"),
             AppError::NotFound { what, with, why } => {
-                write!(f, "`{}` with `{}` = `{}` was not found", what, with, why)
+                write!(f, "`{what}` with `{with}` = `{why}` was not found")
             }
-            AppError::UserError(err) => write!(f, "User error: {}", err),
-            AppError::InternalError(err) => write!(f, "Internal server error: {}", err),
+            AppError::UserError(err) => write!(f, "User error: {err}"),
+            AppError::InternalError(err) => write!(f, "Internal server error: {err}"),
         }
     }
 }
@@ -35,6 +35,7 @@ impl std::fmt::Display for AppError {
 #[derive(Debug)]
 pub enum InternalError {
     DB(DbErr),
+    DBTrans(TransactionError<DbErr>),
     DBArced(Arc<DbErr>),
     JWT(jsonwebtoken::errors::Error),
     Argon2(argon2_async::Error),
@@ -43,10 +44,11 @@ pub enum InternalError {
 impl std::fmt::Display for InternalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            InternalError::DB(err) => write!(f, "Database error: {}", err),
-            InternalError::DBArced(err) => write!(f, "Database error: {}", err),
-            InternalError::JWT(err) => write!(f, "JWT error: {}", err),
-            InternalError::Argon2(err) => write!(f, "Argon2 error: {}", err),
+            InternalError::DB(err) => write!(f, "Database error: {err}"),
+            InternalError::DBTrans(err) => write!(f, "Database error: {err}"),
+            InternalError::DBArced(err) => write!(f, "Database error: {err}"),
+            InternalError::JWT(err) => write!(f, "JWT error: {err}"),
+            InternalError::Argon2(err) => write!(f, "Argon2 error: {err}"),
         }
     }
 }
@@ -65,7 +67,7 @@ impl std::fmt::Display for UserError {
             UserError::BadInput {
                 simple: _,
                 detailed,
-            } => write!(f, "Bad input: {}", detailed),
+            } => write!(f, "Bad input: {detailed}"),
         }
     }
 }
@@ -79,6 +81,12 @@ impl From<DbErr> for AppError {
 impl From<Arc<DbErr>> for AppError {
     fn from(inner: Arc<DbErr>) -> Self {
         AppError::InternalError(InternalError::DBArced(inner))
+    }
+}
+
+impl From<TransactionError<DbErr>> for AppError {
+    fn from(inner: TransactionError<DbErr>) -> Self {
+        AppError::InternalError(InternalError::DBTrans(inner))
     }
 }
 
@@ -103,6 +111,18 @@ impl From<uuid::Error> for AppError {
     }
 }
 
+impl From<std::string::ParseError> for AppError {
+    fn from(inner: std::string::ParseError) -> Self {
+        todo!()
+    }
+}
+
+impl From<chrono::ParseError> for AppError {
+    fn from(inner: chrono::ParseError) -> Self {
+        todo!()
+    }
+}
+
 impl std::error::Error for AppError {} // TODO: is this needed?
 
 impl IntoResponse for AppError {
@@ -117,7 +137,7 @@ impl IntoResponse for AppError {
             }
             AppError::NotFound { what, with, why } => (
                 StatusCode::NOT_FOUND,
-                format!("`{}` with `{}` = `{}` was not found", what, with, why),
+                format!("`{what}` with `{with}` = `{why}` was not found"),
             ),
             AppError::UserError(err) => match err {
                 UserError::BadInput {

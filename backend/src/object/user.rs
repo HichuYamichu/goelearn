@@ -8,6 +8,7 @@ use crate::core::repo::membership::{self, MembershipRepo};
 use crate::core::{repo::class, AppError};
 
 use super::ClassObject;
+use crate::core::LoggedInGuard;
 
 #[derive(Clone, Debug, SimpleObject)]
 #[graphql(complex)]
@@ -30,6 +31,7 @@ impl From<::entity::user::Model> for UserObject {
 
 #[ComplexObject]
 impl UserObject {
+    #[graphql(guard = "LoggedInGuard")]
     async fn clesses(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
         let membership_repo = ctx.data::<DataLoader<MembershipRepo>>().unwrap();
         let class_repo = ctx.data::<DataLoader<ClassRepo>>().unwrap();
@@ -39,15 +41,16 @@ impl UserObject {
         let class_ids = memberships.values().map(|m| class::ClassById(m.class_id));
         let classes = class_repo.load_many(class_ids).await?;
 
-        Ok(classes.into_iter().map(|(_, c)| c.into()).collect())
+        Ok(classes.into_values().map(|c| c.into()).collect())
     }
 
+    #[graphql(guard = "LoggedInGuard")]
     async fn owned_classes(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
         let class_repo = ctx.data::<DataLoader<ClassRepo>>().unwrap();
 
         let id = class::ClassByOwnerId(Uuid::parse_str(&self.id)?);
         let classes = class_repo.load_many([id].into_iter()).await?;
 
-        Ok(classes.into_iter().map(|(_, c)| c.into()).collect())
+        Ok(classes.into_values().map(|c| c.into()).collect())
     }
 }

@@ -10,6 +10,7 @@ pub struct Model {
     pub content: String,
     pub channel_id: Uuid,
     pub author_id: Uuid,
+    pub created_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
