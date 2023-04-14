@@ -1,9 +1,13 @@
 mod core;
 mod graphql;
-mod objects;
+mod object;
 mod rest;
 
+use crate::core::repo::class::ClassRepo;
+use crate::core::repo::{membership::MembershipRepo, user::UserRepo};
+use crate::core::Claims;
 use async_graphql::{
+    dataloader::DataLoader,
     http::{playground_source, GraphQLPlaygroundConfig},
     EmptySubscription, Schema,
 };
@@ -29,7 +33,7 @@ use graphql::Query;
 use lazy_static::lazy_static;
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 
-use crate::{core::UserRepo, rest::user_handler};
+use crate::rest::user_handler;
 
 pub type AppSchema = Schema<Query, Mutation, EmptySubscription>;
 
@@ -51,6 +55,8 @@ lazy_static! {
 struct AppState {
     schema: AppSchema,
     user_repo: UserRepo,
+    membership_repo: MembershipRepo,
+    class_repo: ClassRepo,
 }
 
 #[tokio::main]
@@ -77,10 +83,16 @@ pub async fn main() {
     Migrator::up(&db, None).await.unwrap();
 
     let user_repo = UserRepo::new(db.clone());
-    let schema = Schema::build(Query::default(), Mutation::default(), EmptySubscription)
-        .data(user_repo.clone())
-        .finish();
-    let state = AppState { schema, user_repo };
+    let membership_repo = MembershipRepo::new(db.clone());
+    let class_repo = ClassRepo::new(db.clone());
+
+    let schema = Schema::build(Query::default(), Mutation::default(), EmptySubscription).finish();
+    let state = AppState {
+        schema,
+        user_repo,
+        membership_repo,
+        class_repo,
+    };
 
     let user_routes = Router::new().route("/activate/:user_id", get(user_handler::activate));
     let app = Router::new()
@@ -99,8 +111,28 @@ pub async fn main() {
         .unwrap();
 }
 
-async fn graphql_handler(State(schema): State<AppSchema>, req: GraphQLRequest) -> GraphQLResponse {
-    schema.execute(req.into_inner()).await.into()
+async fn graphql_handler(
+    State(schema): State<AppSchema>,
+    State(membership_repo): State<MembershipRepo>,
+    State(user_repo): State<UserRepo>,
+    State(class_repo): State<ClassRepo>,
+    claims: Option<Claims>,
+    req: GraphQLRequest,
+) -> GraphQLResponse {
+    let membership_dataloader = DataLoader::new(membership_repo, tokio::spawn);
+    let user_dataloader = DataLoader::new(user_repo, tokio::spawn);
+    let class_dataloader = DataLoader::new(class_repo, tokio::spawn);
+
+    schema
+        .execute(
+            req.into_inner()
+                .data(claims)
+                .data(membership_dataloader)
+                .data(user_dataloader)
+                .data(class_dataloader),
+        )
+        .await
+        .into()
 }
 
 async fn graphql_playground() -> impl IntoResponse {

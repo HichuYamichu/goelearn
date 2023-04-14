@@ -1,7 +1,7 @@
 use axum::extract::{Path, State};
 use uuid::Uuid;
 
-use crate::core::{user_repo::UserRepo, AppError};
+use crate::core::{repo::user::UserRepo, AppError};
 
 pub async fn activate(
     Path(user_id): Path<Uuid>,

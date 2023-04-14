@@ -5,7 +5,9 @@ use axum::{
 };
 use sea_orm::error::DbErr;
 use serde_json::json;
+use std::sync::Arc;
 
+#[derive(Debug)]
 pub enum AppError {
     Auth,
     NotFound {
@@ -13,6 +15,7 @@ pub enum AppError {
         with: &'static str,
         why: String,
     },
+    UserError(UserError),
     InternalError(InternalError),
 }
 
@@ -23,6 +26,7 @@ impl std::fmt::Display for AppError {
             AppError::NotFound { what, with, why } => {
                 write!(f, "`{}` with `{}` = `{}` was not found", what, with, why)
             }
+            AppError::UserError(err) => write!(f, "User error: {}", err),
             AppError::InternalError(err) => write!(f, "Internal server error: {}", err),
         }
     }
@@ -31,6 +35,7 @@ impl std::fmt::Display for AppError {
 #[derive(Debug)]
 pub enum InternalError {
     DB(DbErr),
+    DBArced(Arc<DbErr>),
     JWT(jsonwebtoken::errors::Error),
     Argon2(argon2_async::Error),
 }
@@ -39,8 +44,28 @@ impl std::fmt::Display for InternalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             InternalError::DB(err) => write!(f, "Database error: {}", err),
+            InternalError::DBArced(err) => write!(f, "Database error: {}", err),
             InternalError::JWT(err) => write!(f, "JWT error: {}", err),
             InternalError::Argon2(err) => write!(f, "Argon2 error: {}", err),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum UserError {
+    BadInput {
+        simple: &'static str,
+        detailed: String,
+    },
+}
+
+impl std::fmt::Display for UserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserError::BadInput {
+                simple: _,
+                detailed,
+            } => write!(f, "Bad input: {}", detailed),
         }
     }
 }
@@ -48,6 +73,12 @@ impl std::fmt::Display for InternalError {
 impl From<DbErr> for AppError {
     fn from(inner: DbErr) -> Self {
         AppError::InternalError(InternalError::DB(inner))
+    }
+}
+
+impl From<Arc<DbErr>> for AppError {
+    fn from(inner: Arc<DbErr>) -> Self {
+        AppError::InternalError(InternalError::DBArced(inner))
     }
 }
 
@@ -63,6 +94,17 @@ impl From<argon2_async::Error> for AppError {
     }
 }
 
+impl From<uuid::Error> for AppError {
+    fn from(inner: uuid::Error) -> Self {
+        AppError::UserError(UserError::BadInput {
+            simple: "Invalid Uuid",
+            detailed: inner.to_string(),
+        })
+    }
+}
+
+impl std::error::Error for AppError {} // TODO: is this needed?
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
@@ -77,6 +119,12 @@ impl IntoResponse for AppError {
                 StatusCode::NOT_FOUND,
                 format!("`{}` with `{}` = `{}` was not found", what, with, why),
             ),
+            AppError::UserError(err) => match err {
+                UserError::BadInput {
+                    simple,
+                    detailed: _,
+                } => (StatusCode::BAD_REQUEST, simple.into()),
+            },
             AppError::Auth => (StatusCode::UNAUTHORIZED, "Unauthorized".into()),
         };
 

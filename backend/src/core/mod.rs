@@ -1,7 +1,6 @@
 pub mod auth;
 pub mod errors;
-pub mod user_repo;
+pub mod repo;
 
 pub use auth::*;
 pub use errors::*;
-pub use user_repo::*;

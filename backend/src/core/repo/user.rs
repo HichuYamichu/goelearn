@@ -3,7 +3,7 @@ use sea_orm::DatabaseConnection;
 use sea_orm::*;
 use uuid::Uuid;
 
-use crate::objects::SignupInput;
+use crate::object::SignupInput;
 
 #[derive(Debug, Clone)]
 pub struct UserRepo {
