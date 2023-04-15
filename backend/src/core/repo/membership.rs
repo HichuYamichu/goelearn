@@ -9,8 +9,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-
-
 #[derive(Debug, Clone)]
 pub struct MembershipRepo {
     conn: DatabaseConnection,

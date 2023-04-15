@@ -33,8 +33,8 @@ impl From<::entity::user::Model> for UserObject {
 impl UserObject {
     #[graphql(guard = "LoggedInGuard")]
     async fn clesses(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
-        let membership_repo = ctx.data::<DataLoader<MembershipRepo>>().unwrap();
-        let class_repo = ctx.data::<DataLoader<ClassRepo>>().unwrap();
+        let membership_repo = ctx.data_unchecked::<DataLoader<MembershipRepo>>();
+        let class_repo = ctx.data_unchecked::<DataLoader<ClassRepo>>();
 
         let id = membership::MembershipByUserId(Uuid::parse_str(&self.id)?);
         let memberships = membership_repo.load_many([id].into_iter()).await?;
@@ -46,7 +46,7 @@ impl UserObject {
 
     #[graphql(guard = "LoggedInGuard")]
     async fn owned_classes(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
-        let class_repo = ctx.data::<DataLoader<ClassRepo>>().unwrap();
+        let class_repo = ctx.data_unchecked::<DataLoader<ClassRepo>>();
 
         let id = class::ClassByOwnerId(Uuid::parse_str(&self.id)?);
         let classes = class_repo.load_many([id].into_iter()).await?;

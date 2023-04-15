@@ -106,7 +106,7 @@ pub struct LoggedInGuard;
 #[async_trait]
 impl Guard for LoggedInGuard {
     async fn check(&self, ctx: &Context<'_>) -> Result<(), async_graphql::Error> {
-        let claims = ctx.data::<Option<Claims>>().unwrap();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
 
         match claims {
             Some(_) => Ok(()),

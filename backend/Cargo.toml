@@ -8,6 +8,7 @@ async-graphql = { version = "5.0.6", features = [
   "decimal",
   "chrono",
   "dataloader",
+  "tracing",
 ] }
 async-graphql-axum = "5.0.6"
 axum = { version = "0.6.8", features = ["headers", "macros"] }

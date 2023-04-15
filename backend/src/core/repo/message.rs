@@ -1,13 +1,13 @@
-use ::entity::{channel, membership, message, message::Entity as Message};
-use ::entity::{class, class::Entity as Class};
-use async_graphql::dataloader::Loader;
-use async_trait::async_trait;
+use ::entity::{message, message::Entity as Message};
+
+
+
 use chrono::NaiveDate;
 
 use sea_orm::DatabaseConnection;
 use sea_orm::*;
-use std::collections::HashMap;
-use std::sync::Arc;
+
+
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -35,7 +35,7 @@ impl MessageRepo {
         after: Option<NaiveDate>,
         before: Option<NaiveDate>,
         first: usize,
-        last: usize,
+        _last: usize,
     ) -> Result<Vec<message::Model>, DbErr> {
         let condition = Condition::all()
             .add(message::Column::ChannelId.eq(channel_id))

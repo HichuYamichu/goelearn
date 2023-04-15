@@ -9,12 +9,9 @@ use crate::core::repo::message::MessageRepo;
 use crate::core::repo::{membership::MembershipRepo, user::UserRepo};
 use crate::core::Claims;
 use crate::graphql::Subscription;
+use async_graphql::extensions::Tracing;
 use async_graphql::http::GraphiQLSource;
-use async_graphql::{
-    dataloader::DataLoader,
-    http::{playground_source, GraphQLPlaygroundConfig},
-    EmptySubscription, Schema,
-};
+use async_graphql::{dataloader::DataLoader, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
 use axum::{
     extract::{FromRef, State},
@@ -47,13 +44,6 @@ lazy_static! {
         .unwrap_or("postgres://postgres:changeme@localhost:5432/goelearn".into());
     static ref SECRET: String = env::var("SECRET").expect("SECRET is not set");
     static ref REDIS_URL: String = env::var("REDIS_URL").unwrap_or("redis://127.0.0.1/".into());
-    // static ref DEPTH_LIMIT: Option<usize> = env::var("DEPTH_LIMIT").map_or(None, |data| Some(
-    //     data.parse().expect("DEPTH_LIMIT is not a number")
-    // ));
-    // static ref COMPLEXITY_LIMIT: Option<usize> = env::var("COMPLEXITY_LIMIT")
-    //     .map_or(None, |data| {
-    //         Some(data.parse().expect("COMPLEXITY_LIMIT is not a number"))
-    //     });
 }
 
 #[derive(FromRef, Clone)]
@@ -102,6 +92,7 @@ pub async fn main() {
         Subscription::default(),
     )
     .data(redis_client)
+    .extension(Tracing)
     .finish();
     let state = AppState {
         schema: schema.clone(),

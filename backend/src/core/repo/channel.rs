@@ -1,5 +1,5 @@
-use ::entity::{channel, membership, message};
-use ::entity::{class, class::Entity as Class};
+use ::entity::{channel};
+
 use async_graphql::dataloader::Loader;
 use async_trait::async_trait;
 

@@ -2,15 +2,13 @@ use std::str::FromStr;
 
 use crate::core::LoggedInGuard;
 use crate::core::{repo::message::MessageRepo, AppError};
-use async_graphql::connection::{self, Connection, DefaultConnectionName, Edge, EmptyFields};
-use async_graphql::{
-    dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, ID,
-};
-use base64::engine::general_purpose;
+use async_graphql::connection::{self, Connection, Edge, EmptyFields};
+use async_graphql::{dataloader::DataLoader, ComplexObject, Context, SimpleObject, ID};
+
 use base64::prelude::BASE64_STANDARD_NO_PAD;
 use base64::Engine;
 use chrono::NaiveDate;
-use sea_orm::Set;
+
 use uuid::Uuid;
 
 use super::MessageObject;
@@ -44,7 +42,7 @@ impl ChannelObject {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, MessageObject>, async_graphql::Error> {
-        let message_repo = ctx.data::<DataLoader<MessageRepo>>().unwrap();
+        let message_repo = ctx.data_unchecked::<DataLoader<MessageRepo>>();
 
         let wtf = connection::query(
             after,
@@ -54,17 +52,16 @@ impl ChannelObject {
             |after: Option<String>, before, first, last| async move {
                 // TODO: support last
                 // TODO: unwrap
-                let after = after
+                let _after = after
                     .map(|after| BASE64_STANDARD_NO_PAD.decode(after.as_bytes()).unwrap())
                     .map(|after| String::from_utf8(after).unwrap())
                     .map(|after| NaiveDate::from_str(after.as_ref()).unwrap())
                     .unwrap_or(NaiveDate::MIN);
 
-                let before = before
+                let _before = before
                     .map(|before| BASE64_STANDARD_NO_PAD.decode(before.as_bytes()).unwrap())
                     .map(|before| String::from_utf8(before).unwrap())
                     .map(|before| NaiveDate::from_str(before.as_ref()))
-                    .map(|a| a)
                     .unwrap_or(Ok(NaiveDate::MAX))?;
 
                 let first = first.unwrap_or(20);
@@ -79,9 +76,7 @@ impl ChannelObject {
                     .iter()
                     .map(|m| {
                         Edge::new(
-                            BASE64_STANDARD_NO_PAD
-                                .encode(m.created_at.to_string().as_bytes())
-                                .into(),
+                            BASE64_STANDARD_NO_PAD.encode(m.created_at.to_string().as_bytes()),
                             MessageObject::from(m.clone()),
                         )
                     })

@@ -56,7 +56,7 @@ impl From<::entity::class::Model> for ClassObject {
 impl ClassObject {
     #[graphql(guard = "LoggedInGuard")]
     async fn channels(&self, ctx: &Context<'_>) -> Result<Vec<ChannelObject>, AppError> {
-        let channel_repo = ctx.data::<DataLoader<ChannelRepo>>().unwrap();
+        let channel_repo = ctx.data_unchecked::<DataLoader<ChannelRepo>>();
 
         let id = channel::ChannelByClassId(Uuid::parse_str(&self.id)?);
         let channels = channel_repo.load_many([id].into_iter()).await?;

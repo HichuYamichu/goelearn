@@ -1,6 +1,8 @@
 use async_graphql::{InputObject, SimpleObject, ID};
-use chrono::{NaiveDateTime, Utc};
+use chrono::Utc;
+use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use sea_orm::Set;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::core::AppError;
@@ -26,7 +28,7 @@ impl CreateMessageInput {
     }
 }
 
-#[derive(Clone, Debug, SimpleObject)]
+#[derive(Clone, Debug, SimpleObject, Serialize, Deserialize)]
 pub struct MessageObject {
     pub id: ID,
     pub content: String,
@@ -38,5 +40,27 @@ impl From<::entity::message::Model> for MessageObject {
             id: ID::from(c.id),
             content: c.content,
         }
+    }
+}
+
+impl ToRedisArgs for MessageObject {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
+        let mut vec = Vec::new();
+        vec.push(self.id.as_str());
+        vec.push(&self.content);
+        vec.write_redis_args(out);
+    }
+}
+
+impl FromRedisValue for MessageObject {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        let vec: Vec<String> = FromRedisValue::from_redis_value(v)?;
+        Ok(Self {
+            id: ID::from(vec[0].clone()),
+            content: vec[1].clone(),
+        })
     }
 }

@@ -39,6 +39,7 @@ pub enum InternalError {
     DBArced(Arc<DbErr>),
     JWT(jsonwebtoken::errors::Error),
     Argon2(argon2_async::Error),
+    Redis(redis::RedisError),
 }
 
 impl std::fmt::Display for InternalError {
@@ -49,6 +50,7 @@ impl std::fmt::Display for InternalError {
             InternalError::DBArced(err) => write!(f, "Database error: {err}"),
             InternalError::JWT(err) => write!(f, "JWT error: {err}"),
             InternalError::Argon2(err) => write!(f, "Argon2 error: {err}"),
+            InternalError::Redis(err) => write!(f, "Redis error: {err}"),
         }
     }
 }
@@ -111,15 +113,18 @@ impl From<uuid::Error> for AppError {
     }
 }
 
-impl From<std::string::ParseError> for AppError {
-    fn from(inner: std::string::ParseError) -> Self {
-        todo!()
+impl From<chrono::ParseError> for AppError {
+    fn from(_inner: chrono::ParseError) -> Self {
+        AppError::UserError(UserError::BadInput {
+            simple: "Invalid date",
+            detailed: "Invalid date".into(),
+        })
     }
 }
 
-impl From<chrono::ParseError> for AppError {
-    fn from(inner: chrono::ParseError) -> Self {
-        todo!()
+impl From<redis::RedisError> for AppError {
+    fn from(inner: redis::RedisError) -> Self {
+        AppError::InternalError(InternalError::Redis(inner))
     }
 }
 

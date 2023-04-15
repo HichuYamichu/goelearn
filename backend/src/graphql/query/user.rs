@@ -13,8 +13,8 @@ pub struct UserQuery;
 impl UserQuery {
     #[graphql(guard = "LoggedInGuard")]
     async fn me(&self, ctx: &Context<'_>) -> Result<UserObject, AppError> {
-        let user_repo = ctx.data::<DataLoader<UserRepo>>().unwrap();
-        let claims = ctx.data::<Option<Claims>>().unwrap();
+        let user_repo = ctx.data_unchecked::<DataLoader<UserRepo>>();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
         let id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
         let u = user_repo
             .loader()
