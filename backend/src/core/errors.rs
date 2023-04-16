@@ -40,6 +40,7 @@ pub enum InternalError {
     JWT(jsonwebtoken::errors::Error),
     Argon2(argon2_async::Error),
     Redis(redis::RedisError),
+    Email(lettre::transport::smtp::Error),
 }
 
 impl std::fmt::Display for InternalError {
@@ -51,6 +52,7 @@ impl std::fmt::Display for InternalError {
             InternalError::JWT(err) => write!(f, "JWT error: {err}"),
             InternalError::Argon2(err) => write!(f, "Argon2 error: {err}"),
             InternalError::Redis(err) => write!(f, "Redis error: {err}"),
+            InternalError::Email(err) => write!(f, "Email error: {err}"),
         }
     }
 }
@@ -125,6 +127,12 @@ impl From<chrono::ParseError> for AppError {
 impl From<redis::RedisError> for AppError {
     fn from(inner: redis::RedisError) -> Self {
         AppError::InternalError(InternalError::Redis(inner))
+    }
+}
+
+impl From<lettre::transport::smtp::Error> for AppError {
+    fn from(inner: lettre::transport::smtp::Error) -> Self {
+        AppError::InternalError(InternalError::Email(inner))
     }
 }
 

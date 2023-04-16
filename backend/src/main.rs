@@ -44,6 +44,9 @@ lazy_static! {
         .unwrap_or("postgres://postgres:changeme@localhost:5432/goelearn".into());
     static ref SECRET: String = env::var("SECRET").expect("SECRET is not set");
     static ref REDIS_URL: String = env::var("REDIS_URL").unwrap_or("redis://127.0.0.1/".into());
+    static ref MAIL_USERNAME: String = env::var("MAIL_USERNAME").expect("MAIL_USERNAME is not set");
+    static ref MAIL_PASSWORD: String = env::var("MAIL_PASSWORD").expect("MAIL_PASSWORD is not set");
+    static ref HOST_URL: String = env::var("HOST_URL").expect("HOST_URL is not set");
 }
 
 #[derive(FromRef, Clone)]

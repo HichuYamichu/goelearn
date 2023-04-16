@@ -1,6 +1,6 @@
 use crate::{
     object::{LoginInput, LoginResult, SignupInput},
-    SECRET,
+    HOST_URL, MAIL_PASSWORD, MAIL_USERNAME, SECRET,
 };
 use async_graphql::{Context, Guard};
 use async_trait::async_trait;
@@ -11,6 +11,12 @@ use axum::{
     TypedHeader,
 };
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use lettre::AsyncTransport;
+use lettre::{
+    message::header::ContentType, transport::smtp::authentication::Credentials, Message,
+    SmtpTransport, Tokio1Executor,
+};
+use lettre::{AsyncSmtpTransport, Transport};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -72,7 +78,39 @@ pub async fn register_user(
 ) -> Result<Uuid, AppError> {
     let hash = argon2_async::hash(creadentials.password).await?;
     creadentials.password = hash;
+    let addr = creadentials.email.clone();
+    let username = creadentials.username.clone();
     let id = user_repo.create_user(creadentials).await?;
+
+    let body = format!(
+        r#"Hello, {username}! Please, follow the link to activate your account: <a href="{host}/api/v1/user/activate/{id}<a>">{host}/api/v1/user/activate/{id}<a>"#,
+        username = username,
+        host = HOST_URL.to_string(),
+        id = id
+    );
+
+    let email = Message::builder()
+        .from(
+            MAIL_USERNAME
+                .parse()
+                .expect("Service username should be valid email"),
+        )
+        .to(addr.parse().expect("User email should be valid email"))
+        .subject("Account activation")
+        .header(ContentType::TEXT_HTML)
+        .body(body)
+        .expect("Email should be valid");
+
+    let creds = Credentials::new(MAIL_USERNAME.to_string(), MAIL_PASSWORD.to_string());
+
+    let mailer: AsyncSmtpTransport<Tokio1Executor> =
+        AsyncSmtpTransport::<Tokio1Executor>::relay("smtp.gmail.com")
+            .expect("Relay should be valid")
+            .credentials(creds)
+            .build();
+
+    mailer.send(email).await?;
+
     Ok(id)
 }
 
