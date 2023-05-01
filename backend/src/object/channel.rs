@@ -2,16 +2,37 @@ use std::str::FromStr;
 
 use crate::core::LoggedInGuard;
 use crate::core::{repo::message::MessageRepo, AppError};
+use crate::graphql::make_messages_connection;
 use async_graphql::connection::{self, Connection, Edge, EmptyFields};
+use async_graphql::InputObject;
 use async_graphql::{dataloader::DataLoader, ComplexObject, Context, SimpleObject, ID};
 
 use base64::prelude::BASE64_STANDARD_NO_PAD;
 use base64::Engine;
 use chrono::NaiveDate;
 
+use sea_orm::Set;
 use uuid::Uuid;
 
 use super::MessageObject;
+
+#[derive(Clone, Debug, InputObject)]
+pub struct CreateChannelInput {
+    pub name: String,
+    pub description: Option<String>,
+    pub class_id: ID,
+}
+
+impl CreateChannelInput {
+    pub fn try_into_active_model(self) -> Result<::entity::channel::ActiveModel, AppError> {
+        Ok(::entity::channel::ActiveModel {
+            id: Set(Uuid::new_v4()),
+            name: Set(self.name),
+            description: Set(self.description),
+            class_id: Set(Uuid::parse_str(self.class_id.as_str())?),
+        })
+    }
+}
 
 #[derive(Clone, Debug, SimpleObject)]
 #[graphql(complex)]
@@ -44,53 +65,14 @@ impl ChannelObject {
     ) -> Result<Connection<String, MessageObject>, async_graphql::Error> {
         let message_repo = ctx.data_unchecked::<DataLoader<MessageRepo>>();
 
-        let wtf = connection::query(
+        make_messages_connection(
+            message_repo,
+            Uuid::parse_str(&self.id)?,
             after,
             before,
             first,
             last,
-            |after: Option<String>, before, first, last| async move {
-                // TODO: support last
-                // TODO: unwrap
-                let _after = after
-                    .map(|after| BASE64_STANDARD_NO_PAD.decode(after.as_bytes()).unwrap())
-                    .map(|after| String::from_utf8(after).unwrap())
-                    .map(|after| NaiveDate::from_str(after.as_ref()).unwrap())
-                    .unwrap_or(NaiveDate::MIN);
-
-                let _before = before
-                    .map(|before| BASE64_STANDARD_NO_PAD.decode(before.as_bytes()).unwrap())
-                    .map(|before| String::from_utf8(before).unwrap())
-                    .map(|before| NaiveDate::from_str(before.as_ref()))
-                    .unwrap_or(Ok(NaiveDate::MAX))?;
-
-                let first = first.unwrap_or(20);
-                let last = last.unwrap_or(20);
-
-                let messages = message_repo
-                    .loader()
-                    .load_messages(Uuid::parse_str(&self.id)?, None, None, first, last)
-                    .await?;
-
-                let edges: Vec<Edge<String, MessageObject, EmptyFields>> = messages
-                    .iter()
-                    .map(|m| {
-                        Edge::new(
-                            BASE64_STANDARD_NO_PAD.encode(m.created_at.to_string().as_bytes()),
-                            MessageObject::from(m.clone()),
-                        )
-                    })
-                    .collect();
-
-                // TODO: impl has next page
-                let mut connection = Connection::new(false, false);
-                connection.edges.extend(edges);
-
-                Ok::<_, AppError>(connection)
-            },
         )
-        .await;
-
-        wtf
+        .await
     }
 }

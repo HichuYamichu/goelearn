@@ -136,6 +136,24 @@ impl From<lettre::transport::smtp::Error> for AppError {
     }
 }
 
+impl From<base64::DecodeError> for AppError {
+    fn from(_inner: base64::DecodeError) -> Self {
+        AppError::UserError(UserError::BadInput {
+            simple: "Invalid input",
+            detailed: "Invalid input".into(),
+        })
+    }
+}
+
+impl From<std::string::FromUtf8Error> for AppError {
+    fn from(_inner: std::string::FromUtf8Error) -> Self {
+        AppError::UserError(UserError::BadInput {
+            simple: "Invalid input",
+            detailed: "Invalid input".into(),
+        })
+    }
+}
+
 impl std::error::Error for AppError {} // TODO: is this needed?
 
 impl IntoResponse for AppError {

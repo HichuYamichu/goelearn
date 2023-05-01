@@ -21,6 +21,7 @@ use axum::{
 };
 use migration::{Migrator, MigratorTrait};
 use std::env;
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::Level;
 use tracing_subscriber::{
@@ -115,6 +116,7 @@ pub async fn main() {
         .route_service("/ws", GraphQLSubscription::new(schema))
         .nest("/api/v1/user", user_routes)
         .with_state(state)
+        .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
 
     tracing::info!("Started on http://localhost:3000/api/v1/graphql");

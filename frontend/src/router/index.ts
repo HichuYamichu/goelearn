@@ -16,7 +16,7 @@ const routes = [
           import(/* webpackChunkName: "home" */ "@/views/Home.vue"),
       },
       {
-        path: "/class",
+        path: "/class/:classId",
         name: "Class",
         component: () =>
           import(/* webpackChunkName: "class" */ "@/views/Class.vue"),
@@ -26,6 +26,30 @@ const routes = [
         name: "My Classes",
         component: () =>
           import(/* webpackChunkName: "classes" */ "@/views/UserClasses.vue"),
+      },
+      {
+        path: "/login",
+        name: "Login",
+        component: () =>
+          import(/* webpackChunkName: "login" */ "@/views/Login.vue"),
+      },
+      {
+        path: "/register",
+        name: "Register",
+        component: () =>
+          import(/* webpackChunkName: "register" */ "@/views/Register.vue"),
+      },
+      {
+        path: "/calendar",
+        name: "Calendar",
+        component: () =>
+          import(/* webpackChunkName: "calendar" */ "@/views/Register.vue"),
+      },
+      {
+        path: "/assignments",
+        name: "Assignments",
+        component: () =>
+          import(/* webpackChunkName: "assignments" */ "@/views/Register.vue"),
       },
     ],
   },

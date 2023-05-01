@@ -5,3 +5,12 @@ declare module "*.vue" {
   const component: DefineComponent<{}, {}, any>;
   export default component;
 }
+
+interface ImportMetaEnv {
+  readonly VITE_GRAPHQL_ENDPOINT: string;
+  readonly VITE_GRAPHQL_ENPOINT_WS: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}

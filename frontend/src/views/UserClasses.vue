@@ -2,20 +2,17 @@
   <v-main>
     <v-container>
       <v-row>
-        <v-col v-for="n in 24" :key="n" cols="4">
-          <v-card height="300" to="/class">
+        <v-col v-for="c in classes" :key="c.id" cols="4">
+          <v-card height="300" :to="`/class/${c.id}`">
             <v-img
               src="https://cdn.vuetifyjs.com/images/cards/sunshine.jpg"
               height="200px"
               cover
             ></v-img>
-            <v-card-title> Class Name </v-card-title>
+            <v-card-title> {{ c.name }} </v-card-title>
 
             <v-card-subtitle>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit.
-              Repellendus dolor in non, laborum aliquam ea totam fugiat qui fuga
-              eveniet adipisci accusantium aliquid reiciendis harum sunt saepe
-              sit necessitatibus similique!
+              {{ c.description }}
             </v-card-subtitle>
           </v-card>
         </v-col>
@@ -23,3 +20,25 @@
     </v-container>
   </v-main>
 </template>
+
+<script lang="ts" setup>
+import { graphql } from "@/gql";
+import { useQuery } from "@vue/apollo-composable";
+import { computed } from "vue";
+
+const ME_QUERY = graphql(/* GraphQL */ `
+  query UserClassesMeQuery {
+    me {
+      clesses {
+        id
+        name
+        description
+      }
+    }
+  }
+`);
+
+const { result } = useQuery(ME_QUERY);
+
+const classes = computed(() => result.value?.me.clesses);
+</script>

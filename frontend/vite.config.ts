@@ -8,6 +8,7 @@ import { fileURLToPath, URL } from "node:url";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  root: ".",
   plugins: [
     vue({
       template: { transformAssetUrls },
@@ -28,6 +29,6 @@ export default defineConfig({
     extensions: [".js", ".json", ".jsx", ".mjs", ".ts", ".tsx", ".vue"],
   },
   server: {
-    port: 3000,
+    port: 3030,
   },
 });

@@ -59,8 +59,12 @@ impl ClassObject {
         let channel_repo = ctx.data_unchecked::<DataLoader<ChannelRepo>>();
 
         let id = channel::ChannelByClassId(Uuid::parse_str(&self.id)?);
-        let channels = channel_repo.load_many([id].into_iter()).await?;
+        let mut channels = channel_repo.load_many([id].into_iter()).await?;
+        let channels = channels.remove(&id).unwrap();
 
-        Ok(channels.into_values().map(|c| c.into()).collect())
+        Ok(channels
+            .into_iter()
+            .map(|c| ChannelObject::from(c))
+            .collect())
     }
 }
