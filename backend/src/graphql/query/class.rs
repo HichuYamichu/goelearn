@@ -13,10 +13,10 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct GuildQuery;
+pub struct ClassQuery;
 
 #[Object]
-impl GuildQuery {
+impl ClassQuery {
     #[graphql(guard = "LoggedInGuard")]
     async fn class_by_id(
         &self,
@@ -28,5 +28,12 @@ impl GuildQuery {
             .load_one(ClassById(Uuid::parse_str(id.as_str())?))
             .await?;
         Ok(c.map(|c| c.into()))
+    }
+
+    #[graphql(guard = "LoggedInGuard")]
+    async fn random_classes(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
+        let class_repo = ctx.data_unchecked::<DataLoader<ClassRepo>>();
+        let c = class_repo.loader().find_random(10).await?;
+        Ok(c.into_iter().map(|c| c.into()).collect())
     }
 }

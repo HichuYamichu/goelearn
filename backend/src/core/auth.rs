@@ -75,12 +75,15 @@ pub async fn login_user(
 pub async fn register_user(
     mut creadentials: SignupInput,
     user_repo: &UserRepo,
+    has_avatar: bool,
 ) -> Result<Uuid, AppError> {
     let hash = argon2_async::hash(creadentials.password).await?;
     creadentials.password = hash;
     let addr = creadentials.email.clone();
     let username = creadentials.username.clone();
-    let id = user_repo.create_user(creadentials).await?;
+    let id = user_repo
+        .create_user(creadentials.into_active_model(has_avatar))
+        .await?;
 
     let body = format!(
         r#"Hello, {username}! Please, follow the link to activate your account: <a href="{host}/api/v1/user/activate/{id}<a>">{host}/api/v1/user/activate/{id}<a>"#,

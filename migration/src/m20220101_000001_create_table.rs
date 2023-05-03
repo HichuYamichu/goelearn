@@ -22,6 +22,9 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(ColumnDef::new(User::Id).not_null().uuid().primary_key())
                     .col(ColumnDef::new(User::Username).string().not_null())
+                    .col(ColumnDef::new(User::FirstName).string().not_null())
+                    .col(ColumnDef::new(User::LastName).string().not_null())
+                    .col(ColumnDef::new(User::HasAvatar).boolean().not_null())
                     .col(ColumnDef::new(User::Email).string().not_null())
                     .col(ColumnDef::new(User::Password).string().not_null())
                     .col(ColumnDef::new(User::CreatedAt).timestamp().not_null())
@@ -168,6 +171,9 @@ pub enum User {
     Table,
     Id,
     Username,
+    FirstName,
+    LastName,
+    HasAvatar,
     Email,
     Password,
     Active,

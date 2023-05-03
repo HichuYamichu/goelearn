@@ -1,5 +1,6 @@
 <template>
   <v-navigation-drawer width="244">
+    <h5 class="text-h5 text-center pa-3">Channels</h5>
     <v-skeleton-loader v-if="loading" type="list-item"> </v-skeleton-loader>
     <v-list v-else class="pa-0">
       <v-list-item
@@ -21,7 +22,7 @@ import { FragmentType, graphql, useFragment } from "@/gql";
 import { computed, ref, watch } from "vue";
 
 const ChannelsFragment = graphql(/* GraphQL */ `
-  fragment ChannelsFragment on ChannelObject {
+  fragment ChannelsFragment on Channel {
     id
     name
   }

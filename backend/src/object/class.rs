@@ -1,3 +1,4 @@
+use crate::core::repo::user::{self, UserRepo};
 use crate::core::LoggedInGuard;
 use crate::core::{
     repo::channel::{self, ChannelRepo},
@@ -9,7 +10,7 @@ use async_graphql::{
 use sea_orm::Set;
 use uuid::Uuid;
 
-use super::ChannelObject;
+use super::{ChannelObject, UserObject};
 
 #[derive(InputObject)]
 pub struct CreateClassInput {
@@ -32,6 +33,7 @@ impl CreateClassInput {
 
 #[derive(Clone, Debug, SimpleObject)]
 #[graphql(complex)]
+#[graphql(name = "Class")]
 pub struct ClassObject {
     pub id: ID,
     pub name: String,
@@ -59,12 +61,24 @@ impl ClassObject {
         let channel_repo = ctx.data_unchecked::<DataLoader<ChannelRepo>>();
 
         let id = channel::ChannelByClassId(Uuid::parse_str(&self.id)?);
-        let mut channels = channel_repo.load_many([id].into_iter()).await?;
-        let channels = channels.remove(&id).unwrap();
+        let channels = channel_repo
+            .load_one(id)
+            .await?
+            .expect("Id should be valid");
 
         Ok(channels
             .into_iter()
             .map(|c| ChannelObject::from(c))
             .collect())
+    }
+
+    #[graphql(guard = "LoggedInGuard")]
+    async fn members(&self, ctx: &Context<'_>) -> Result<Vec<UserObject>, AppError> {
+        let user_repo = ctx.data_unchecked::<DataLoader<UserRepo>>();
+
+        let id = user::UsersByClassId(Uuid::parse_str(&self.id)?);
+        let users = user_repo.load_one(id).await?.expect("Id should be valid");
+
+        Ok(users.into_iter().map(|u| UserObject::from(u)).collect())
     }
 }

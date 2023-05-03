@@ -28,6 +28,14 @@ const routes = [
           import(/* webpackChunkName: "classes" */ "@/views/UserClasses.vue"),
       },
       {
+        path: "/explore",
+        name: "Explore classes",
+        component: () =>
+          import(
+            /* webpackChunkName: "explore" */ "@/views/ExploreClasses.vue"
+          ),
+      },
+      {
         path: "/login",
         name: "Login",
         component: () =>
@@ -50,6 +58,14 @@ const routes = [
         name: "Assignments",
         component: () =>
           import(/* webpackChunkName: "assignments" */ "@/views/Register.vue"),
+      },
+      {
+        path: "/class-create",
+        name: "Create Class",
+        component: () =>
+          import(
+            /* webpackChunkName: "class-create" */ "@/views/ClassCreate.vue"
+          ),
       },
     ],
   },

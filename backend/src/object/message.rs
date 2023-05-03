@@ -1,11 +1,16 @@
-use async_graphql::{InputObject, SimpleObject, ID};
+use async_graphql::{
+    dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, ID,
+};
 use chrono::Utc;
 use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use sea_orm::Set;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::core::AppError;
+use super::UserObject;
+use crate::core::repo::user;
+use crate::core::LoggedInGuard;
+use crate::core::{repo::user::UserRepo, AppError};
 
 #[derive(InputObject)]
 pub struct CreateMessageInput {
@@ -29,9 +34,12 @@ impl CreateMessageInput {
 }
 
 #[derive(Clone, Debug, SimpleObject, Serialize, Deserialize)]
+#[graphql(complex)]
+#[graphql(name = "Message")]
 pub struct MessageObject {
     pub id: ID,
     pub content: String,
+    pub author_id: ID,
 }
 
 impl From<::entity::message::Model> for MessageObject {
@@ -39,6 +47,7 @@ impl From<::entity::message::Model> for MessageObject {
         Self {
             id: ID::from(c.id),
             content: c.content,
+            author_id: ID::from(c.author_id),
         }
     }
 }
@@ -51,6 +60,7 @@ impl ToRedisArgs for MessageObject {
         let mut vec = Vec::new();
         vec.push(self.id.as_str());
         vec.push(&self.content);
+        vec.push(self.author_id.as_str());
         vec.write_redis_args(out);
     }
 }
@@ -61,6 +71,24 @@ impl FromRedisValue for MessageObject {
         Ok(Self {
             id: ID::from(vec[0].clone()),
             content: vec[1].clone(),
+            author_id: ID::from(vec[2].clone()),
         })
+    }
+}
+
+#[ComplexObject]
+impl MessageObject {
+    // TODO: Websocket authentication needed
+    // #[graphql(guard = "LoggedInGuard")]
+    async fn author(&self, ctx: &Context<'_>) -> Result<UserObject, AppError> {
+        tracing::warn!("author_id: {:?}", self.author_id);
+        let user_repo = ctx.data_unchecked::<DataLoader<UserRepo>>();
+
+        let user = user_repo
+            .load_one(user::UserByAuthorId(Uuid::parse_str(&self.author_id)?))
+            .await?
+            .expect("AuthorId should be valid");
+
+        Ok(user.into())
     }
 }

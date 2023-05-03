@@ -12,10 +12,14 @@ use crate::core::LoggedInGuard;
 
 #[derive(Clone, Debug, SimpleObject)]
 #[graphql(complex)]
+#[graphql(name = "User")]
 pub struct UserObject {
     pub id: ID,
     pub username: String,
     pub email: String,
+    pub has_avatar: bool,
+    pub first_name: String,
+    pub last_name: String,
     // pub user_type: UserType,
 }
 
@@ -25,6 +29,9 @@ impl From<::entity::user::Model> for UserObject {
             id: ID::from(u.id),
             username: u.username,
             email: u.email,
+            has_avatar: u.has_avatar,
+            first_name: u.first_name,
+            last_name: u.last_name,
         }
     }
 }

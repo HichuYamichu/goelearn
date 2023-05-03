@@ -25,9 +25,21 @@
       </v-responsive>
     </v-container>
 
-    <v-btn v-if="!isLoggedIn" to="/login"> Login </v-btn>
-    <v-btn v-if="!isLoggedIn" to="/register"> Register </v-btn>
-    <v-btn v-if="isLoggedIn" @click="logout">Logout</v-btn>
+    <div class="fill-height d-flex align-center mr-3" v-if="!isLoggedIn">
+      <v-btn to="/login"> Login </v-btn>
+      <v-btn to="/register"> Register </v-btn>
+    </div>
+    <div class="fill-height d-flex align-center mr-3" v-else>
+      <v-avatar v-if="hasAvatar">
+        <v-img
+          :src="`http://localhost:3000/files/user-avatar/${id}`"
+          alt="avatar"
+        ></v-img>
+      </v-avatar>
+      <v-avatar v-else> <v-icon icon="mdi-account-circle"></v-icon></v-avatar>
+      <v-btn @click="logout">Settings</v-btn>
+      <v-btn @click="logout">Logout</v-btn>
+    </div>
   </v-app-bar>
 
   <v-navigation-drawer v-model="drawer" temporary>
@@ -45,11 +57,14 @@ import { useQuery } from "@vue/apollo-composable";
 import { ref } from "vue";
 import { client } from "@/client";
 import { computed } from "vue";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const links = [
   { text: "Home", target: "/" },
   { text: "My Classes", target: "/classes" },
-  { text: "Explore", target: "/classes" },
+  { text: "Explore", target: "/explore" },
   { text: "Calendar", target: "/calendar" },
   { text: "Assignments", target: "/assignments" },
 ];
@@ -66,6 +81,22 @@ const { result } = useQuery(IsLoggedIn);
 
 const isLoggedIn = computed(() => result.value?.isLoggedIn ?? false);
 
+const MeQuery = graphql(/* GraphQL */ `
+  query AppBarMeQuery {
+    me {
+      id
+      hasAvatar
+    }
+  }
+`);
+
+const { result: meResult } = useQuery(MeQuery, null, () => ({
+  enabled: isLoggedIn.value,
+}));
+
+const hasAvatar = computed(() => meResult.value?.me.hasAvatar ?? false);
+const id = computed(() => meResult.value?.me.id ?? "");
+
 const logout = () => {
   localStorage.removeItem("token");
   client.writeQuery({
@@ -74,5 +105,6 @@ const logout = () => {
       isLoggedIn: false,
     },
   });
+  router.push({ name: "Home" });
 };
 </script>

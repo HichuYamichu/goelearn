@@ -36,6 +36,7 @@ impl CreateChannelInput {
 
 #[derive(Clone, Debug, SimpleObject)]
 #[graphql(complex)]
+#[graphql(name = "Channel")]
 pub struct ChannelObject {
     pub id: ID,
     pub name: String,

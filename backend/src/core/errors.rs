@@ -41,6 +41,8 @@ pub enum InternalError {
     Argon2(argon2_async::Error),
     Redis(redis::RedisError),
     Email(lettre::transport::smtp::Error),
+    Io(std::io::Error),
+    S3(s3::error::S3Error),
 }
 
 impl std::fmt::Display for InternalError {
@@ -53,6 +55,8 @@ impl std::fmt::Display for InternalError {
             InternalError::Argon2(err) => write!(f, "Argon2 error: {err}"),
             InternalError::Redis(err) => write!(f, "Redis error: {err}"),
             InternalError::Email(err) => write!(f, "Email error: {err}"),
+            InternalError::Io(err) => write!(f, "IO error: {err}"),
+            InternalError::S3(err) => write!(f, "S3 error: {err}"),
         }
     }
 }
@@ -151,6 +155,18 @@ impl From<std::string::FromUtf8Error> for AppError {
             simple: "Invalid input",
             detailed: "Invalid input".into(),
         })
+    }
+}
+
+impl From<std::io::Error> for AppError {
+    fn from(inner: std::io::Error) -> Self {
+        AppError::InternalError(InternalError::Io(inner))
+    }
+}
+
+impl From<s3::error::S3Error> for AppError {
+    fn from(inner: s3::error::S3Error) -> Self {
+        AppError::InternalError(InternalError::S3(inner))
     }
 }
 

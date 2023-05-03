@@ -2,6 +2,7 @@ mod core;
 mod graphql;
 mod object;
 mod rest;
+mod ws;
 
 use crate::core::repo::channel::ChannelRepo;
 use crate::core::repo::class::ClassRepo;
@@ -13,6 +14,7 @@ use async_graphql::extensions::Tracing;
 use async_graphql::http::GraphiQLSource;
 use async_graphql::{dataloader::DataLoader, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
+use awscreds::Credentials;
 use axum::{
     extract::{FromRef, State},
     response::{Html, IntoResponse},
@@ -22,6 +24,7 @@ use axum::{
 use migration::{Migrator, MigratorTrait};
 use std::env;
 use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing::Level;
 use tracing_subscriber::{
@@ -51,13 +54,14 @@ lazy_static! {
 }
 
 #[derive(FromRef, Clone)]
-struct AppState {
+pub struct AppState {
     schema: AppSchema,
     user_repo: UserRepo,
     membership_repo: MembershipRepo,
     class_repo: ClassRepo,
     message_repo: MessageRepo,
     channel_repo: ChannelRepo,
+    s3_bucket: s3::Bucket,
 }
 
 #[tokio::main]
@@ -84,6 +88,14 @@ pub async fn main() {
         .unwrap();
     Migrator::up(&db, None).await.unwrap();
 
+    let s3_credentials = Credentials::new(None, None, None, None, None).unwrap();
+    let s3_bucket = s3::Bucket::new(
+        "goelearn",
+        "eu-north-1".parse().expect("Region should be valid"),
+        s3_credentials,
+    )
+    .unwrap();
+
     let user_repo = UserRepo::new(db.clone());
     let membership_repo = MembershipRepo::new(db.clone());
     let class_repo = ClassRepo::new(db.clone());
@@ -96,8 +108,10 @@ pub async fn main() {
         Subscription::default(),
     )
     .data(redis_client)
+    .data(s3_bucket.clone())
     .extension(Tracing)
     .finish();
+
     let state = AppState {
         schema: schema.clone(),
         user_repo,
@@ -105,6 +119,7 @@ pub async fn main() {
         class_repo,
         message_repo,
         channel_repo,
+        s3_bucket,
     };
 
     let user_routes = Router::new().route("/activate/:user_id", get(user_handler::activate));
@@ -113,8 +128,12 @@ pub async fn main() {
             "/api/v1/graphql",
             get(graphql_playground).post(graphql_handler),
         )
-        .route_service("/ws", GraphQLSubscription::new(schema))
+        .route_service("/ws", ws::GraphQLSubscription::new(schema, state.clone()))
         .nest("/api/v1/user", user_routes)
+        .route(
+            "/files/user-avatar/:user_id",
+            get(rest::file_handler::get_user_avatar),
+        )
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());

@@ -48,6 +48,34 @@ impl ClassRepo {
 
         Ok(class)
     }
+
+    pub async fn find_random(
+        &self,
+        limit: u64,
+    ) -> Result<Vec<class::Model>, TransactionError<DbErr>> {
+        let classes = Class::find()
+            .order_by_asc(class::Column::Id)
+            .limit(Some(limit))
+            .all(&self.conn)
+            .await?;
+
+        Ok(classes)
+    }
+
+    pub async fn join_user_to_class(
+        &self,
+        user_id: Uuid,
+        class_id: Uuid,
+    ) -> Result<membership::Model, DbErr> {
+        let member = membership::ActiveModel {
+            user_id: Set(user_id),
+            class_id: Set(class_id),
+        };
+
+        let member = member.insert(&self.conn).await?;
+
+        Ok(member)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
