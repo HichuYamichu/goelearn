@@ -9,6 +9,7 @@ pub struct Model {
     pub id: Uuid,
     pub name: String,
     pub description: Option<String>,
+    pub allow_members_to_post: bool,
     pub class_id: Uuid,
 }
 

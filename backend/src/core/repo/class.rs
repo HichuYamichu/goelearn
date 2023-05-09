@@ -27,11 +27,15 @@ impl ClassRepo {
             .conn
             .transaction::<_, class::Model, DbErr>(|txn| {
                 Box::pin(async move {
+                    tracing::info!("Before");
+
                     let class = model.insert(txn).await?;
+                    tracing::info!("Created class {:?}", class);
                     let main_channel = channel::ActiveModel {
                         id: Set(Uuid::new_v4()),
                         name: Set("Main".to_string()),
                         class_id: Set(class.id),
+                        allow_members_to_post: Set(true),
                         ..Default::default()
                     };
                     main_channel.insert(txn).await?;

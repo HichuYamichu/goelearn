@@ -12,24 +12,18 @@ pub struct UserMutation;
 
 #[Object]
 impl UserMutation {
-    pub async fn signup(&self, ctx: &Context<'_>, input: SignupInput) -> Result<String, AppError> {
+    pub async fn signup(
+        &self,
+        ctx: &Context<'_>,
+        mut input: SignupInput,
+    ) -> Result<String, AppError> {
         let user_repo = ctx.data_unchecked::<DataLoader<UserRepo>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
-        // TODO: Validate mime type
 
-        // Avoid partial move
-        let cpy = SignupInput {
-            username: input.username,
-            first_name: input.first_name,
-            last_name: input.last_name,
-            email: input.email,
-            password: input.password,
-            avatar: None,
-        };
+        let avatar = input.avatar.take();
+        let id = auth::register_user(input, user_repo.loader(), avatar.is_some()).await?;
 
-        let id = auth::register_user(cpy, user_repo.loader(), input.avatar.is_some()).await?;
-
-        if let Some(avatar) = input.avatar {
+        if let Some(avatar) = avatar {
             let avatar = avatar.value(ctx)?;
             if avatar.content_type.is_none()
                 || avatar.content_type.as_ref().unwrap() != "image/jpeg"

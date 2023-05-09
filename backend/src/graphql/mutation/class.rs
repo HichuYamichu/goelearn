@@ -5,12 +5,13 @@ use crate::{
             class::{ClassById, ClassRepo},
             membership::{MembershipRepo, MembershipsByClassId},
         },
-        AppError,
+        AppError, UserError,
     },
     object::{ClassObject, CreateClassInput},
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 use auth::Claims;
+use tokio_util::compat::FuturesAsyncReadCompatExt;
 use uuid::Uuid;
 
 use crate::core::LoggedInGuard;
@@ -24,13 +25,33 @@ impl ClassMutation {
     pub async fn create_class(
         &self,
         ctx: &Context<'_>,
-        input: CreateClassInput,
+        mut input: CreateClassInput,
     ) -> Result<ClassObject, AppError> {
         let class_repo = ctx.data_unchecked::<DataLoader<ClassRepo>>();
         let claims = ctx.data_unchecked::<Option<Claims>>();
+        let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
 
         let id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
-        let model = input.into_active_model(id);
+        let image = input.image.take();
+        let model = input.into_active_model(id, image.is_some());
+        let class_id = model.id.clone().into_value().expect("id was just set");
+
+        if let Some(image) = image {
+            let image = image.value(ctx)?;
+            if image.content_type.is_none() || image.content_type.as_ref().unwrap() != "image/jpeg"
+            {
+                return Err(AppError::UserError(UserError::BadInput {
+                    simple: "image must be a jpeg image",
+                    detailed: "image must be a jpeg image".into(),
+                }));
+            }
+
+            let s3_path = format!("class-images/{}", class_id.as_ref_uuid().unwrap());
+            let mut reader = image.into_async_read().compat();
+            s3_bucket
+                .put_object_stream_with_content_type(&mut reader, s3_path, "image/jpeg")
+                .await?;
+        }
 
         let class = class_repo.loader().create_class(model).await?;
         Ok(class.into())

@@ -21,11 +21,16 @@ impl MigrationTrait for Migration {
                     .table(User::Table)
                     .if_not_exists()
                     .col(ColumnDef::new(User::Id).not_null().uuid().primary_key())
-                    .col(ColumnDef::new(User::Username).string().not_null())
+                    .col(
+                        ColumnDef::new(User::Username)
+                            .string()
+                            .unique_key()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(User::FirstName).string().not_null())
                     .col(ColumnDef::new(User::LastName).string().not_null())
                     .col(ColumnDef::new(User::HasAvatar).boolean().not_null())
-                    .col(ColumnDef::new(User::Email).string().not_null())
+                    .col(ColumnDef::new(User::Email).string().unique_key().not_null())
                     .col(ColumnDef::new(User::Password).string().not_null())
                     .col(ColumnDef::new(User::CreatedAt).timestamp().not_null())
                     .col(ColumnDef::new(User::DeletedAt).timestamp().null())
@@ -47,6 +52,8 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Class::Id).not_null().uuid().primary_key())
                     .col(ColumnDef::new(Class::Name).string().not_null())
                     .col(ColumnDef::new(Class::Description).string().not_null())
+                    .col(ColumnDef::new(Class::Tags).string().not_null())
+                    .col(ColumnDef::new(Class::HasImage).boolean().not_null())
                     .col(ColumnDef::new(Class::OwnerId).uuid().not_null())
                     .col(ColumnDef::new(Class::Public).boolean().not_null())
                     .to_owned(),
@@ -61,6 +68,11 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Channel::Id).not_null().uuid().primary_key())
                     .col(ColumnDef::new(Channel::Name).string().not_null())
                     .col(ColumnDef::new(Channel::Description).string().null())
+                    .col(
+                        ColumnDef::new(Channel::AllowMembersToPost)
+                            .boolean()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(Channel::ClassId).uuid().not_null())
                     .to_owned(),
             )
@@ -211,6 +223,8 @@ pub enum Class {
     Id,
     Name,
     Description,
+    Tags,
+    HasImage,
     Public,
     OwnerId,
 }
@@ -221,6 +235,7 @@ pub enum Channel {
     Id,
     Name,
     Description,
+    AllowMembersToPost,
     ClassId,
 }
 

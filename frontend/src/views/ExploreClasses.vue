@@ -21,12 +21,18 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" height="300" @click="join(c.id)">
               <v-img
-                src="https://cdn.vuetifyjs.com/images/cards/sunshine.jpg"
+                v-if="c.hasImage"
+                :src="`http://localhost:3000/files/class-image/${c.id}`"
+                alt="avatar"
                 height="200px"
                 cover
               ></v-img>
+              <v-img
+                v-else
+                :src="`https://ui-avatars.com/api/?size=200&name=${c.name}`"
+                height="200px"
+              ></v-img>
               <v-card-title> {{ c.name }} </v-card-title>
-
               <v-card-subtitle>
                 {{ c.description }}
               </v-card-subtitle>
@@ -63,6 +69,7 @@ const RandomClassesQuery = graphql(/* GraphQL */ `
       id
       name
       description
+      hasImage
     }
   }
 `);

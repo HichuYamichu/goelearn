@@ -21,6 +21,7 @@ pub struct CreateChannelInput {
     pub name: String,
     pub description: Option<String>,
     pub class_id: ID,
+    pub allow_members_to_post: bool,
 }
 
 impl CreateChannelInput {
@@ -30,6 +31,7 @@ impl CreateChannelInput {
             name: Set(self.name),
             description: Set(self.description),
             class_id: Set(Uuid::parse_str(self.class_id.as_str())?),
+            allow_members_to_post: Set(self.allow_members_to_post),
         })
     }
 }

@@ -23,11 +23,12 @@ const documents = {
     "\n  subscription MessagesSubscription($channelId: ID!) {\n    messageCreated(channelId: $channelId) {\n      ...MessageFragment\n    }\n  }\n": types.MessagesSubscriptionDocument,
     "\n  query AppBarMeQuery {\n    me {\n      id\n      hasAvatar\n    }\n  }\n": types.AppBarMeQueryDocument,
     "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      name\n      ...ChatFragment\n    }\n  }\n": types.ClassClassByIdQueryDocument,
-    "\n  query RandomClasses {\n    randomClasses {\n      id\n      name\n      description\n    }\n  }\n": types.RandomClassesDocument,
+    "\n  mutation CreateClass($input: CreateClassInput!) {\n    createClass(input: $input) {\n      id\n    }\n  }\n": types.CreateClassDocument,
+    "\n  query RandomClasses {\n    randomClasses {\n      id\n      name\n      description\n      hasImage\n    }\n  }\n": types.RandomClassesDocument,
     "\n  mutation JoinClass($classId: ID!) {\n    joinClass(classId: $classId)\n  }\n": types.JoinClassDocument,
     "\n  mutation Login($password: String!, $username: String!) {\n    login(input: { password: $password, username: $username }) {\n      token\n    }\n  }\n": types.LoginDocument,
     "\n  mutation Signup($input: SignupInput!) {\n    signup(input: $input)\n  }\n": types.SignupDocument,
-    "\n  query UserClassesMeQuery {\n    me {\n      clesses {\n        id\n        name\n        description\n      }\n    }\n  }\n": types.UserClassesMeQueryDocument,
+    "\n  query UserClassesMeQuery {\n    me {\n      id\n      clesses {\n        id\n        name\n        description\n        hasImage\n      }\n    }\n  }\n": types.UserClassesMeQueryDocument,
 };
 
 /**
@@ -87,7 +88,11 @@ export function graphql(source: "\n  query ClassClassByIdQuery($id: ID!) {\n    
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query RandomClasses {\n    randomClasses {\n      id\n      name\n      description\n    }\n  }\n"): (typeof documents)["\n  query RandomClasses {\n    randomClasses {\n      id\n      name\n      description\n    }\n  }\n"];
+export function graphql(source: "\n  mutation CreateClass($input: CreateClassInput!) {\n    createClass(input: $input) {\n      id\n    }\n  }\n"): (typeof documents)["\n  mutation CreateClass($input: CreateClassInput!) {\n    createClass(input: $input) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query RandomClasses {\n    randomClasses {\n      id\n      name\n      description\n      hasImage\n    }\n  }\n"): (typeof documents)["\n  query RandomClasses {\n    randomClasses {\n      id\n      name\n      description\n      hasImage\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -103,7 +108,7 @@ export function graphql(source: "\n  mutation Signup($input: SignupInput!) {\n  
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query UserClassesMeQuery {\n    me {\n      clesses {\n        id\n        name\n        description\n      }\n    }\n  }\n"): (typeof documents)["\n  query UserClassesMeQuery {\n    me {\n      clesses {\n        id\n        name\n        description\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  query UserClassesMeQuery {\n    me {\n      id\n      clesses {\n        id\n        name\n        description\n        hasImage\n      }\n    }\n  }\n"): (typeof documents)["\n  query UserClassesMeQuery {\n    me {\n      id\n      clesses {\n        id\n        name\n        description\n        hasImage\n      }\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

@@ -9,8 +9,13 @@ pub struct Model {
     pub id: Uuid,
     pub name: String,
     pub description: String,
+    pub tags: String,
+    pub has_image: bool,
     pub owner_id: Uuid,
     pub public: bool,
+    // #[sea_orm(column_type = "custom(\"tsvector\")", nullable)]
+    #[sea_orm(ignore)]
+    pub search: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

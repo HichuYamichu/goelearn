@@ -39,3 +39,31 @@ pub async fn get_user_avatar(
         Err(e) => return Err(e.into()),
     }
 }
+
+#[debug_handler]
+pub async fn get_class_image(
+    Path(class_id): Path<Uuid>,
+    State(s3_bucker): State<s3::Bucket>,
+) -> Result<impl IntoResponse, AppError> {
+    let s3_path = format!("class-images/{}", class_id);
+    let object = s3_bucker.get_object(s3_path).await;
+    match object {
+        Ok(object) => {
+            let response = Response::builder()
+                .header("Content-Type", "image/jpeg")
+                .body(Body::from(object.to_vec()))
+                .unwrap();
+
+            return Ok(response);
+        }
+        Err(s3::error::S3Error::Http(404, _)) => {
+            return Err(AppError::NotFound {
+                what: "class image",
+                with: "class id",
+                why: class_id.to_string(),
+            }
+            .into())
+        }
+        Err(e) => return Err(e.into()),
+    }
+}

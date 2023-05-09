@@ -21,9 +21,16 @@
       <v-col v-for="c in classes" :key="c.id" cols="4">
         <v-card height="300" :to="`/class/${c.id}`">
           <v-img
-            src="https://cdn.vuetifyjs.com/images/cards/sunshine.jpg"
+            v-if="c.hasImage"
+            :src="`http://localhost:3000/files/class-image/${c.id}`"
+            alt="avatar"
             height="200px"
             cover
+          ></v-img>
+          <v-img
+            v-else
+            :src="`https://ui-avatars.com/api/?size=200&name=szydelkowanie`"
+            height="200px"
           ></v-img>
           <v-card-title> {{ c.name }} </v-card-title>
 
@@ -44,10 +51,12 @@ import { computed } from "vue";
 const MeQuery = graphql(/* GraphQL */ `
   query UserClassesMeQuery {
     me {
+      id
       clesses {
         id
         name
         description
+        hasImage
       }
     }
   }

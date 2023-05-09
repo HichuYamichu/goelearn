@@ -1,5 +1,5 @@
 <template>
-  <div ref="messageBox" style="height: 100%" class="overflow-auto">
+  <div ref="messageBox" class="overflow-y-visible">
     <v-virtual-scroll :items="messages" height="100%" item-height="50">
       <template v-slot:default="{ item }">
         <v-list-item

@@ -134,6 +134,10 @@ pub async fn main() {
             "/files/user-avatar/:user_id",
             get(rest::file_handler::get_user_avatar),
         )
+        .route(
+            "/files/class-image/:class_id",
+            get(rest::file_handler::get_class_image),
+        )
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
