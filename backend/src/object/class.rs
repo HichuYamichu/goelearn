@@ -82,7 +82,7 @@ impl ClassObject {
 
         Ok(channels
             .into_iter()
-            .map(|c| ChannelObject::from(c))
+            .map(ChannelObject::from)
             .collect())
     }
 
@@ -93,7 +93,7 @@ impl ClassObject {
         let id = user::UsersByClassId(Uuid::parse_str(&self.id)?);
         let users = user_repo.load_one(id).await?.expect("Id should be valid");
 
-        Ok(users.into_iter().map(|u| UserObject::from(u)).collect())
+        Ok(users.into_iter().map(UserObject::from).collect())
     }
 
     #[graphql(guard = "LoggedInGuard")]
@@ -103,6 +103,6 @@ impl ClassObject {
         let id = file::FilesByClassId(Uuid::parse_str(&self.id)?);
         let files = file_repo.load_one(id).await?.expect("Id should be valid");
 
-        Ok(files.into_iter().map(|f| FileObject::from(f)).collect())
+        Ok(files.into_iter().map(FileObject::from).collect())
     }
 }

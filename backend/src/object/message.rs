@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::UserObject;
 use crate::core::repo::user;
-use crate::core::LoggedInGuard;
+
 use crate::core::{repo::user::UserRepo, AppError};
 
 #[derive(InputObject)]
@@ -57,10 +57,7 @@ impl ToRedisArgs for MessageObject {
     where
         W: ?Sized + RedisWrite,
     {
-        let mut vec = Vec::new();
-        vec.push(self.id.as_str());
-        vec.push(&self.content);
-        vec.push(self.author_id.as_str());
+        let vec = vec![self.id.as_str(), &self.content, self.author_id.as_str()];
         vec.write_redis_args(out);
     }
 }

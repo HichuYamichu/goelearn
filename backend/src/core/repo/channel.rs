@@ -23,7 +23,7 @@ impl ChannelRepo {
         &self,
         model: channel::ActiveModel,
     ) -> Result<channel::Model, DbErr> {
-        Ok(model.insert(&self.conn).await?)
+        model.insert(&self.conn).await
     }
 }
 

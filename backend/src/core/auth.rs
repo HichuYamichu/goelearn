@@ -11,12 +11,12 @@ use axum::{
     TypedHeader,
 };
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use lettre::AsyncSmtpTransport;
 use lettre::AsyncTransport;
 use lettre::{
     message::header::ContentType, transport::smtp::authentication::Credentials, Message,
-    SmtpTransport, Tokio1Executor,
+    Tokio1Executor,
 };
-use lettre::{AsyncSmtpTransport, Transport};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -85,11 +85,9 @@ pub async fn register_user(
         .create_user(creadentials.into_active_model(has_avatar))
         .await?;
 
+    let host = HOST_URL.to_string();
     let body = format!(
-        r#"Hello, {username}! Please, follow the link to activate your account: <a href="{host}/api/v1/user/activate/{id}<a>">{host}/api/v1/user/activate/{id}<a>"#,
-        username = username,
-        host = HOST_URL.to_string(),
-        id = id
+        r#"Hello, {username}! Please, follow the link to activate your account: <a href="{host}/api/v1/user/activate/{id}<a>">{host}/api/v1/user/activate/{id}<a>"#
     );
 
     let email = Message::builder()

@@ -1,14 +1,13 @@
 use crate::{
     core::{
-        auth,
-        repo::{channel::ChannelRepo, class::ClassRepo},
+        repo::{channel::ChannelRepo},
         AppError,
     },
-    object::{ChannelObject, ClassObject, CreateChannelInput, CreateClassInput},
+    object::{ChannelObject, CreateChannelInput},
 };
 use async_graphql::{dataloader::DataLoader, Context, Object};
-use auth::Claims;
-use uuid::Uuid;
+
+
 
 use crate::core::LoggedInGuard;
 

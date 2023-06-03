@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use async_graphql::{
-    connection::{self, Connection, CursorType, Edge, EmptyFields, OpaqueCursor},
+    connection::{self, Connection, Edge, EmptyFields},
     dataloader::DataLoader,
     Context, Object, ID,
 };
@@ -12,13 +12,11 @@ use uuid::Uuid;
 use crate::{
     core::{
         repo::{
-            class::{ClassById, ClassRepo},
             message::MessageRepo,
-            user::UserRepo,
         },
-        AppError, Claims, LoggedInGuard,
+        AppError, LoggedInGuard,
     },
-    object::{ClassObject, MessageObject, UserObject},
+    object::{MessageObject},
 };
 
 #[derive(Default)]

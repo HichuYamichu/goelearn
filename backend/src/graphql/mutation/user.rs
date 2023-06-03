@@ -1,11 +1,11 @@
 use crate::core::UserError;
 use crate::core::{auth, repo::user::UserRepo, AppError};
 use crate::object::{LoginInput, LoginResult, SignupInput};
-use async_graphql::futures_util;
+
 use async_graphql::{dataloader::DataLoader, Context, Object};
-use tokio::fs::File;
+
 use tokio_util::compat::FuturesAsyncReadCompatExt;
-use tracing_subscriber::fmt::format;
+
 
 #[derive(Default)]
 pub struct UserMutation;
@@ -34,7 +34,7 @@ impl UserMutation {
                 }));
             }
 
-            let s3_path = format!("user-avatars/{}", id);
+            let s3_path = format!("user-avatars/{id}");
             let mut reader = avatar.into_async_read().compat();
             s3_bucket
                 .put_object_stream_with_content_type(&mut reader, s3_path, "image/jpeg")

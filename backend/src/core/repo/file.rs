@@ -1,4 +1,4 @@
-use ::entity::{file, file::Entity as File};
+use ::entity::{file};
 
 use async_graphql::dataloader::Loader;
 use async_trait::async_trait;
@@ -20,7 +20,7 @@ impl FileRepo {
     }
 
     pub async fn save_file(&self, model: file::ActiveModel) -> Result<file::Model, DbErr> {
-        Ok(model.insert(&self.conn).await?)
+        model.insert(&self.conn).await
     }
 }
 

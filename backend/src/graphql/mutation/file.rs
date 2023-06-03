@@ -1,18 +1,17 @@
 use crate::{
     core::{
-        auth,
-        repo::{channel::ChannelRepo, class::ClassRepo, file::FileRepo},
+        repo::{file::FileRepo},
         AppError,
     },
     object::{
-        ChannelObject, ClassObject, CreateChannelInput, CreateClassInput, CreateDirectoryInput,
+        CreateDirectoryInput,
         FileObject, UploadFileInput,
     },
 };
 use async_graphql::{dataloader::DataLoader, Context, Object};
-use auth::Claims;
+
 use tokio_util::compat::FuturesAsyncReadCompatExt;
-use uuid::Uuid;
+
 
 use crate::core::LoggedInGuard;
 

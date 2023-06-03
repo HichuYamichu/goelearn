@@ -14,7 +14,7 @@ use crate::graphql::Subscription;
 use async_graphql::extensions::Tracing;
 use async_graphql::http::GraphiQLSource;
 use async_graphql::{dataloader::DataLoader, Schema};
-use async_graphql_axum::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
+use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use awscreds::Credentials;
 use axum::{
     extract::{FromRef, State},
@@ -25,7 +25,7 @@ use axum::{
 use migration::{Migrator, MigratorTrait};
 use std::env;
 use tower_http::cors::CorsLayer;
-use tower_http::services::ServeDir;
+
 use tower_http::trace::TraceLayer;
 use tracing::Level;
 use tracing_subscriber::{

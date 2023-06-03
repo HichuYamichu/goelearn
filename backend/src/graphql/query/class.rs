@@ -5,11 +5,10 @@ use crate::{
     core::{
         repo::{
             class::{ClassById, ClassRepo},
-            user::UserRepo,
         },
-        AppError, Claims, LoggedInGuard,
+        AppError, LoggedInGuard,
     },
-    object::{ClassObject, UserObject},
+    object::{ClassObject},
 };
 
 #[derive(Default)]

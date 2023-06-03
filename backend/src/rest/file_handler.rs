@@ -1,4 +1,4 @@
-use axum::body::HttpBody;
+
 use axum::{
     body::Body,
     debug_handler,
@@ -6,8 +6,8 @@ use axum::{
     http::Response,
     response::IntoResponse,
 };
-use tokio::io::AsyncRead;
-use tokio::io::AsyncReadExt;
+
+
 use uuid::Uuid;
 
 use crate::core::AppError;
@@ -17,7 +17,7 @@ pub async fn get_user_avatar(
     Path(user_id): Path<Uuid>,
     State(s3_bucker): State<s3::Bucket>,
 ) -> Result<impl IntoResponse, AppError> {
-    let s3_path = format!("user-avatars/{}", user_id);
+    let s3_path = format!("user-avatars/{user_id}");
     let object = s3_bucker.get_object(s3_path).await;
     match object {
         Ok(object) => {
@@ -26,17 +26,16 @@ pub async fn get_user_avatar(
                 .body(Body::from(object.to_vec()))
                 .unwrap();
 
-            return Ok(response);
+            Ok(response)
         }
         Err(s3::error::S3Error::Http(404, _)) => {
-            return Err(AppError::NotFound {
+            Err(AppError::NotFound {
                 what: "user avatar",
                 with: "user id",
                 why: user_id.to_string(),
-            }
-            .into())
+            })
         }
-        Err(e) => return Err(e.into()),
+        Err(e) => Err(e.into()),
     }
 }
 
@@ -45,7 +44,7 @@ pub async fn get_class_image(
     Path(class_id): Path<Uuid>,
     State(s3_bucker): State<s3::Bucket>,
 ) -> Result<impl IntoResponse, AppError> {
-    let s3_path = format!("class-images/{}", class_id);
+    let s3_path = format!("class-images/{class_id}");
     let object = s3_bucker.get_object(s3_path).await;
     match object {
         Ok(object) => {
@@ -54,17 +53,16 @@ pub async fn get_class_image(
                 .body(Body::from(object.to_vec()))
                 .unwrap();
 
-            return Ok(response);
+            Ok(response)
         }
         Err(s3::error::S3Error::Http(404, _)) => {
-            return Err(AppError::NotFound {
+            Err(AppError::NotFound {
                 what: "class image",
                 with: "class id",
                 why: class_id.to_string(),
-            }
-            .into())
+            })
         }
-        Err(e) => return Err(e.into()),
+        Err(e) => Err(e.into()),
     }
 }
 
@@ -72,7 +70,7 @@ pub async fn get_class_file(
     Path((class_id, file_id)): Path<(Uuid, Uuid)>,
     State(s3_bucker): State<s3::Bucket>,
 ) -> Result<impl IntoResponse, AppError> {
-    let s3_path = format!("class-files/{}/{}", class_id, file_id);
+    let s3_path = format!("class-files/{class_id}/{file_id}");
     let object = s3_bucker.get_object(s3_path).await;
     match object {
         Ok(object) => {
@@ -85,16 +83,15 @@ pub async fn get_class_file(
                 .body(Body::from(object.to_vec()))
                 .unwrap();
 
-            return Ok(response);
+            Ok(response)
         }
         Err(s3::error::S3Error::Http(404, _)) => {
-            return Err(AppError::NotFound {
+            Err(AppError::NotFound {
                 what: "class file",
                 with: "class_id",
                 why: class_id.to_string(),
-            }
-            .into())
+            })
         }
-        Err(e) => return Err(e.into()),
+        Err(e) => Err(e.into()),
     }
 }

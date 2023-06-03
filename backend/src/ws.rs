@@ -1,4 +1,4 @@
-use std::{borrow::Cow, convert::Infallible, future::Future, str::FromStr};
+use std::convert::Infallible;
 
 use async_graphql::{
     dataloader::DataLoader,
@@ -6,26 +6,17 @@ use async_graphql::{
         self,
         task::{Context, Poll},
     },
-    http::{WebSocketProtocols, WsMessage, ALL_WEBSOCKET_PROTOCOLS},
+    http::ALL_WEBSOCKET_PROTOCOLS,
     Data, Executor, Result,
 };
 use async_graphql_axum::{GraphQLProtocol, GraphQLWebSocket};
 use axum::{
     body::{boxed, BoxBody, HttpBody},
-    extract::{
-        ws::{CloseFrame, Message},
-        FromRequestParts, WebSocketUpgrade,
-    },
-    http::{self, request::Parts, Request, Response, StatusCode},
+    extract::{FromRequestParts, WebSocketUpgrade},
+    http::{Request, Response},
     response::IntoResponse,
-    Error,
 };
-use futures_util::{
-    future,
-    future::{BoxFuture, Ready},
-    stream::{SplitSink, SplitStream},
-    Sink, SinkExt, Stream, StreamExt,
-};
+use futures_util::future::BoxFuture;
 use tower_service::Service;
 
 use crate::AppState;
@@ -93,7 +84,7 @@ where
                 .protocols(ALL_WEBSOCKET_PROTOCOLS)
                 .on_upgrade(move |stream| {
                     GraphQLWebSocket::new(stream, executor, protocol)
-                        .on_connection_init(|value| {
+                        .on_connection_init(|_value| {
                             let membership_dataloader =
                                 DataLoader::new(app_data.membership_repo, tokio::spawn);
                             let user_dataloader = DataLoader::new(app_data.user_repo, tokio::spawn);
