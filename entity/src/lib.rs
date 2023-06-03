@@ -4,6 +4,7 @@ pub mod prelude;
 
 pub mod channel;
 pub mod class;
+pub mod file;
 pub mod invite;
 pub mod membership;
 pub mod message;

@@ -1,5 +1,6 @@
 mod channel;
 mod class;
+mod file;
 mod message;
 mod user;
 
@@ -9,4 +10,5 @@ pub struct Mutation(
     class::ClassMutation,
     message::MessageMutation,
     channel::ChannelMutation,
+    file::FileMutation,
 );

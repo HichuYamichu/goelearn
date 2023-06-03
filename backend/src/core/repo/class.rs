@@ -1,4 +1,4 @@
-use ::entity::{channel, membership};
+use ::entity::{channel, file, membership, sea_orm_active_enums};
 use ::entity::{class, class::Entity as Class};
 use async_graphql::dataloader::Loader;
 use async_trait::async_trait;
@@ -27,10 +27,7 @@ impl ClassRepo {
             .conn
             .transaction::<_, class::Model, DbErr>(|txn| {
                 Box::pin(async move {
-                    tracing::info!("Before");
-
                     let class = model.insert(txn).await?;
-                    tracing::info!("Created class {:?}", class);
                     let main_channel = channel::ActiveModel {
                         id: Set(Uuid::new_v4()),
                         name: Set("Main".to_string()),
@@ -44,6 +41,26 @@ impl ClassRepo {
                         class_id: Set(class.id),
                     };
                     member.insert(txn).await?;
+
+                    let assignment_files = file::ActiveModel {
+                        id: Set(Uuid::new_v4()),
+                        name: Set("Assignment files".to_string()),
+                        class_id: Set(class.id),
+                        file_type: Set(sea_orm_active_enums::FileType::Directory),
+                        public: Set(true),
+                        ..Default::default()
+                    };
+                    assignment_files.insert(txn).await?;
+
+                    let chat_files = file::ActiveModel {
+                        id: Set(Uuid::new_v4()),
+                        name: Set("Chat files".to_string()),
+                        class_id: Set(class.id),
+                        file_type: Set(sea_orm_active_enums::FileType::Directory),
+                        public: Set(true),
+                        ..Default::default()
+                    };
+                    chat_files.insert(txn).await?;
 
                     Ok(class)
                 })
@@ -79,6 +96,27 @@ impl ClassRepo {
         let member = member.insert(&self.conn).await?;
 
         Ok(member)
+    }
+
+    pub async fn find_by_query(&self, query: String) -> Result<Vec<class::Model>, DbErr> {
+        let classes = Class::find()
+            .from_raw_sql(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                r#"
+                select *,
+                    ts_rank(search, websearch_to_tsquery('english', $1)) + 
+                    ts_rank(search, websearch_to_tsquery('simple', $1)) as rank
+                from "class"
+                where search @@ websearch_to_tsquery('english', $1)
+                or search @@ websearch_to_tsquery('simple', $1)
+                order by rank desc;
+                "#,
+                [query.into()],
+            ))
+            .all(&self.conn)
+            .await?;
+
+        Ok(classes)
     }
 }
 

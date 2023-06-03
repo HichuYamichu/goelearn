@@ -2,6 +2,7 @@
 
 pub use super::channel::Entity as Channel;
 pub use super::class::Entity as Class;
+pub use super::file::Entity as File;
 pub use super::invite::Entity as Invite;
 pub use super::membership::Entity as Membership;
 pub use super::message::Entity as Message;

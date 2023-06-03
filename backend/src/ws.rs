@@ -103,6 +103,7 @@ where
                                 DataLoader::new(app_data.message_repo, tokio::spawn);
                             let channel_dataloader =
                                 DataLoader::new(app_data.channel_repo, tokio::spawn);
+                            let file_dataloader = DataLoader::new(app_data.file_repo, tokio::spawn);
 
                             let mut data = Data::default();
                             data.insert(membership_dataloader);
@@ -110,6 +111,7 @@ where
                             data.insert(class_dataloader);
                             data.insert(message_dataloader);
                             data.insert(channel_dataloader);
+                            data.insert(file_dataloader);
 
                             futures_util::future::ready(Ok(data))
                         })

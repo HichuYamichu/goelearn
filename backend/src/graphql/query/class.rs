@@ -36,4 +36,15 @@ impl ClassQuery {
         let c = class_repo.loader().find_random(10).await?;
         Ok(c.into_iter().map(|c| c.into()).collect())
     }
+
+    #[graphql(guard = "LoggedInGuard")]
+    async fn classes_by_search(
+        &self,
+        ctx: &Context<'_>,
+        query: String,
+    ) -> Result<Vec<ClassObject>, AppError> {
+        let class_repo = ctx.data_unchecked::<DataLoader<ClassRepo>>();
+        let c = class_repo.loader().find_by_query(query).await?;
+        Ok(c.into_iter().map(|c| c.into()).collect())
+    }
 }

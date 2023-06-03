@@ -16,6 +16,15 @@ impl MigrationTrait for Migration {
             .await?;
 
         manager
+            .create_type(
+                Type::create()
+                    .as_enum(FileType::Type)
+                    .values([FileType::File, FileType::Directory])
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
             .create_table(
                 Table::create()
                     .table(User::Table)
@@ -145,10 +154,40 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_table(
+                Table::create()
+                    .table(File::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(File::Id)
+                            .string()
+                            .not_null()
+                            .uuid()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(File::Name).string().not_null())
+                    .col(ColumnDef::new(File::Public).boolean().not_null())
+                    .col(
+                        ColumnDef::new(File::FileType)
+                            .custom(FileType::Type)
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(File::ParentId).uuid().null())
+                    .col(ColumnDef::new(File::ClassId).uuid().not_null())
+                    .col(ColumnDef::new(File::MessageId).uuid().null())
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(Table::drop().table(File::Table).to_owned())
+            .await?;
+
         manager
             .drop_table(Table::drop().table(User::Table).to_owned())
             .await?;
@@ -172,6 +211,10 @@ impl MigrationTrait for Migration {
             .await?;
         manager
             .drop_type(Type::drop().name(UserType::Type).to_owned())
+            .await?;
+
+        manager
+            .drop_type(Type::drop().name(FileType::Type).to_owned())
             .await?;
 
         Ok(())
@@ -211,6 +254,27 @@ impl Iden for UserType {
                 Self::Admin => "Admin",
                 Self::Mod => "Mod",
                 Self::Regular => "Regular",
+            }
+        )
+        .unwrap();
+    }
+}
+
+pub enum FileType {
+    Type,
+    File,
+    Directory,
+}
+
+impl Iden for FileType {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(
+            s,
+            "{}",
+            match self {
+                Self::Type => "file_type",
+                Self::File => "File",
+                Self::Directory => "Directory",
             }
         )
         .unwrap();
@@ -271,4 +335,16 @@ pub enum Report {
     Id,
     Content,
     AuthorId,
+}
+
+#[derive(Iden)]
+pub enum File {
+    Table,
+    Id,
+    Name,
+    Public,
+    FileType,
+    ParentId,
+    ClassId,
+    MessageId,
 }

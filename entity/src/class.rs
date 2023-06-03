@@ -22,6 +22,8 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::channel::Entity")]
     Channel,
+    #[sea_orm(has_many = "super::file::Entity")]
+    File,
     #[sea_orm(has_many = "super::invite::Entity")]
     Invite,
     #[sea_orm(
@@ -37,6 +39,12 @@ pub enum Relation {
 impl Related<super::channel::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Channel.def()
+    }
+}
+
+impl Related<super::file::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::File.def()
     }
 }
 

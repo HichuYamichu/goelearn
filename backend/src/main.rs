@@ -6,6 +6,7 @@ mod ws;
 
 use crate::core::repo::channel::ChannelRepo;
 use crate::core::repo::class::ClassRepo;
+use crate::core::repo::file::FileRepo;
 use crate::core::repo::message::MessageRepo;
 use crate::core::repo::{membership::MembershipRepo, user::UserRepo};
 use crate::core::Claims;
@@ -61,6 +62,7 @@ pub struct AppState {
     class_repo: ClassRepo,
     message_repo: MessageRepo,
     channel_repo: ChannelRepo,
+    file_repo: FileRepo,
     s3_bucket: s3::Bucket,
 }
 
@@ -101,6 +103,7 @@ pub async fn main() {
     let class_repo = ClassRepo::new(db.clone());
     let message_repo = MessageRepo::new(db.clone());
     let channel_repo = ChannelRepo::new(db.clone());
+    let file_repo = FileRepo::new(db.clone());
 
     let schema = Schema::build(
         Query::default(),
@@ -119,6 +122,7 @@ pub async fn main() {
         class_repo,
         message_repo,
         channel_repo,
+        file_repo,
         s3_bucket,
     };
 
@@ -138,6 +142,10 @@ pub async fn main() {
             "/files/class-image/:class_id",
             get(rest::file_handler::get_class_image),
         )
+        .route(
+            "/files/class-files/:class_id/:file_id",
+            get(rest::file_handler::get_class_file),
+        )
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
@@ -156,6 +164,7 @@ async fn graphql_handler(
     State(class_repo): State<ClassRepo>,
     State(message_repo): State<MessageRepo>,
     State(channel_repo): State<ChannelRepo>,
+    State(file_repo): State<FileRepo>,
     claims: Option<Claims>,
     req: GraphQLRequest,
 ) -> GraphQLResponse {
@@ -164,6 +173,7 @@ async fn graphql_handler(
     let class_dataloader = DataLoader::new(class_repo, tokio::spawn);
     let message_dataloader = DataLoader::new(message_repo, tokio::spawn);
     let channel_dataloader = DataLoader::new(channel_repo, tokio::spawn);
+    let file_dataloader = DataLoader::new(file_repo, tokio::spawn);
 
     schema
         .execute(
@@ -173,7 +183,8 @@ async fn graphql_handler(
                 .data(user_dataloader)
                 .data(class_dataloader)
                 .data(message_dataloader)
-                .data(channel_dataloader),
+                .data(channel_dataloader)
+                .data(file_dataloader),
         )
         .await
         .into()

@@ -23,6 +23,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Channel,
+    #[sea_orm(has_many = "super::file::Entity")]
+    File,
     #[sea_orm(
         belongs_to = "super::user::Entity",
         from = "Column::AuthorId",
@@ -36,6 +38,12 @@ pub enum Relation {
 impl Related<super::channel::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Channel.def()
+    }
+}
+
+impl Related<super::file::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::File.def()
     }
 }
 

@@ -67,3 +67,34 @@ pub async fn get_class_image(
         Err(e) => return Err(e.into()),
     }
 }
+
+pub async fn get_class_file(
+    Path((class_id, file_id)): Path<(Uuid, Uuid)>,
+    State(s3_bucker): State<s3::Bucket>,
+) -> Result<impl IntoResponse, AppError> {
+    let s3_path = format!("class-files/{}/{}", class_id, file_id);
+    let object = s3_bucker.get_object(s3_path).await;
+    match object {
+        Ok(object) => {
+            let def = "application/octet-stream".to_owned();
+            let headers = object.headers();
+            let ct = headers.get("content-type").unwrap_or(&def);
+
+            let response = Response::builder()
+                .header("Content-Type", ct)
+                .body(Body::from(object.to_vec()))
+                .unwrap();
+
+            return Ok(response);
+        }
+        Err(s3::error::S3Error::Http(404, _)) => {
+            return Err(AppError::NotFound {
+                what: "class file",
+                with: "class_id",
+                why: class_id.to_string(),
+            }
+            .into())
+        }
+        Err(e) => return Err(e.into()),
+    }
+}

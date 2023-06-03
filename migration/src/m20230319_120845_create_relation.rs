@@ -1,7 +1,7 @@
 use sea_orm_migration::prelude::*;
 
 use crate::m20220101_000001_create_table::{
-    Channel, Class, Invite, Membership, Message, Report, User,
+    Channel, Class, File, Invite, Membership, Message, Report, User,
 };
 
 #[derive(DeriveMigrationName)]
@@ -106,6 +106,42 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_file_class_id")
+                    .from(File::Table, File::ClassId)
+                    .to(Class::Table, Class::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_file_message_id")
+                    .from(File::Table, File::MessageId)
+                    .to(Message::Table, Message::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_file_parent_id")
+                    .from(File::Table, File::ParentId)
+                    .to(File::Table, File::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 
@@ -187,6 +223,33 @@ impl MigrationTrait for Migration {
                 ForeignKey::drop()
                     .name("FK_report_author_id")
                     .table(Report::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_file_class_id")
+                    .table(File::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_file_message_id")
+                    .table(File::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_file_parent_id")
+                    .table(File::Table)
                     .to_owned(),
             )
             .await?;

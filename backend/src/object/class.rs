@@ -1,3 +1,4 @@
+use crate::core::repo::file::{self, FileRepo};
 use crate::core::repo::user::{self, UserRepo};
 use crate::core::LoggedInGuard;
 use crate::core::{
@@ -11,7 +12,7 @@ use async_graphql::{
 use sea_orm::Set;
 use uuid::Uuid;
 
-use super::{ChannelObject, UserObject};
+use super::{ChannelObject, FileObject, UserObject};
 
 #[derive(InputObject)]
 pub struct CreateClassInput {
@@ -73,7 +74,7 @@ impl ClassObject {
     async fn channels(&self, ctx: &Context<'_>) -> Result<Vec<ChannelObject>, AppError> {
         let channel_repo = ctx.data_unchecked::<DataLoader<ChannelRepo>>();
 
-        let id = channel::ChannelByClassId(Uuid::parse_str(&self.id)?);
+        let id = channel::ChannelsByClassId(Uuid::parse_str(&self.id)?);
         let channels = channel_repo
             .load_one(id)
             .await?
@@ -93,5 +94,15 @@ impl ClassObject {
         let users = user_repo.load_one(id).await?.expect("Id should be valid");
 
         Ok(users.into_iter().map(|u| UserObject::from(u)).collect())
+    }
+
+    #[graphql(guard = "LoggedInGuard")]
+    async fn files(&self, ctx: &Context<'_>) -> Result<Vec<FileObject>, AppError> {
+        let file_repo = ctx.data_unchecked::<DataLoader<FileRepo>>();
+
+        let id = file::FilesByClassId(Uuid::parse_str(&self.id)?);
+        let files = file_repo.load_one(id).await?.expect("Id should be valid");
+
+        Ok(files.into_iter().map(|f| FileObject::from(f)).collect())
     }
 }
