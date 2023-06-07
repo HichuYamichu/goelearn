@@ -1,7 +1,8 @@
 use sea_orm_migration::prelude::*;
 
 use crate::m20220101_000001_create_table::{
-    Channel, Class, File, Invite, Membership, Message, Report, User,
+    Assignment, AssignmentSubmission, AssignmentSubmissionFile, Channel, Class, File, Invite,
+    Membership, Message, Report, User,
 };
 
 #[derive(DeriveMigrationName)]
@@ -142,10 +143,124 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_assignment_class_id")
+                    .from(Assignment::Table, Assignment::ClassId)
+                    .to(Class::Table, Class::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_assignment_submission_assignment_id")
+                    .from(
+                        AssignmentSubmission::Table,
+                        AssignmentSubmission::AssignmentId,
+                    )
+                    .to(Assignment::Table, Assignment::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_assignment_channel_id")
+                    .from(AssignmentSubmission::Table, AssignmentSubmission::UserId)
+                    .to(User::Table, User::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_assignment_submission_file_assignment_submission_id")
+                    .from(
+                        AssignmentSubmissionFile::Table,
+                        AssignmentSubmissionFile::AssignmentSubmissionId,
+                    )
+                    .to(AssignmentSubmission::Table, AssignmentSubmission::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_assignment_submission_file_file_id")
+                    .from(
+                        AssignmentSubmissionFile::Table,
+                        AssignmentSubmissionFile::FileId,
+                    )
+                    .to(File::Table, File::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_assignment_submission_file_file_id")
+                    .table(AssignmentSubmissionFile::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_assignment_submission_file_assignment_submission_id")
+                    .table(AssignmentSubmissionFile::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_assignment_channel_id")
+                    .table(AssignmentSubmission::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_assignment_submission_assignment_id")
+                    .table(AssignmentSubmission::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_assignment_class_id")
+                    .table(Assignment::Table)
+                    .to_owned(),
+            )
+            .await?;
+
         manager
             .drop_foreign_key(
                 ForeignKey::drop()

@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use crate::core::repo::message::MessageRepoExt;
 use async_graphql::{
     connection::{self, Connection, Edge, EmptyFields},
     dataloader::DataLoader,
@@ -7,16 +8,13 @@ use async_graphql::{
 };
 use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use chrono::NaiveDate;
+use sea_orm::DatabaseConnection;
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    core::{
-        repo::{
-            message::MessageRepo,
-        },
-        AppError, LoggedInGuard,
-    },
-    object::{MessageObject},
+    core::{AppError, LoggedInGuard},
+    object::MessageObject,
 };
 
 #[derive(Default)]
@@ -24,6 +22,7 @@ pub struct MessageQuery;
 
 #[Object]
 impl MessageQuery {
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn messages(
         &self,
@@ -35,7 +34,7 @@ impl MessageQuery {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, MessageObject>, async_graphql::Error> {
-        let message_repo = ctx.data_unchecked::<DataLoader<MessageRepo>>();
+        let message_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         make_messages_connection(
             message_repo,
             Uuid::parse_str(channel_id.as_str())?,
@@ -49,7 +48,7 @@ impl MessageQuery {
 }
 
 pub async fn make_messages_connection(
-    message_repo: &DataLoader<MessageRepo>,
+    message_repo: &DataLoader<DatabaseConnection>,
     channel_id: Uuid,
     after: Option<String>,
     before: Option<String>,

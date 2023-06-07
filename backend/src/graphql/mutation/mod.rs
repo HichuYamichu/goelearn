@@ -1,3 +1,4 @@
+mod assignment;
 mod channel;
 mod class;
 mod file;
@@ -11,4 +12,5 @@ pub struct Mutation(
     message::MessageMutation,
     channel::ChannelMutation,
     file::FileMutation,
+    assignment::AssignmentMutation,
 );

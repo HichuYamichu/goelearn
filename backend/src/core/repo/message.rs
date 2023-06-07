@@ -1,35 +1,36 @@
 use ::entity::{message, message::Entity as Message};
-
-
+use async_trait::async_trait;
 
 use chrono::NaiveDate;
 
 use sea_orm::DatabaseConnection;
 use sea_orm::*;
 
-
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
-pub struct MessageRepo {
-    conn: DatabaseConnection,
+#[async_trait]
+pub trait MessageRepoExt {
+    async fn create_message(&self, model: message::ActiveModel) -> Result<message::Model, DbErr>;
+
+    async fn load_messages(
+        &self,
+        channel_id: Uuid,
+        after: Option<NaiveDate>,
+        before: Option<NaiveDate>,
+        first: usize,
+        _last: usize,
+    ) -> Result<Vec<message::Model>, DbErr>;
 }
 
-impl MessageRepo {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
-    }
-
-    pub async fn create_message(
-        &self,
-        model: message::ActiveModel,
-    ) -> Result<message::Model, DbErr> {
-        let msg = model.insert(&self.conn).await?;
+#[async_trait]
+impl MessageRepoExt for DatabaseConnection {
+    async fn create_message(&self, model: message::ActiveModel) -> Result<message::Model, DbErr> {
+        let msg = model.insert(self).await?;
 
         Ok(msg)
     }
 
-    pub async fn load_messages(
+    async fn load_messages(
         &self,
         channel_id: Uuid,
         after: Option<NaiveDate>,
@@ -46,7 +47,7 @@ impl MessageRepo {
             .filter(condition)
             .order_by(message::Column::CreatedAt, Order::Desc)
             .limit(first as u64)
-            .all(&self.conn)
+            .all(self)
             .await?;
 
         Ok(messages)

@@ -10,6 +10,7 @@
     <v-row>
       <v-col cols="12" class="d-flex">
         <v-text-field
+          v-model="filter"
           variant="outlined"
           label="Search your classes"
           hide-details="auto"
@@ -46,7 +47,9 @@
 <script lang="ts" setup>
 import { graphql } from "@/gql";
 import { useQuery } from "@vue/apollo-composable";
-import { computed } from "vue";
+import { computed, ref } from "vue";
+
+const filter = ref("");
 
 const MeQuery = graphql(/* GraphQL */ `
   query UserClassesMeQuery {
@@ -64,5 +67,10 @@ const MeQuery = graphql(/* GraphQL */ `
 
 const { result } = useQuery(MeQuery);
 
-const classes = computed(() => result.value?.me.clesses);
+const classes = computed(() => {
+  if (filter.value === "") {
+    return result.value?.me.clesses;
+  }
+  return result.value?.me.clesses.filter((c) => c.name.includes(filter.value));
+});
 </script>

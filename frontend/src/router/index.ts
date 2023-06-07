@@ -67,6 +67,12 @@ const routes = [
             /* webpackChunkName: "class-create" */ "@/views/ClassCreate.vue"
           ),
       },
+      {
+        path: "/test",
+        name: "Test",
+        component: () =>
+          import(/* webpackChunkName: "test" */ "@/views/Test.vue"),
+      },
     ],
   },
 ];

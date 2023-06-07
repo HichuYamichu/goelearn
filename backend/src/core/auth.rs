@@ -1,3 +1,4 @@
+use super::repo::user::UserRepoExt;
 use crate::{
     object::{LoginInput, LoginResult, SignupInput},
     HOST_URL, MAIL_PASSWORD, MAIL_USERNAME, SECRET,
@@ -17,10 +18,11 @@ use lettre::{
     message::header::ContentType, transport::smtp::authentication::Credentials, Message,
     Tokio1Executor,
 };
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{repo::user::UserRepo, AppError};
+use super::AppError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
@@ -30,7 +32,7 @@ pub struct Claims {
 
 pub async fn login_user(
     creadentials: LoginInput,
-    user_repo: &UserRepo,
+    user_repo: &DatabaseConnection,
 ) -> Result<LoginResult, AppError> {
     let user = user_repo
         .user_by_username(creadentials.username.clone())
@@ -74,7 +76,7 @@ pub async fn login_user(
 
 pub async fn register_user(
     mut creadentials: SignupInput,
-    user_repo: &UserRepo,
+    user_repo: &DatabaseConnection,
     has_avatar: bool,
 ) -> Result<Uuid, AppError> {
     let hash = argon2_async::hash(creadentials.password).await?;

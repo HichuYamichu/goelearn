@@ -180,10 +180,104 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_table(
+                Table::create()
+                    .table(Assignment::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Assignment::Id)
+                            .string()
+                            .not_null()
+                            .uuid()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Assignment::Name).string().not_null())
+                    .col(ColumnDef::new(Assignment::Content).string().not_null())
+                    .col(ColumnDef::new(Assignment::CreatedAt).timestamp().not_null())
+                    .col(ColumnDef::new(Assignment::DueAt).timestamp().not_null())
+                    .col(ColumnDef::new(Assignment::ClassId).uuid().not_null())
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(AssignmentSubmission::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(AssignmentSubmission::Id)
+                            .string()
+                            .not_null()
+                            .uuid()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentSubmission::CreatedAt)
+                            .timestamp()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentSubmission::AssignmentId)
+                            .uuid()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentSubmission::UserId)
+                            .uuid()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(AssignmentSubmissionFile::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(AssignmentSubmissionFile::Id)
+                            .string()
+                            .not_null()
+                            .uuid()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentSubmissionFile::AssignmentSubmissionId)
+                            .uuid()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentSubmissionFile::FileId)
+                            .uuid()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(
+                Table::drop()
+                    .table(AssignmentSubmissionFile::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(AssignmentSubmission::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(Assignment::Table).to_owned())
+            .await?;
+
         manager
             .drop_table(Table::drop().table(File::Table).to_owned())
             .await?;
@@ -347,4 +441,32 @@ pub enum File {
     ParentId,
     ClassId,
     MessageId,
+}
+
+#[derive(Iden)]
+pub enum Assignment {
+    Table,
+    Id,
+    Name,
+    Content,
+    CreatedAt,
+    DueAt,
+    ClassId,
+}
+
+#[derive(Iden)]
+pub enum AssignmentSubmission {
+    Table,
+    Id,
+    CreatedAt,
+    AssignmentId,
+    UserId,
+}
+
+#[derive(Iden)]
+pub enum AssignmentSubmissionFile {
+    Table,
+    Id,
+    AssignmentSubmissionId,
+    FileId,
 }

@@ -9,22 +9,75 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
-pub struct ClassRepo {
-    conn: DatabaseConnection,
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+pub struct ClassById(pub Uuid);
+
+#[async_trait]
+impl Loader<ClassById> for DatabaseConnection {
+    type Value = class::Model;
+    type Error = Arc<DbErr>;
+
+    async fn load(
+        &self,
+        keys: &[ClassById],
+    ) -> Result<HashMap<ClassById, Self::Value>, Self::Error> {
+        let classes = Class::find()
+            .filter(class::Column::Id.is_in(keys.iter().map(|k| k.0).into_iter()))
+            .all(self)
+            .await
+            .map_err(Arc::new)?;
+
+        Ok(classes.into_iter().map(|c| (ClassById(c.id), c)).collect())
+    }
 }
 
-impl ClassRepo {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
-    }
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+pub struct ClassByOwnerId(pub Uuid);
 
-    pub async fn create_class(
+#[async_trait]
+impl Loader<ClassByOwnerId> for DatabaseConnection {
+    type Value = class::Model;
+    type Error = Arc<DbErr>;
+
+    async fn load(
+        &self,
+        keys: &[ClassByOwnerId],
+    ) -> Result<HashMap<ClassByOwnerId, Self::Value>, Self::Error> {
+        let classes = Class::find()
+            .filter(class::Column::OwnerId.is_in(keys.iter().map(|k| k.0).into_iter()))
+            .all(self)
+            .await
+            .map_err(Arc::new)?;
+
+        Ok(classes
+            .into_iter()
+            .map(|c| (ClassByOwnerId(c.owner_id), c))
+            .collect())
+    }
+}
+
+#[async_trait]
+pub trait ClassRepoExt {
+    async fn join_user_to_class(
+        &self,
+        user_id: Uuid,
+        class_id: Uuid,
+    ) -> Result<membership::Model, DbErr>;
+    async fn find_random(&self, limit: u64) -> Result<Vec<class::Model>, TransactionError<DbErr>>;
+    async fn find_by_query(&self, query: String) -> Result<Vec<class::Model>, DbErr>;
+    async fn create_class(
+        &self,
+        model: class::ActiveModel,
+    ) -> Result<class::Model, TransactionError<DbErr>>;
+}
+
+#[async_trait]
+impl ClassRepoExt for DatabaseConnection {
+    async fn create_class(
         &self,
         model: class::ActiveModel,
     ) -> Result<class::Model, TransactionError<DbErr>> {
         let class = self
-            .conn
             .transaction::<_, class::Model, DbErr>(|txn| {
                 Box::pin(async move {
                     let class = model.insert(txn).await?;
@@ -70,20 +123,17 @@ impl ClassRepo {
         Ok(class)
     }
 
-    pub async fn find_random(
-        &self,
-        limit: u64,
-    ) -> Result<Vec<class::Model>, TransactionError<DbErr>> {
+    async fn find_random(&self, limit: u64) -> Result<Vec<class::Model>, TransactionError<DbErr>> {
         let classes = Class::find()
             .order_by_asc(class::Column::Id)
             .limit(Some(limit))
-            .all(&self.conn)
+            .all(self)
             .await?;
 
         Ok(classes)
     }
 
-    pub async fn join_user_to_class(
+    async fn join_user_to_class(
         &self,
         user_id: Uuid,
         class_id: Uuid,
@@ -93,12 +143,12 @@ impl ClassRepo {
             class_id: Set(class_id),
         };
 
-        let member = member.insert(&self.conn).await?;
+        let member = member.insert(self).await?;
 
         Ok(member)
     }
 
-    pub async fn find_by_query(&self, query: String) -> Result<Vec<class::Model>, DbErr> {
+    async fn find_by_query(&self, query: String) -> Result<Vec<class::Model>, DbErr> {
         let classes = Class::find()
             .from_raw_sql(Statement::from_sql_and_values(
                 DbBackend::Postgres,
@@ -113,56 +163,9 @@ impl ClassRepo {
                 "#,
                 [query.into()],
             ))
-            .all(&self.conn)
+            .all(self)
             .await?;
 
         Ok(classes)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
-pub struct ClassById(pub Uuid);
-
-#[async_trait]
-impl Loader<ClassById> for ClassRepo {
-    type Value = class::Model;
-    type Error = Arc<DbErr>;
-
-    async fn load(
-        &self,
-        keys: &[ClassById],
-    ) -> Result<HashMap<ClassById, Self::Value>, Self::Error> {
-        let classes = Class::find()
-            .filter(class::Column::Id.is_in(keys.iter().map(|k| k.0).into_iter()))
-            .all(&self.conn)
-            .await
-            .map_err(Arc::new)?;
-
-        Ok(classes.into_iter().map(|c| (ClassById(c.id), c)).collect())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
-pub struct ClassByOwnerId(pub Uuid);
-
-#[async_trait]
-impl Loader<ClassByOwnerId> for ClassRepo {
-    type Value = class::Model;
-    type Error = Arc<DbErr>;
-
-    async fn load(
-        &self,
-        keys: &[ClassByOwnerId],
-    ) -> Result<HashMap<ClassByOwnerId, Self::Value>, Self::Error> {
-        let classes = Class::find()
-            .filter(class::Column::OwnerId.is_in(keys.iter().map(|k| k.0).into_iter()))
-            .all(&self.conn)
-            .await
-            .map_err(Arc::new)?;
-
-        Ok(classes
-            .into_iter()
-            .map(|c| (ClassByOwnerId(c.owner_id), c))
-            .collect())
     }
 }

@@ -33,6 +33,7 @@
 
 <script lang="ts" setup>
 import { graphql } from "@/gql";
+import router from "@/router";
 import { useMutation } from "@vue/apollo-composable";
 import { reactive } from "vue";
 import { Ref, ref } from "vue";
@@ -67,7 +68,9 @@ const CreateClassMutation = graphql(/* GraphQL */ `
   }
 `);
 
-const { mutate } = useMutation(CreateClassMutation);
+const { mutate } = useMutation(CreateClassMutation, {
+  refetchQueries: ["UserClassesMeQuery"],
+});
 
 const submit = () => {
   const img = image.value?.[0] ?? null;
@@ -80,5 +83,6 @@ const submit = () => {
       image: img,
     },
   });
+  router.push("/classes");
 };
 </script>

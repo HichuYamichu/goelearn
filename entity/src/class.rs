@@ -20,6 +20,8 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::assignment::Entity")]
+    Assignment,
     #[sea_orm(has_many = "super::channel::Entity")]
     Channel,
     #[sea_orm(has_many = "super::file::Entity")]
@@ -34,6 +36,12 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     User,
+}
+
+impl Related<super::assignment::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Assignment.def()
+    }
 }
 
 impl Related<super::channel::Entity> for Entity {

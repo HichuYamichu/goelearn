@@ -2,10 +2,11 @@ use ::entity::sea_orm_active_enums::*;
 use ::entity::user;
 use async_graphql::InputObject;
 use async_graphql::Upload;
+use partialdebug::placeholder::PartialDebug;
 use sea_orm::*;
 use uuid::Uuid;
 
-#[derive(InputObject)]
+#[derive(InputObject, PartialDebug)]
 pub struct SignupInput {
     pub username: String,
     pub first_name: String,

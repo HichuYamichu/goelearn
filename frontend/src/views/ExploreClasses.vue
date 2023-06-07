@@ -8,6 +8,8 @@
     <v-row>
       <v-col cols="12" class="d-flex">
         <v-text-field
+          @keyup.enter.native="forceRefetch"
+          v-model="query"
           variant="outlined"
           label="Search for classes by their name, description or tags"
           hide-details="auto"
@@ -54,6 +56,16 @@
       </v-col>
     </v-row>
   </v-container>
+  <v-dialog v-model="errDialog" width="auto">
+    <v-card>
+      <v-card-text>
+        <span class="text-weight-bold">Error:</span> {{ errMessage }}
+      </v-card-text>
+      <v-card-actions>
+        <v-btn color="primary" block @click="errDialog = false">Ok</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script lang="ts" setup>
@@ -62,10 +74,13 @@ import { useMutation, useQuery } from "@vue/apollo-composable";
 import { computed, ref } from "vue";
 
 const dialog = ref(false);
+const errDialog = ref(false);
+const errMessage = ref("");
+const query = ref("");
 
-const RandomClassesQuery = graphql(/* GraphQL */ `
-  query RandomClasses {
-    randomClasses {
+const ClassesSearchQuery = graphql(/* GraphQL */ `
+  query classesBySearch($query: String!) {
+    classesBySearch(query: $query) {
       id
       name
       description
@@ -74,9 +89,21 @@ const RandomClassesQuery = graphql(/* GraphQL */ `
   }
 `);
 
-const { result, onResult } = useQuery(RandomClassesQuery);
+const { result, refetch } = useQuery(
+  ClassesSearchQuery,
+  () => ({
+    query: query.value,
+  }),
+  {
+    debounce: 350,
+  }
+);
 
-const classes = computed(() => result.value?.randomClasses ?? []);
+const forceRefetch = () => {
+  refetch();
+};
+
+const classes = computed(() => result.value?.classesBySearch ?? []);
 
 const JoinClassMutation = graphql(/* GraphQL */ `
   mutation JoinClass($classId: ID!) {
@@ -84,10 +111,15 @@ const JoinClassMutation = graphql(/* GraphQL */ `
   }
 `);
 
-const { mutate: joinClass } = useMutation(JoinClassMutation);
+const { mutate: joinClass, onError } = useMutation(JoinClassMutation);
 
 const join = (id: string) => {
   joinClass({ classId: id });
   dialog.value = false;
 };
+
+onError((e) => {
+  errMessage.value = e.message;
+  errDialog.value = true;
+});
 </script>

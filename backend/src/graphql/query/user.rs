@@ -1,8 +1,11 @@
+use crate::core::repo::user::UserRepoExt;
 use async_graphql::{dataloader::DataLoader, Context, Object};
+use sea_orm::DatabaseConnection;
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    core::{repo::user::UserRepo, AppError, Claims, LoggedInGuard},
+    core::{AppError, Claims, LoggedInGuard},
     object::UserObject,
 };
 
@@ -11,9 +14,10 @@ pub struct UserQuery;
 
 #[Object]
 impl UserQuery {
+    #[instrument(skip(self, ctx), err)]
     #[graphql(guard = "LoggedInGuard")]
     async fn me(&self, ctx: &Context<'_>) -> Result<UserObject, AppError> {
-        let user_repo = ctx.data_unchecked::<DataLoader<UserRepo>>();
+        let user_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let claims = ctx.data_unchecked::<Option<Claims>>();
         let id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
         let u = user_repo

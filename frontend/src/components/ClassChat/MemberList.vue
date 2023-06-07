@@ -1,18 +1,16 @@
 <template>
-  <v-navigation-drawer location="right" width="244">
-    <h5 class="text-h5 text-center pa-3">Members</h5>
-    <v-skeleton-loader v-if="loading" type="list-item"> </v-skeleton-loader>
-    <v-list v-else class="pa-0">
-      <v-list-item
-        v-for="user in users!"
-        :key="user.id"
-        :title="user.username"
-        link
-      >
-      </v-list-item>
-    </v-list>
-    <v-divider></v-divider>
-  </v-navigation-drawer>
+  <h5 class="text-h5 text-center pa-3">Members</h5>
+  <v-skeleton-loader v-if="loading" type="list-item"> </v-skeleton-loader>
+  <v-list v-else class="pa-0">
+    <v-list-item
+      v-for="user in users!"
+      :key="user.id"
+      :title="user.username"
+      link
+    >
+    </v-list-item>
+  </v-list>
+  <v-divider></v-divider>
 </template>
 
 <script lang="ts" setup>

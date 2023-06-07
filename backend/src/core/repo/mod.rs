@@ -1,3 +1,4 @@
+pub mod assignment;
 pub mod channel;
 pub mod class;
 pub mod file;

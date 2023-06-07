@@ -9,58 +9,11 @@ use sea_orm::*;
 use std::sync::Arc;
 use uuid::Uuid;
 
-
-
-#[derive(Debug, Clone)]
-pub struct UserRepo {
-    conn: DatabaseConnection,
-}
-
-impl UserRepo {
-    pub fn new(conn: DatabaseConnection) -> Self {
-        Self { conn }
-    }
-
-    pub async fn user_by_username(&self, username: String) -> Result<Option<user::Model>, DbErr> {
-        let user = User::find()
-            .filter(user::Column::Username.eq(username))
-            .one(&self.conn)
-            .await?;
-
-        Ok(user)
-    }
-
-    pub async fn user_by_id(&self, id: Uuid) -> Result<Option<user::Model>, DbErr> {
-        let user = User::find()
-            .filter(user::Column::Id.eq(id))
-            .one(&self.conn)
-            .await?;
-        Ok(user)
-    }
-
-    pub async fn create_user(&self, si: user::ActiveModel) -> Result<Uuid, DbErr> {
-        let u = User::insert(si).exec(&self.conn).await?;
-        Ok(u.last_insert_id)
-    }
-
-    pub async fn activate_user(&self, id: Uuid) -> Result<(), DbErr> {
-        User::update(user::ActiveModel {
-            id: Set(id),
-            active: Set(true),
-            ..Default::default()
-        })
-        .exec(&self.conn)
-        .await?;
-
-        Ok(())
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct UsersByClassId(pub Uuid);
 
 #[async_trait]
-impl Loader<UsersByClassId> for UserRepo {
+impl Loader<UsersByClassId> for DatabaseConnection {
     type Value = Vec<user::Model>;
     type Error = Arc<DbErr>;
 
@@ -70,10 +23,10 @@ impl Loader<UsersByClassId> for UserRepo {
     ) -> Result<HashMap<UsersByClassId, Self::Value>, Self::Error> {
         let memberships = Membership::find()
             .filter(membership::Column::ClassId.is_in(keys.iter().map(|k| k.0).into_iter()))
-            .all(&self.conn)
+            .all(self)
             .await?;
 
-        let users = memberships.load_one(User, &self.conn).await?;
+        let users = memberships.load_one(User, self).await?;
 
         let mut res = HashMap::<_, _>::new();
         for (m, u) in memberships
@@ -94,7 +47,7 @@ impl Loader<UsersByClassId> for UserRepo {
 pub struct UserByAuthorId(pub Uuid);
 
 #[async_trait]
-impl Loader<UserByAuthorId> for UserRepo {
+impl Loader<UserByAuthorId> for DatabaseConnection {
     type Value = user::Model;
     type Error = Arc<DbErr>;
 
@@ -104,15 +57,60 @@ impl Loader<UserByAuthorId> for UserRepo {
     ) -> Result<HashMap<UserByAuthorId, Self::Value>, Self::Error> {
         let users = User::find()
             .filter(user::Column::Id.is_in(keys.iter().map(|k| k.0).into_iter()))
-            .all(&self.conn)
+            .all(self)
             .await?;
 
         let mut res = HashMap::<_, _>::new();
-        for u in users.into_iter() {
-            res.entry(*keys.iter().find(|k| k.0 == u.id).unwrap())
-                .or_insert(u);
+        for key in keys.iter() {
+            res.entry(*key)
+                .or_insert(users.iter().find(|u| u.id == key.0).unwrap().clone());
         }
 
         Ok(res)
+    }
+}
+
+#[async_trait]
+pub trait UserRepoExt {
+    async fn user_by_username(&self, username: String) -> Result<Option<user::Model>, DbErr>;
+    async fn user_by_id(&self, id: Uuid) -> Result<Option<user::Model>, DbErr>;
+    async fn create_user(&self, si: user::ActiveModel) -> Result<Uuid, DbErr>;
+    async fn activate_user(&self, id: Uuid) -> Result<(), DbErr>;
+}
+
+#[async_trait]
+impl UserRepoExt for DatabaseConnection {
+    async fn user_by_username(&self, username: String) -> Result<Option<user::Model>, DbErr> {
+        let user = User::find()
+            .filter(user::Column::Username.eq(username))
+            .one(self)
+            .await?;
+
+        Ok(user)
+    }
+
+    async fn user_by_id(&self, id: Uuid) -> Result<Option<user::Model>, DbErr> {
+        let user = User::find()
+            .filter(user::Column::Id.eq(id))
+            .one(self)
+            .await?;
+        Ok(user)
+    }
+
+    async fn create_user(&self, si: user::ActiveModel) -> Result<Uuid, DbErr> {
+        let u = User::insert(si).exec(self).await?;
+        Ok(u.last_insert_id)
+    }
+
+    async fn activate_user(&self, id: Uuid) -> Result<(), DbErr> {
+        User::update(user::ActiveModel {
+            id: Set(id),
+            active: Set(true),
+            ..Default::default()
+        })
+        .exec(self)
+        .await?;
+
+        Ok(())
     }
 }

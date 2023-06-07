@@ -1,20 +1,18 @@
 <template>
-  <v-navigation-drawer width="244">
-    <h5 class="text-h5 text-center pa-3">Channels</h5>
-    <v-skeleton-loader v-if="loading" type="list-item"> </v-skeleton-loader>
-    <v-list v-else class="pa-0">
-      <v-list-item
-        v-for="channel in channels!"
-        :key="channel.id"
-        :title="channel.name"
-        link
-        :active="selectedChannelId == channel.id"
-        @click="$emit('changeSelectedChannelId', channel.id)"
-      >
-      </v-list-item>
-    </v-list>
-    <v-divider></v-divider>
-  </v-navigation-drawer>
+  <h5 class="text-h5 text-center pa-3">Channels</h5>
+  <v-skeleton-loader v-if="loading" type="list-item"> </v-skeleton-loader>
+  <v-list v-else class="pa-0">
+    <v-list-item
+      v-for="channel in channels!"
+      :key="channel.id"
+      :title="channel.name"
+      link
+      :active="selectedChannelId == channel.id"
+      @click="emit('changeSelectedChannelId', channel.id)"
+    >
+    </v-list-item>
+  </v-list>
+  <v-divider></v-divider>
 </template>
 
 <script lang="ts" setup>
@@ -33,6 +31,8 @@ const props = defineProps<{
   selectedChannelId?: string | null;
   loading: boolean;
 }>();
+
+const emit = defineEmits(["changeSelectedChannelId"]);
 
 const channels = ref(useFragment(ChannelsFragment, props.channels));
 watch(props, () => {

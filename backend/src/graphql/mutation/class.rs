@@ -1,17 +1,17 @@
+use crate::core::repo::class::ClassRepoExt;
 use crate::{
     core::{
         auth,
-        repo::{
-            class::{ClassById, ClassRepo},
-            membership::{MembershipRepo, MembershipsByClassId},
-        },
+        repo::{class::ClassById, membership::MembershipsByClassId},
         AppError, UserError,
     },
     object::{ClassObject, CreateClassInput},
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 use auth::Claims;
+use sea_orm::DatabaseConnection;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::core::LoggedInGuard;
@@ -21,13 +21,14 @@ pub struct ClassMutation;
 
 #[Object]
 impl ClassMutation {
+    #[instrument(skip(self, ctx), err)]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn create_class(
         &self,
         ctx: &Context<'_>,
         mut input: CreateClassInput,
     ) -> Result<ClassObject, AppError> {
-        let class_repo = ctx.data_unchecked::<DataLoader<ClassRepo>>();
+        let class_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let claims = ctx.data_unchecked::<Option<Claims>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
 
@@ -57,10 +58,10 @@ impl ClassMutation {
         Ok(class.into())
     }
 
+    #[instrument(skip(self, ctx), err)]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn join_class(&self, ctx: &Context<'_>, class_id: ID) -> Result<bool, AppError> {
-        let class_repo = ctx.data_unchecked::<DataLoader<ClassRepo>>();
-        let membership_repo = ctx.data_unchecked::<DataLoader<MembershipRepo>>();
+        let class_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 
         let claims = ctx.data_unchecked::<Option<Claims>>();
         let user_id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
@@ -85,7 +86,7 @@ impl ClassMutation {
             }));
         }
 
-        let memberships = membership_repo
+        let memberships = class_repo
             .load_one(MembershipsByClassId(class_id))
             .await?
             .expect("Membership relation is not optional");

@@ -1,10 +1,11 @@
 use async_graphql::dataloader::DataLoader;
 use async_graphql::{ComplexObject, Context, Result, SimpleObject, ID};
 
+use sea_orm::DatabaseConnection;
+use tracing::instrument;
 use uuid::Uuid;
 
-use crate::core::repo::class::ClassRepo;
-use crate::core::repo::membership::{self, MembershipRepo};
+use crate::core::repo::membership::{self};
 use crate::core::{repo::class, AppError};
 
 use super::ClassObject;
@@ -38,22 +39,27 @@ impl From<::entity::user::Model> for UserObject {
 
 #[ComplexObject]
 impl UserObject {
+    #[instrument(skip(self, ctx), err)]
     #[graphql(guard = "LoggedInGuard")]
     async fn clesses(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
-        let membership_repo = ctx.data_unchecked::<DataLoader<MembershipRepo>>();
-        let class_repo = ctx.data_unchecked::<DataLoader<ClassRepo>>();
+        let conn = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 
-        let id = membership::MembershipByUserId(Uuid::parse_str(&self.id)?);
-        let memberships = membership_repo.load_many([id].into_iter()).await?;
-        let class_ids = memberships.values().map(|m| class::ClassById(m.class_id));
-        let classes = class_repo.load_many(class_ids).await?;
+        let id = membership::MembershipsByUserId(Uuid::parse_str(&self.id)?);
+        let memberships = conn
+            .load_one(id)
+            .await?
+            .expect("No memberships will be empty vec");
+        let class_ids = memberships.iter().map(|m| class::ClassById(m.class_id));
+        let classes = conn.load_many(class_ids).await?;
+        dbg!(&memberships);
 
         Ok(classes.into_values().map(|c| c.into()).collect())
     }
 
+    #[instrument(skip(self, ctx), err)]
     #[graphql(guard = "LoggedInGuard")]
     async fn owned_classes(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
-        let class_repo = ctx.data_unchecked::<DataLoader<ClassRepo>>();
+        let class_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 
         let id = class::ClassByOwnerId(Uuid::parse_str(&self.id)?);
         let classes = class_repo.load_many([id].into_iter()).await?;

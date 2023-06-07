@@ -1,6 +1,6 @@
 use async_graphql::*;
 
-#[derive(InputObject)]
+#[derive(InputObject, Clone, Debug)]
 pub struct LoginInput {
     pub username: String,
     pub password: String,

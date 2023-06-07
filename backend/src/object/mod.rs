@@ -1,3 +1,4 @@
+mod assignment;
 mod channel;
 mod class;
 mod file;
@@ -6,6 +7,7 @@ mod message;
 mod signup;
 mod user;
 
+pub use assignment::*;
 pub use channel::*;
 pub use class::*;
 pub use file::*;

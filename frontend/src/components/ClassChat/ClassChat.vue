@@ -1,41 +1,24 @@
 <template>
-  <ChannelList
-    @changeSelectedChannelId="changeSelectedChannelId"
-    :selectedChannelId="selectedChannelId"
-    :loading="loading"
-    :channels="class_?.channels"
-  ></ChannelList>
-
-  <MessageList :selectedChannelId="selectedChannelId"></MessageList>
-
-  <MemberList :users="class_?.members" :loading="loading"></MemberList>
-
-  <v-footer app height="72">
-    <v-text-field
-      bg-color="grey-lighten-1"
-      class="rounded-pill overflow-hidden"
-      density="compact"
-      hide-details
-      variant="solo"
-      v-model="msg"
-      @keyup.enter.native="sendMsg"
-    ></v-text-field>
-    <!-- <v-text-field
-      v-model="message"
-      :append-icon="message ? 'mdi-send' : 'mdi-microphone'"
-      :append-inner-icon="marker ? 'mdi-map-marker' : 'mdi-map-marker-off'"
-      :prepend-icon="icon"
-      variant="filled"
-      clear-icon="mdi-close-circle"
-      clearable
-      label="Message"
-      type="text"
-      @click:append-inner="toggleMarker"
-      @click:append="sendMessage"
-      @click:prepend="changeIcon"
-      @click:clear="clearMessage"
-    ></v-text-field> -->
-  </v-footer>
+  <v-container class="ma-0 pa-0 fill-height" fluid fill-height>
+    <v-row justify="space-between" no-gutters class="grow fill-height">
+      <v-col cols="2">
+        <ChannelList
+          @changeSelectedChannelId="changeSelectedChannelId"
+          :selectedChannelId="selectedChannelId"
+          :loading="loading"
+          :channels="class_?.channels"
+        ></ChannelList>
+      </v-col>
+      <v-divider vertical></v-divider>
+      <v-col cols="8">
+        <MessageList :selectedChannelId="selectedChannelId"></MessageList>
+      </v-col>
+      <v-divider vertical></v-divider>
+      <v-col cols="2">
+        <MemberList :users="class_?.members" :loading="loading"></MemberList>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script lang="ts" setup>
@@ -79,24 +62,10 @@ watch(props, () => {
 const changeSelectedChannelId = (channelId: string) => {
   selectedChannelId.value = channelId;
 };
-
-const SendMessageMutation = graphql(/* GraphQL */ `
-  mutation SendMessage($channelId: ID!, $content: String!) {
-    createMessage(input: { channelId: $channelId, content: $content }) {
-      id
-      content
-    }
-  }
-`);
-
-const { mutate: send } = useMutation(SendMessageMutation);
-
-const msg = ref("");
-const sendMsg = () => {
-  send({
-    channelId: selectedChannelId.value!,
-    content: msg.value,
-  });
-  msg.value = "";
-};
 </script>
+
+<style scoped>
+.wid {
+  width: 100%;
+}
+</style>

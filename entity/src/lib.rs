@@ -2,6 +2,9 @@
 
 pub mod prelude;
 
+pub mod assignment;
+pub mod assignment_submission;
+pub mod assignment_submission_file;
 pub mod channel;
 pub mod class;
 pub mod file;

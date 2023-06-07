@@ -1,4 +1,3 @@
-
 use axum::{
     body::Body,
     debug_handler,
@@ -7,11 +6,12 @@ use axum::{
     response::IntoResponse,
 };
 
-
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::core::AppError;
 
+#[instrument(err)]
 #[debug_handler]
 pub async fn get_user_avatar(
     Path(user_id): Path<Uuid>,
@@ -28,17 +28,16 @@ pub async fn get_user_avatar(
 
             Ok(response)
         }
-        Err(s3::error::S3Error::Http(404, _)) => {
-            Err(AppError::NotFound {
-                what: "user avatar",
-                with: "user id",
-                why: user_id.to_string(),
-            })
-        }
+        Err(s3::error::S3Error::Http(404, _)) => Err(AppError::NotFound {
+            what: "user avatar",
+            with: "user id",
+            why: user_id.to_string(),
+        }),
         Err(e) => Err(e.into()),
     }
 }
 
+#[instrument(err)]
 #[debug_handler]
 pub async fn get_class_image(
     Path(class_id): Path<Uuid>,
@@ -55,17 +54,16 @@ pub async fn get_class_image(
 
             Ok(response)
         }
-        Err(s3::error::S3Error::Http(404, _)) => {
-            Err(AppError::NotFound {
-                what: "class image",
-                with: "class id",
-                why: class_id.to_string(),
-            })
-        }
+        Err(s3::error::S3Error::Http(404, _)) => Err(AppError::NotFound {
+            what: "class image",
+            with: "class id",
+            why: class_id.to_string(),
+        }),
         Err(e) => Err(e.into()),
     }
 }
 
+#[instrument(err)]
 pub async fn get_class_file(
     Path((class_id, file_id)): Path<(Uuid, Uuid)>,
     State(s3_bucker): State<s3::Bucket>,
@@ -85,13 +83,11 @@ pub async fn get_class_file(
 
             Ok(response)
         }
-        Err(s3::error::S3Error::Http(404, _)) => {
-            Err(AppError::NotFound {
-                what: "class file",
-                with: "class_id",
-                why: class_id.to_string(),
-            })
-        }
+        Err(s3::error::S3Error::Http(404, _)) => Err(AppError::NotFound {
+            what: "class file",
+            with: "class_id",
+            why: class_id.to_string(),
+        }),
         Err(e) => Err(e.into()),
     }
 }

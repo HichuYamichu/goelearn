@@ -1,17 +1,13 @@
-
-
+use crate::core::AppError;
 use crate::core::LoggedInGuard;
-use crate::core::{repo::message::MessageRepo, AppError};
 use crate::graphql::make_messages_connection;
-use async_graphql::connection::{Connection};
+use async_graphql::connection::Connection;
 use async_graphql::InputObject;
 use async_graphql::{dataloader::DataLoader, ComplexObject, Context, SimpleObject, ID};
 
-
-
-
-
+use sea_orm::DatabaseConnection;
 use sea_orm::Set;
+use tracing::instrument;
 use uuid::Uuid;
 
 use super::MessageObject;
@@ -57,6 +53,7 @@ impl From<::entity::channel::Model> for ChannelObject {
 
 #[ComplexObject]
 impl ChannelObject {
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn messages(
         &self,
@@ -66,7 +63,7 @@ impl ChannelObject {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, MessageObject>, async_graphql::Error> {
-        let message_repo = ctx.data_unchecked::<DataLoader<MessageRepo>>();
+        let message_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 
         make_messages_connection(
             message_repo,

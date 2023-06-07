@@ -3,16 +3,17 @@ use async_graphql::{
 };
 use chrono::Utc;
 use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
-use sea_orm::Set;
+use sea_orm::{DatabaseConnection, Set};
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 use uuid::Uuid;
 
 use super::UserObject;
 use crate::core::repo::user;
 
-use crate::core::{repo::user::UserRepo, AppError};
+use crate::core::AppError;
 
-#[derive(InputObject)]
+#[derive(InputObject, Debug)]
 pub struct CreateMessageInput {
     pub content: String,
     pub channel_id: ID,
@@ -77,9 +78,10 @@ impl FromRedisValue for MessageObject {
 impl MessageObject {
     // TODO: Websocket authentication needed
     // #[graphql(guard = "LoggedInGuard")]
+    #[instrument(skip(self, ctx), err)]
     async fn author(&self, ctx: &Context<'_>) -> Result<UserObject, AppError> {
         tracing::warn!("author_id: {:?}", self.author_id);
-        let user_repo = ctx.data_unchecked::<DataLoader<UserRepo>>();
+        let user_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 
         let user = user_repo
             .load_one(user::UserByAuthorId(Uuid::parse_str(&self.author_id)?))

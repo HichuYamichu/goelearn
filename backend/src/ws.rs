@@ -85,24 +85,10 @@ where
                 .on_upgrade(move |stream| {
                     GraphQLWebSocket::new(stream, executor, protocol)
                         .on_connection_init(|_value| {
-                            let membership_dataloader =
-                                DataLoader::new(app_data.membership_repo, tokio::spawn);
-                            let user_dataloader = DataLoader::new(app_data.user_repo, tokio::spawn);
-                            let class_dataloader =
-                                DataLoader::new(app_data.class_repo, tokio::spawn);
-                            let message_dataloader =
-                                DataLoader::new(app_data.message_repo, tokio::spawn);
-                            let channel_dataloader =
-                                DataLoader::new(app_data.channel_repo, tokio::spawn);
-                            let file_dataloader = DataLoader::new(app_data.file_repo, tokio::spawn);
+                            let conn_dataloader = DataLoader::new(app_data.conn, tokio::spawn);
 
                             let mut data = Data::default();
-                            data.insert(membership_dataloader);
-                            data.insert(user_dataloader);
-                            data.insert(class_dataloader);
-                            data.insert(message_dataloader);
-                            data.insert(channel_dataloader);
-                            data.insert(file_dataloader);
+                            data.insert(conn_dataloader);
 
                             futures_util::future::ready(Ok(data))
                         })

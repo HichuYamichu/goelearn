@@ -1,6 +1,15 @@
 <template>
-  <div ref="messageBox" class="overflow-y-visible">
-    <v-virtual-scroll :items="messages" height="100%" item-height="50">
+  <!-- <div
+    ref="messageBox"
+    class="overflow-y-auto full-height almost-full-height"
+    fill-height
+  >
+    <v-virtual-scroll
+      :items="messages"
+      height="100%"
+      item-height="50"
+      class="overflow-y-auto"
+    >
       <template v-slot:default="{ item }">
         <v-list-item
           class="py-2"
@@ -14,12 +23,51 @@
         </v-list-item>
       </template>
     </v-virtual-scroll>
-  </div>
+  </div> -->
+
+  <!-- <v-list class="overflow-y-auto flex-grow-1">
+    <v-list-item v-for="message in messages" :key="message.id" link>
+      <v-list-item-title
+        class="font-weight-bold"
+        v-text="message.author.username"
+      ></v-list-item-title>
+      {{ message.content }}
+    </v-list-item>
+  </v-list> -->
+
+  <v-card class="d-flex flex-column flex-grow-1 h" ref="messageBox">
+    <v-virtual-scroll :items="messages">
+      <template v-slot:default="{ item }">
+        <v-list-item
+          class="py-2"
+          :prependAvatar="`http://localhost:3000/files/user-avatar/${item.author.id}`"
+        >
+          <v-list-item-title
+            class="font-weight-bold"
+            v-text="item.author.username"
+          ></v-list-item-title>
+          {{ item.content }}
+        </v-list-item>
+      </template>
+    </v-virtual-scroll>
+  </v-card>
+  <v-text-field
+    v-model="msg"
+    append-innerdasda-icon="mdi-send"
+    variant="outlined"
+    clear-icon="mdi-close-circle"
+    clearable
+    label="Message"
+    type="text"
+    hide-details="auto"
+    @click:append="sendMsg"
+    @keyup.enter.native="sendMsg"
+  ></v-text-field>
 </template>
 
 <script lang="ts" setup>
 import { graphql } from "@/gql";
-import { useQuery } from "@vue/apollo-composable";
+import { useMutation, useQuery } from "@vue/apollo-composable";
 import { Ref, computed, nextTick, ref, toRef, watch } from "vue";
 
 const props = defineProps<{
@@ -63,7 +111,8 @@ const { result, onResult, subscribeToMore, refetch } = useQuery(
 
 const messages = computed(() => result.value?.messages.nodes ?? []);
 watch(messages, () => {
-  console.log({ messages: messages.value });
+  console.log({ box: messageBox.value! });
+  console.log({ box: messageBox.value!.scrollHeight });
   nextTick(() => {
     messageBox.value!.scrollTop = messageBox.value!.scrollHeight;
   });
@@ -102,4 +151,30 @@ subscribeToMore(() => ({
     };
   },
 }));
+
+const SendMessageMutation = graphql(/* GraphQL */ `
+  mutation SendMessage($channelId: ID!, $content: String!) {
+    createMessage(input: { channelId: $channelId, content: $content }) {
+      id
+      content
+    }
+  }
+`);
+
+const { mutate: send } = useMutation(SendMessageMutation);
+
+const msg = ref("");
+const sendMsg = () => {
+  send({
+    channelId: selectedChannelId.value!,
+    content: msg.value,
+  });
+  msg.value = "";
+};
 </script>
+
+<style scoped>
+.h {
+  height: calc(100vh - 170px);
+}
+</style>

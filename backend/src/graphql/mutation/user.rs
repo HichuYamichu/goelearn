@@ -1,23 +1,26 @@
 use crate::core::UserError;
-use crate::core::{auth, repo::user::UserRepo, AppError};
+use crate::core::{auth, AppError};
 use crate::object::{LoginInput, LoginResult, SignupInput};
 
 use async_graphql::{dataloader::DataLoader, Context, Object};
+use tracing::instrument;
 
+use crate::core::repo::user::UserRepoExt;
+use sea_orm::DatabaseConnection;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
-
 
 #[derive(Default)]
 pub struct UserMutation;
 
 #[Object]
 impl UserMutation {
+    #[instrument(skip(self, ctx), err)]
     pub async fn signup(
         &self,
         ctx: &Context<'_>,
         mut input: SignupInput,
     ) -> Result<String, AppError> {
-        let user_repo = ctx.data_unchecked::<DataLoader<UserRepo>>();
+        let user_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
 
         let avatar = input.avatar.take();
@@ -44,12 +47,13 @@ impl UserMutation {
         Ok(id.to_string())
     }
 
+    #[instrument(skip(self, ctx), err)]
     pub async fn login(
         &self,
         ctx: &Context<'_>,
         input: LoginInput,
     ) -> Result<LoginResult, AppError> {
-        let user_repo = ctx.data_unchecked::<DataLoader<UserRepo>>();
+        let user_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let res = auth::login_user(input, user_repo.loader()).await?;
         Ok(res)
     }

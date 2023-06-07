@@ -1,27 +1,41 @@
 <template>
   <v-app-bar density="compact" border flat>
     <v-skeleton-loader v-if="loading" type="heading"> </v-skeleton-loader>
-    <h5 v-else class="text-h5 mx-4 font-weight-medium">
+    <h5 v-else class="text-h5 mx-4 pa-3 font-weight-medium">
       {{ name }}
     </h5>
+    <v-divider vertical></v-divider>
     <v-tabs v-model="tabValue">
       <v-tab value="Chat">Chat</v-tab>
       <v-tab value="Files">Files</v-tab>
+      <v-tab value="Assignments">Assignments</v-tab>
       <v-tab value="Meeting">Meeting</v-tab>
       <v-tab value="Settings">Settings</v-tab>
     </v-tabs>
   </v-app-bar>
 
-  <v-window v-model="tabValue">
-    <v-window-item value="Chat">
-      <ClassChat :loading="loading" :class_="class_"></ClassChat>
-    </v-window-item>
-    <v-window-item value="Files" class="pa-4">
-      <ClassFiles></ClassFiles>
-    </v-window-item>
-    <v-window-item value="Meeting"> </v-window-item>
-    <v-window-item value="Settings"> </v-window-item>
-  </v-window>
+  <v-container fluid class="fill-height pa-0">
+    <v-row class="fill-height" no-gutters>
+      <v-col cols="12" class="fill-height">
+        <v-window v-model="tabValue" class="fill-height">
+          <v-window-item value="Chat" class="fill-height">
+            <ClassChat :loading="loading" :class_="class_"></ClassChat>
+          </v-window-item>
+          <v-window-item value="Files" class="fill-height">
+            <ClassFiles :loading="loading" :class_="class_"></ClassFiles>
+          </v-window-item>
+          <v-window-item value="Assignments" class="fill-height">
+            <ClassAssignments
+              :loading="loading"
+              :class_="class_"
+            ></ClassAssignments>
+          </v-window-item>
+          <v-window-item value="Meeting"> </v-window-item>
+          <v-window-item value="Settings"> </v-window-item>
+        </v-window>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script lang="ts" setup>
@@ -32,6 +46,7 @@ import { graphql, useFragment } from "@/gql";
 import { useQuery } from "@vue/apollo-composable";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
+import ClassAssignments from "@/components/ClassAssignments.vue";
 
 const route = useRoute();
 
@@ -42,6 +57,8 @@ const ClassQuery = graphql(/* GraphQL */ `
     classById(id: $id) {
       name
       ...ChatFragment
+      ...FilesFragment
+      ...AssignmentsFragment
     }
   }
 `);

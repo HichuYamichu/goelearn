@@ -4,11 +4,6 @@ mod object;
 mod rest;
 mod ws;
 
-use crate::core::repo::channel::ChannelRepo;
-use crate::core::repo::class::ClassRepo;
-use crate::core::repo::file::FileRepo;
-use crate::core::repo::message::MessageRepo;
-use crate::core::repo::{membership::MembershipRepo, user::UserRepo};
 use crate::core::Claims;
 use crate::graphql::Subscription;
 use async_graphql::extensions::Tracing;
@@ -57,12 +52,7 @@ lazy_static! {
 #[derive(FromRef, Clone)]
 pub struct AppState {
     schema: AppSchema,
-    user_repo: UserRepo,
-    membership_repo: MembershipRepo,
-    class_repo: ClassRepo,
-    message_repo: MessageRepo,
-    channel_repo: ChannelRepo,
-    file_repo: FileRepo,
+    conn: DatabaseConnection,
     s3_bucket: s3::Bucket,
 }
 
@@ -72,12 +62,16 @@ pub async fn main() {
     dotenv().ok();
 
     let filter = filter::Targets::new()
-        .with_target("tower_http::trace::on_response", Level::TRACE)
-        .with_target("tower_http::trace::on_request", Level::TRACE)
-        .with_target("backend", Level::DEBUG)
-        .with_default(Level::INFO);
+        // .with_target("tower_http::trace::on_response", Level::WARN)
+        // .with_target("tower_http::trace::on_request", Level::WARN)
+        .with_target("backend", Level::TRACE)
+        // .with_target("sqlx", Level::WARN)
+        // .with_target("hyper", Level::WARN)
+        // .with_target("async_graphql", Level::INFO)
+        .with_default(Level::WARN);
+
     tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::layer().pretty())
         .with(filter)
         .init();
 
@@ -85,10 +79,10 @@ pub async fn main() {
     argon2_async::set_config(config).await;
 
     let redis_client = redis::Client::open(REDIS_URL.to_string()).unwrap();
-    let db: DatabaseConnection = Database::connect(ConnectOptions::new(DATABASE_URL.to_string()))
+    let conn: DatabaseConnection = Database::connect(ConnectOptions::new(DATABASE_URL.to_string()))
         .await
         .unwrap();
-    Migrator::up(&db, None).await.unwrap();
+    Migrator::up(&conn, None).await.unwrap();
 
     let s3_credentials = Credentials::new(None, None, None, None, None).unwrap();
     let s3_bucket = s3::Bucket::new(
@@ -97,13 +91,6 @@ pub async fn main() {
         s3_credentials,
     )
     .unwrap();
-
-    let user_repo = UserRepo::new(db.clone());
-    let membership_repo = MembershipRepo::new(db.clone());
-    let class_repo = ClassRepo::new(db.clone());
-    let message_repo = MessageRepo::new(db.clone());
-    let channel_repo = ChannelRepo::new(db.clone());
-    let file_repo = FileRepo::new(db.clone());
 
     let schema = Schema::build(
         Query::default(),
@@ -117,12 +104,7 @@ pub async fn main() {
 
     let state = AppState {
         schema: schema.clone(),
-        user_repo,
-        membership_repo,
-        class_repo,
-        message_repo,
-        channel_repo,
-        file_repo,
+        conn,
         s3_bucket,
     };
 
@@ -148,7 +130,11 @@ pub async fn main() {
         )
         .with_state(state)
         .layer(CorsLayer::permissive())
-        .layer(TraceLayer::new_for_http());
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(tower_http::trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(tower_http::trace::DefaultOnResponse::new().level(Level::INFO)),
+        );
 
     tracing::info!("Started on http://localhost:3000/api/v1/graphql");
     axum::Server::bind(&ADDR.parse().unwrap())
@@ -159,33 +145,14 @@ pub async fn main() {
 
 async fn graphql_handler(
     State(schema): State<AppSchema>,
-    State(membership_repo): State<MembershipRepo>,
-    State(user_repo): State<UserRepo>,
-    State(class_repo): State<ClassRepo>,
-    State(message_repo): State<MessageRepo>,
-    State(channel_repo): State<ChannelRepo>,
-    State(file_repo): State<FileRepo>,
+    State(conn): State<DatabaseConnection>,
     claims: Option<Claims>,
     req: GraphQLRequest,
 ) -> GraphQLResponse {
-    let membership_dataloader = DataLoader::new(membership_repo, tokio::spawn);
-    let user_dataloader = DataLoader::new(user_repo, tokio::spawn);
-    let class_dataloader = DataLoader::new(class_repo, tokio::spawn);
-    let message_dataloader = DataLoader::new(message_repo, tokio::spawn);
-    let channel_dataloader = DataLoader::new(channel_repo, tokio::spawn);
-    let file_dataloader = DataLoader::new(file_repo, tokio::spawn);
+    let conn_dataloader = DataLoader::new(conn, tokio::spawn);
 
     schema
-        .execute(
-            req.into_inner()
-                .data(claims)
-                .data(membership_dataloader)
-                .data(user_dataloader)
-                .data(class_dataloader)
-                .data(message_dataloader)
-                .data(channel_dataloader)
-                .data(file_dataloader),
-        )
+        .execute(req.into_inner().data(claims).data(conn_dataloader))
         .await
         .into()
 }
