@@ -14,6 +14,7 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
  */
 const documents = {
     "\n  query IsLoggedIn {\n    isLoggedIn @client\n  }\n": types.IsLoggedInDocument,
+    "\n  mutation CreateAssignmentMutation($input: CreateAssignmentInput!) {\n    createAssignment(input: $input) {\n      id\n    }\n  }\n": types.CreateAssignmentMutationDocument,
     "\n  fragment AssignmentsFragment on Class {\n    id\n    ownerId\n    assignments {\n      id\n      name\n      content\n      dueAt\n      createdAt\n      files {\n        id\n        name\n      }\n    }\n  }\n": types.AssignmentsFragmentFragmentDoc,
     "\n  mutation SubmitAssignment($files: [Upload!]!, $assignmentId: ID!) {\n    submitAssignment(input: { files: $files, assignmentId: $assignmentId })\n  }\n": types.SubmitAssignmentDocument,
     "\n  fragment ChannelsFragment on Channel {\n    id\n    name\n  }\n": types.ChannelsFragmentFragmentDoc,
@@ -26,8 +27,9 @@ const documents = {
     "\n  fragment FilesFragment on Class {\n    id\n    ownerId\n    files {\n      id\n      name\n      fileType\n      parent\n    }\n  }\n": types.FilesFragmentFragmentDoc,
     "\n  mutation CreateDirecotry($classId: ID!, $name: String!, $parentId: ID) {\n    createDirecotry(\n      input: { classId: $classId, name: $name, parentId: $parentId }\n    ) {\n      id\n    }\n  }\n": types.CreateDirecotryDocument,
     "\n  mutation UploadFiles(\n    $classId: ID!\n    $files: [Upload!]!\n    $parentId: ID\n    $public: Boolean!\n  ) {\n    uploadFiles(\n      input: {\n        classId: $classId\n        files: $files\n        parentId: $parentId\n        public: $public\n      }\n    )\n  }\n": types.UploadFilesDocument,
+    "\n  mutation DeleteFiles($fileIds: [ID!]!) {\n    deleteFiles(fileIds: $fileIds)\n  }\n": types.DeleteFilesDocument,
     "\n  query AppBarMeQuery {\n    me {\n      id\n      hasAvatar\n    }\n  }\n": types.AppBarMeQueryDocument,
-    "\n    query CheckClassOwner {\n      me {\n        id\n      }\n    }\n  ": types.CheckClassOwnerDocument,
+    "\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n": types.MyIdQueryDocument,
     "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n    }\n  }\n": types.ClassClassByIdQueryDocument,
     "\n  mutation CreateClass($input: CreateClassInput!) {\n    createClass(input: $input) {\n      id\n    }\n  }\n": types.CreateClassDocument,
     "\n  query classesBySearch($query: String!) {\n    classesBySearch(query: $query) {\n      id\n      name\n      description\n      hasImage\n    }\n  }\n": types.ClassesBySearchDocument,
@@ -55,6 +57,10 @@ export function graphql(source: string): unknown;
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query IsLoggedIn {\n    isLoggedIn @client\n  }\n"): (typeof documents)["\n  query IsLoggedIn {\n    isLoggedIn @client\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateAssignmentMutation($input: CreateAssignmentInput!) {\n    createAssignment(input: $input) {\n      id\n    }\n  }\n"): (typeof documents)["\n  mutation CreateAssignmentMutation($input: CreateAssignmentInput!) {\n    createAssignment(input: $input) {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -106,11 +112,15 @@ export function graphql(source: "\n  mutation UploadFiles(\n    $classId: ID!\n 
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "\n  mutation DeleteFiles($fileIds: [ID!]!) {\n    deleteFiles(fileIds: $fileIds)\n  }\n"): (typeof documents)["\n  mutation DeleteFiles($fileIds: [ID!]!) {\n    deleteFiles(fileIds: $fileIds)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "\n  query AppBarMeQuery {\n    me {\n      id\n      hasAvatar\n    }\n  }\n"): (typeof documents)["\n  query AppBarMeQuery {\n    me {\n      id\n      hasAvatar\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n    query CheckClassOwner {\n      me {\n        id\n      }\n    }\n  "): (typeof documents)["\n    query CheckClassOwner {\n      me {\n        id\n      }\n    }\n  "];
+export function graphql(source: "\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n"): (typeof documents)["\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

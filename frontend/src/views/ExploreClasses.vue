@@ -111,7 +111,9 @@ const JoinClassMutation = graphql(/* GraphQL */ `
   }
 `);
 
-const { mutate: joinClass, onError } = useMutation(JoinClassMutation);
+const { mutate: joinClass, onError } = useMutation(JoinClassMutation, {
+  refetchQueries: ["UserClassesMeQuery"],
+});
 
 const join = (id: string) => {
   joinClass({ classId: id });

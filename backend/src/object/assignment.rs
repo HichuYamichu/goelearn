@@ -1,8 +1,10 @@
-use crate::core::AppError;
-use async_graphql::{ComplexObject, Context, InputObject, SimpleObject, Upload, ID};
+use crate::core::{repo::file, AppError};
+use async_graphql::{
+    dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, Upload, ID,
+};
 use chrono::{NaiveDate, NaiveDateTime, Utc};
 use partialdebug::placeholder::PartialDebug;
-use sea_orm::Set;
+use sea_orm::{DatabaseConnection, Set};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -63,13 +65,11 @@ impl From<::entity::assignment::Model> for AssignmentObject {
 impl AssignmentObject {
     #[instrument(skip(self, ctx), err)]
     async fn files<'ctx>(&self, ctx: &'ctx Context<'_>) -> Result<Vec<FileObject>, AppError> {
-        // let assignment_repo = ctx.data_unchecked::<::repo::assignment::AssignmentRepo>();
-        // let files = assignment_repo
-        //     .loader()
-        //     .files_by_assignment_id(self.id.to_string())
-        //     .await?;
-        // Ok(files.into_iter().map(|f| f.into()).collect())
-        Ok(vec![])
+        let file_repo = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+
+        let id = file::FilesByAssignmentId(Uuid::parse_str(&self.id)?);
+        let files = file_repo.load_one(id).await?.expect("Id should be valid");
+        Ok(files.into_iter().map(|f| f.into()).collect())
     }
 }
 

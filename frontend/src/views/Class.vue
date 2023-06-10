@@ -31,7 +31,9 @@
             ></ClassAssignments>
           </v-window-item>
           <v-window-item value="Meeting"> </v-window-item>
-          <v-window-item value="Settings"> </v-window-item>
+          <v-window-item value="Settings">
+            <ClassSettings :loading="loading" :class_="class_"></ClassSettings>
+          </v-window-item>
         </v-window>
       </v-col>
     </v-row>
@@ -42,11 +44,12 @@
 import { ref, watch } from "vue";
 import ClassChat from "@/components/ClassChat/ClassChat.vue";
 import ClassFiles from "@/components/ClassFiles.vue";
+import ClassAssignments from "@/components/ClassAssignments.vue";
+import ClassSettings from "@/components/ClassSettings.vue";
 import { graphql, useFragment } from "@/gql";
 import { useQuery } from "@vue/apollo-composable";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-import ClassAssignments from "@/components/ClassAssignments.vue";
 
 const route = useRoute();
 

@@ -111,7 +111,10 @@ impl FileMutation {
             .map(|id| Uuid::parse_str(id))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let files = file_repo.loader().find_many(file_ids.clone()).await?;
+        let files = file_repo
+            .loader()
+            .find_many_with_nested(file_ids.clone())
+            .await?;
 
         for file in files {
             let s3_path = format!(
@@ -123,7 +126,7 @@ impl FileMutation {
             s3_bucket.delete_object(&s3_path).await?;
         }
 
-        file_repo.loader().delete_many(file_ids).await?;
+        file_repo.loader().delete_many_with_nested(file_ids).await?;
 
         Ok(true)
     }

@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
         manager
             .create_type(
                 Type::create()
-                    .as_enum(FileType::Type)
+                    .as_enum(FileType::Enum)
                     .values([FileType::File, FileType::Directory])
                     .to_owned(),
             )
@@ -170,7 +170,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(File::Public).boolean().not_null())
                     .col(
                         ColumnDef::new(File::FileType)
-                            .custom(FileType::Type)
+                            .enumeration(FileType::Enum, [FileType::Directory, FileType::File])
                             .not_null(),
                     )
                     .col(ColumnDef::new(File::ParentId).uuid().null())
@@ -197,6 +197,26 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Assignment::CreatedAt).timestamp().not_null())
                     .col(ColumnDef::new(Assignment::DueAt).timestamp().not_null())
                     .col(ColumnDef::new(Assignment::ClassId).uuid().not_null())
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(AssignmentFile::Table)
+                    .if_not_exists()
+                    .primary_key(
+                        index::Index::create()
+                            .col(AssignmentFile::AssignmentId)
+                            .col(AssignmentFile::FileId),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentFile::AssignmentId)
+                            .uuid()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(AssignmentFile::FileId).uuid().not_null())
                     .to_owned(),
             )
             .await?;
@@ -275,6 +295,10 @@ impl MigrationTrait for Migration {
             .await?;
 
         manager
+            .drop_table(Table::drop().table(AssignmentFile::Table).to_owned())
+            .await?;
+
+        manager
             .drop_table(Table::drop().table(Assignment::Table).to_owned())
             .await?;
 
@@ -308,7 +332,7 @@ impl MigrationTrait for Migration {
             .await?;
 
         manager
-            .drop_type(Type::drop().name(FileType::Type).to_owned())
+            .drop_type(Type::drop().name(FileType::Enum).to_owned())
             .await?;
 
         Ok(())
@@ -348,27 +372,6 @@ impl Iden for UserType {
                 Self::Admin => "Admin",
                 Self::Mod => "Mod",
                 Self::Regular => "Regular",
-            }
-        )
-        .unwrap();
-    }
-}
-
-pub enum FileType {
-    Type,
-    File,
-    Directory,
-}
-
-impl Iden for FileType {
-    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-        write!(
-            s,
-            "{}",
-            match self {
-                Self::Type => "file_type",
-                Self::File => "File",
-                Self::Directory => "Directory",
             }
         )
         .unwrap();
@@ -455,6 +458,13 @@ pub enum Assignment {
 }
 
 #[derive(Iden)]
+pub enum AssignmentFile {
+    Table,
+    AssignmentId,
+    FileId,
+}
+
+#[derive(Iden)]
 pub enum AssignmentSubmission {
     Table,
     Id,
@@ -469,4 +479,14 @@ pub enum AssignmentSubmissionFile {
     Id,
     AssignmentSubmissionId,
     FileId,
+}
+
+#[derive(Iden)]
+enum FileType {
+    #[iden = "file_type"]
+    Enum,
+    #[iden = "Directory"]
+    Directory,
+    #[iden = "File"]
+    File,
 }

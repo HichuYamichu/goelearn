@@ -64,4 +64,13 @@ impl Related<super::message::Entity> for Entity {
     }
 }
 
+impl Related<super::assignment::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::assignment_file::Relation::Assignment.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::assignment_file::Relation::File.def().rev())
+    }
+}
+
 impl ActiveModelBehavior for ActiveModel {}

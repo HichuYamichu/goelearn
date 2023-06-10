@@ -1,42 +1,6 @@
 <template>
-  <!-- <div
-    ref="messageBox"
-    class="overflow-y-auto full-height almost-full-height"
-    fill-height
-  >
-    <v-virtual-scroll
-      :items="messages"
-      height="100%"
-      item-height="50"
-      class="overflow-y-auto"
-    >
-      <template v-slot:default="{ item }">
-        <v-list-item
-          class="py-2"
-          :prependAvatar="`http://localhost:3000/files/user-avatar/${item.author.id}`"
-        >
-          <v-list-item-title
-            class="font-weight-bold"
-            v-text="item.author.username"
-          ></v-list-item-title>
-          {{ item.content }}
-        </v-list-item>
-      </template>
-    </v-virtual-scroll>
-  </div> -->
-
-  <!-- <v-list class="overflow-y-auto flex-grow-1">
-    <v-list-item v-for="message in messages" :key="message.id" link>
-      <v-list-item-title
-        class="font-weight-bold"
-        v-text="message.author.username"
-      ></v-list-item-title>
-      {{ message.content }}
-    </v-list-item>
-  </v-list> -->
-
-  <v-card class="d-flex flex-column flex-grow-1 h" ref="messageBox">
-    <v-virtual-scroll :items="messages">
+  <v-card class="d-flex flex-column flex-grow-1 h">
+    <v-virtual-scroll :items="messages" ref="messageBox">
       <template v-slot:default="{ item }">
         <v-list-item
           class="py-2"
@@ -111,19 +75,22 @@ const { result, onResult, subscribeToMore, refetch } = useQuery(
 
 const messages = computed(() => result.value?.messages.nodes ?? []);
 watch(messages, () => {
-  console.log({ box: messageBox.value! });
-  console.log({ box: messageBox.value!.scrollHeight });
   nextTick(() => {
-    messageBox.value!.scrollTop = messageBox.value!.scrollHeight;
+    scroll();
   });
 });
 
-const messageBox: Ref<HTMLDivElement | null> = ref(null);
+const messageBox = ref();
 onResult(() => {
   nextTick(() => {
-    messageBox.value!.scrollTop = messageBox.value!.scrollHeight;
+    scroll();
   });
 });
+
+const scroll = () => {
+  messageBox.value?.scrollToIndex(messages.value.length - 1);
+  console.log(messages.value.length - 1);
+};
 
 const MessageCreatedSubscription = graphql(/* GraphQL */ `
   subscription MessagesSubscription($channelId: ID!) {

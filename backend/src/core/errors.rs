@@ -175,13 +175,10 @@ impl std::error::Error for AppError {} // TODO: is this needed?
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            AppError::InternalError(err) => {
-                tracing::error!("{}", err);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal server error".into(),
-                )
-            }
+            AppError::InternalError(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".into(),
+            ),
             AppError::NotFound { what, with, why } => (
                 StatusCode::NOT_FOUND,
                 format!("`{what}` with `{with}` = `{why}` was not found"),

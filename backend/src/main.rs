@@ -11,6 +11,7 @@ use async_graphql::http::GraphiQLSource;
 use async_graphql::{dataloader::DataLoader, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use awscreds::Credentials;
+use axum::routing::post;
 use axum::{
     extract::{FromRef, State},
     response::{Html, IntoResponse},
@@ -127,6 +128,10 @@ pub async fn main() {
         .route(
             "/files/class-files/:class_id/:file_id",
             get(rest::file_handler::get_class_file),
+        )
+        .route(
+            "/files/class-files/:class_id/zip",
+            post(rest::file_handler::get_class_files),
         )
         .with_state(state)
         .layer(CorsLayer::permissive())

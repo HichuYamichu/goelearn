@@ -27,7 +27,9 @@
               variant="outlined"
               hide-details="auto"
             ></v-text-field>
-            <v-btn class="bg-success" block> Download selected </v-btn>
+            <v-btn class="bg-success" block @click="downloadAll">
+              Download selected
+            </v-btn>
           </v-col>
           <v-col cols="2">
             <v-text-field
@@ -35,7 +37,9 @@
               variant="outlined"
               hide-details="auto"
             ></v-text-field>
-            <v-btn class="bg-error" block> Delete selected </v-btn>
+            <v-btn class="bg-error" block @click="deleteAll">
+              Delete selected
+            </v-btn>
           </v-col>
         </v-row>
       </v-col>
@@ -55,6 +59,12 @@
         <v-table>
           <thead>
             <tr>
+              <th class="text-left font-weight-black">
+                <v-checkbox-btn
+                  class="pa-0 ma-0"
+                  @click="checkAll"
+                ></v-checkbox-btn>
+              </th>
               <th class="text-left font-weight-black">Name</th>
               <th class="text-left font-weight-black">Size</th>
               <th class="text-left font-weight-black">Type</th>
@@ -63,6 +73,12 @@
           </thead>
           <tbody>
             <tr v-for="file in files" :key="file.id">
+              <td>
+                <v-checkbox-btn
+                  v-model="selectedFiles"
+                  :value="file.id"
+                ></v-checkbox-btn>
+              </td>
               <td>
                 <p
                   @click="
@@ -152,6 +168,7 @@ const open = (item: any) => {
     selectedDirectoryTree.value = [
       { id: null, name: "root", fileType: "DIRECTORY" },
     ];
+    selectedFiles.value = [];
     return;
   }
   if (
@@ -162,6 +179,7 @@ const open = (item: any) => {
   }
 
   selectedDirectoryTree.value.push(item);
+  selectedFiles.value = [];
 };
 
 const downloadFile = async (url: string, filename: string) => {
@@ -232,6 +250,55 @@ const uploadFiles = () => {
     parentId:
       selectedDirectoryTree.value[selectedDirectoryTree.value.length - 1].id,
     public: true,
+  });
+};
+
+const selectedFiles = ref<string[]>([]);
+
+const checkAll = () => {
+  if (selectedFiles.value.length === files.value.length) {
+    selectedFiles.value = [];
+    return;
+  }
+  selectedFiles.value = files.value.map((f) => f.id);
+};
+
+const downloadAll = async () => {
+  console.log(selectedFiles.value);
+  let res = await fetch(
+    `http://localhost:3000/files/class-files/${class_.value?.id}/zip`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        file_ids: selectedFiles.value,
+      }),
+    }
+  );
+  let blob = await res.blob();
+  let objectUrl = URL.createObjectURL(blob);
+  let link = document.createElement("a");
+  link.setAttribute("href", objectUrl);
+  link.setAttribute("download", "files.zip");
+  link.style.display = "none";
+  link.click();
+};
+
+const DeleteFilesMutation = graphql(/* GraphQL */ `
+  mutation DeleteFiles($fileIds: [ID!]!) {
+    deleteFiles(fileIds: $fileIds)
+  }
+`);
+
+const { mutate: deleteFiles } = useMutation(DeleteFilesMutation, {
+  refetchQueries: ["ClassClassByIdQuery"],
+});
+
+const deleteAll = () => {
+  deleteFiles({
+    fileIds: selectedFiles.value,
   });
 };
 </script>

@@ -1,8 +1,8 @@
 use sea_orm_migration::prelude::*;
 
 use crate::m20220101_000001_create_table::{
-    Assignment, AssignmentSubmission, AssignmentSubmissionFile, Channel, Class, File, Invite,
-    Membership, Message, Report, User,
+    Assignment, AssignmentFile, AssignmentSubmission, AssignmentSubmissionFile, Channel, Class,
+    File, Invite, Membership, Message, Report, User,
 };
 
 #[derive(DeriveMigrationName)]
@@ -158,6 +158,30 @@ impl MigrationTrait for Migration {
         manager
             .create_foreign_key(
                 ForeignKey::create()
+                    .name("FK_assignment_file_assignment")
+                    .from(AssignmentFile::Table, AssignmentFile::AssignmentId)
+                    .to(Assignment::Table, Assignment::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_assignment_file_file")
+                    .from(AssignmentFile::Table, AssignmentFile::FileId)
+                    .to(File::Table, File::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
                     .name("FK_assignment_submission_assignment_id")
                     .from(
                         AssignmentSubmission::Table,
@@ -216,6 +240,24 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_assignment_file_assignment")
+                    .table(AssignmentFile::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_assignment_file_file")
+                    .table(AssignmentFile::Table)
+                    .to_owned(),
+            )
+            .await?;
+
         manager
             .drop_foreign_key(
                 ForeignKey::drop()
@@ -284,15 +326,6 @@ impl MigrationTrait for Migration {
                 ForeignKey::drop()
                     .name("FK_message_author_id")
                     .table(Message::Table)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .drop_foreign_key(
-                ForeignKey::drop()
-                    .name("FK_channel_class_id")
-                    .table(Channel::Table)
                     .to_owned(),
             )
             .await?;

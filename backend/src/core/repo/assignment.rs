@@ -2,7 +2,10 @@ use async_graphql::dataloader::Loader;
 use async_trait::async_trait;
 
 use ::entity::sea_orm_active_enums::FileType;
-use ::entity::{assignment, assignment::Entity as Assignment, file, file::Entity as File};
+use ::entity::{
+    assignment, assignment::Entity as Assignment, assignment_file,
+    assignment_file::Entity as AssignmentFile, file, file::Entity as File,
+};
 use sea_orm::DatabaseConnection;
 use sea_orm::*;
 use std::collections::HashMap;
@@ -89,6 +92,20 @@ impl AssignmentRepoExt for DatabaseConnection {
 
                     if !file_ids.is_empty() {
                         File::insert_many(files).exec(txn).await?;
+                    }
+
+                    let assignment_files = file_ids
+                        .iter()
+                        .map(|id| assignment_file::ActiveModel {
+                            assignment_id: Set(assignment.id),
+                            file_id: Set(*id),
+                        })
+                        .collect::<Vec<_>>();
+
+                    if !assignment_files.is_empty() {
+                        AssignmentFile::insert_many(assignment_files)
+                            .exec(txn)
+                            .await?;
                     }
 
                     Ok((assignment, file_ids))
