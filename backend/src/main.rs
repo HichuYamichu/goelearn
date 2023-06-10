@@ -1,11 +1,10 @@
+mod api;
 mod core;
-mod graphql;
-mod object;
-mod rest;
 mod ws;
 
+use crate::api::{FileHandler, Mutation, Query, Subscription, UserRest};
 use crate::core::Claims;
-use crate::graphql::Subscription;
+use api::AppSchema;
 use async_graphql::extensions::Tracing;
 use async_graphql::http::GraphiQLSource;
 use async_graphql::{dataloader::DataLoader, Schema};
@@ -30,14 +29,8 @@ use tracing_subscriber::{
 
 #[cfg(debug_assertions)]
 use dotenvy::dotenv;
-use graphql::Mutation;
-use graphql::Query;
 use lazy_static::lazy_static;
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
-
-use crate::rest::user_handler;
-
-pub type AppSchema = Schema<Query, Mutation, Subscription>;
 
 lazy_static! {
     static ref ADDR: String = env::var("URL").unwrap_or("0.0.0.0:3000".into());
@@ -109,7 +102,19 @@ pub async fn main() {
         s3_bucket,
     };
 
-    let user_routes = Router::new().route("/activate/:user_id", get(user_handler::activate));
+    let user_routes = Router::new().route("/activate/:user_id", get(UserRest::activate));
+    let file_routes = Router::new()
+        .route("/user-avatar/:user_id", get(FileHandler::get_user_avatar))
+        .route("/class-image/:class_id", get(FileHandler::get_class_image))
+        .route(
+            "/class-files/:class_id/:file_id",
+            get(FileHandler::get_class_file),
+        )
+        .route(
+            "/class-files/:class_id/zip",
+            post(FileHandler::get_class_files),
+        );
+
     let app = Router::new()
         .route(
             "/api/v1/graphql",
@@ -117,22 +122,7 @@ pub async fn main() {
         )
         .route_service("/ws", ws::GraphQLSubscription::new(schema, state.clone()))
         .nest("/api/v1/user", user_routes)
-        .route(
-            "/files/user-avatar/:user_id",
-            get(rest::file_handler::get_user_avatar),
-        )
-        .route(
-            "/files/class-image/:class_id",
-            get(rest::file_handler::get_class_image),
-        )
-        .route(
-            "/files/class-files/:class_id/:file_id",
-            get(rest::file_handler::get_class_file),
-        )
-        .route(
-            "/files/class-files/:class_id/zip",
-            post(rest::file_handler::get_class_files),
-        )
+        .nest("/files", file_routes)
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(

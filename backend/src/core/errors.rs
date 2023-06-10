@@ -37,7 +37,7 @@ pub enum InternalError {
     DB(DbErr),
     DBTrans(TransactionError<DbErr>),
     DBArced(Arc<DbErr>),
-    JWT(jsonwebtoken::errors::Error),
+    Jwt(jsonwebtoken::errors::Error),
     Argon2(argon2_async::Error),
     Redis(redis::RedisError),
     Email(lettre::transport::smtp::Error),
@@ -51,7 +51,7 @@ impl std::fmt::Display for InternalError {
             InternalError::DB(err) => write!(f, "Database error: {err}"),
             InternalError::DBTrans(err) => write!(f, "Database error: {err}"),
             InternalError::DBArced(err) => write!(f, "Database error: {err}"),
-            InternalError::JWT(err) => write!(f, "JWT error: {err}"),
+            InternalError::Jwt(err) => write!(f, "Jwt error: {err}"),
             InternalError::Argon2(err) => write!(f, "Argon2 error: {err}"),
             InternalError::Redis(err) => write!(f, "Redis error: {err}"),
             InternalError::Email(err) => write!(f, "Email error: {err}"),
@@ -100,7 +100,7 @@ impl From<TransactionError<DbErr>> for AppError {
 
 impl From<jsonwebtoken::errors::Error> for AppError {
     fn from(inner: jsonwebtoken::errors::Error) -> Self {
-        AppError::InternalError(InternalError::JWT(inner))
+        AppError::InternalError(InternalError::Jwt(inner))
     }
 }
 
@@ -175,7 +175,7 @@ impl std::error::Error for AppError {} // TODO: is this needed?
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            AppError::InternalError(err) => (
+            AppError::InternalError(_err) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".into(),
             ),

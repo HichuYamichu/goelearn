@@ -1,8 +1,4 @@
-use super::repo::user::UserRepoExt;
-use crate::{
-    object::{LoginInput, LoginResult, SignupInput},
-    HOST_URL, MAIL_PASSWORD, MAIL_USERNAME, SECRET,
-};
+use crate::SECRET;
 use async_graphql::{Context, Guard};
 use async_trait::async_trait;
 use axum::{
@@ -12,15 +8,7 @@ use axum::{
     TypedHeader,
 };
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
-use lettre::AsyncSmtpTransport;
-use lettre::AsyncTransport;
-use lettre::{
-    message::header::ContentType, transport::smtp::authentication::Credentials, Message,
-    Tokio1Executor,
-};
-use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use super::AppError;
 
@@ -28,93 +16,6 @@ use super::AppError;
 pub struct Claims {
     pub sub: String,
     pub exp: i64,
-}
-
-pub async fn login_user(
-    creadentials: LoginInput,
-    user_repo: &DatabaseConnection,
-) -> Result<LoginResult, AppError> {
-    let user = user_repo
-        .user_by_username(creadentials.username.clone())
-        .await?;
-
-    let user = match user {
-        Some(user) => user,
-        None => {
-            return Err(AppError::NotFound {
-                what: "User",
-                with: "username",
-                why: creadentials.username,
-            })
-        }
-    };
-
-    if !user.active {
-        return Err(AppError::Auth);
-    }
-
-    if user.deleted_at.is_some() {
-        return Err(AppError::Auth);
-    }
-
-    let is_match = argon2_async::verify(creadentials.password, user.password).await?;
-    if !is_match {
-        return Err(AppError::Auth);
-    }
-
-    let token = jsonwebtoken::encode(
-        &jsonwebtoken::Header::default(),
-        &Claims {
-            sub: user.id.to_string(),
-            exp: (chrono::Utc::now() + chrono::Duration::hours(24)).timestamp(),
-        },
-        &jsonwebtoken::EncodingKey::from_secret(SECRET.as_ref()),
-    )?;
-
-    Ok(LoginResult { token })
-}
-
-pub async fn register_user(
-    mut creadentials: SignupInput,
-    user_repo: &DatabaseConnection,
-    has_avatar: bool,
-) -> Result<Uuid, AppError> {
-    let hash = argon2_async::hash(creadentials.password).await?;
-    creadentials.password = hash;
-    let addr = creadentials.email.clone();
-    let username = creadentials.username.clone();
-    let id = user_repo
-        .create_user(creadentials.into_active_model(has_avatar))
-        .await?;
-
-    let host = HOST_URL.to_string();
-    let body = format!(
-        r#"Hello, {username}! Please, follow the link to activate your account: <a href="{host}/api/v1/user/activate/{id}<a>">{host}/api/v1/user/activate/{id}<a>"#
-    );
-
-    let email = Message::builder()
-        .from(
-            MAIL_USERNAME
-                .parse()
-                .expect("Service username should be valid email"),
-        )
-        .to(addr.parse().expect("User email should be valid email"))
-        .subject("Account activation")
-        .header(ContentType::TEXT_HTML)
-        .body(body)
-        .expect("Email should be valid");
-
-    let creds = Credentials::new(MAIL_USERNAME.to_string(), MAIL_PASSWORD.to_string());
-
-    let mailer: AsyncSmtpTransport<Tokio1Executor> =
-        AsyncSmtpTransport::<Tokio1Executor>::relay("smtp.gmail.com")
-            .expect("Relay should be valid")
-            .credentials(creds)
-            .build();
-
-    mailer.send(email).await?;
-
-    Ok(id)
 }
 
 #[async_trait]
