@@ -13,7 +13,7 @@ pub struct Model {
     pub has_image: bool,
     pub owner_id: Uuid,
     pub public: bool,
-    // #[sea_orm(column_type = "custom(\"tsvector\")", nullable)]
+    pub deleted_at: Option<DateTime>,
     #[sea_orm(ignore)]
     pub search: Option<String>,
 }

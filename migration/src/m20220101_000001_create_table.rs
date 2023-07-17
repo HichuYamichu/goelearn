@@ -65,6 +65,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Class::HasImage).boolean().not_null())
                     .col(ColumnDef::new(Class::OwnerId).uuid().not_null())
                     .col(ColumnDef::new(Class::Public).boolean().not_null())
+                    .col(ColumnDef::new(Class::DeletedAt).timestamp().null())
                     .to_owned(),
             )
             .await?;
@@ -388,6 +389,7 @@ pub enum Class {
     HasImage,
     Public,
     OwnerId,
+    DeletedAt,
 }
 
 #[derive(Iden)]

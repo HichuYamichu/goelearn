@@ -64,9 +64,8 @@ const router = useRouter();
 const links = [
   { text: "Home", target: "/" },
   { text: "My Classes", target: "/classes" },
+  { text: "My Assignments", target: "/assignments" },
   { text: "Explore", target: "/explore" },
-  { text: "Calendar", target: "/calendar" },
-  { text: "Assignments", target: "/assignments" },
 ];
 
 const drawer = ref(false);

@@ -69,19 +69,14 @@ const { result, onResult, subscribeToMore, refetch } = useQuery(
   }),
   () => ({
     enabled: !!selectedChannelId.value,
-    fetchPolicy: "cache-and-network",
   })
 );
 
 const messages = computed(() => result.value?.messages.nodes ?? []);
-watch(messages, () => {
-  nextTick(() => {
-    scroll();
-  });
-});
 
 const messageBox = ref();
 onResult(() => {
+  console.log(result.value);
   nextTick(() => {
     scroll();
   });
@@ -89,7 +84,6 @@ onResult(() => {
 
 const scroll = () => {
   messageBox.value?.scrollToIndex(messages.value.length - 1);
-  console.log(messages.value.length - 1);
 };
 
 const MessageCreatedSubscription = graphql(/* GraphQL */ `
@@ -108,7 +102,6 @@ subscribeToMore(() => ({
   updateQuery: (prev, { subscriptionData }) => {
     if (!subscriptionData.data) return prev;
     const newMessage = subscriptionData.data.messageCreated;
-    console.log({ newMessage });
     return {
       ...prev,
       messages: {

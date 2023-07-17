@@ -27,7 +27,6 @@ impl MessageObject {
     // #[graphql(guard = "LoggedInGuard")]
     #[instrument(skip(self, ctx), err)]
     async fn author(&self, ctx: &Context<'_>) -> Result<UserObject, AppError> {
-        tracing::warn!("author_id: {:?}", self.author_id);
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 
         let author_id = Uuid::parse_str(&self.author_id)?;

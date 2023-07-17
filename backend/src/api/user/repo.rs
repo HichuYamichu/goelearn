@@ -108,7 +108,10 @@ impl UserRepo for DataLoader<DatabaseConnection> {
     }
 
     #[instrument(skip(self), err)]
-    async fn create_user(&self, si: user::ActiveModel) -> Result<Uuid, DbErr> {
+    async fn create_user(&self, mut si: user::ActiveModel) -> Result<Uuid, DbErr> {
+        if cfg!(debug_assertions) {
+            si.active = Set(true);
+        }
         let u = User::insert(si).exec(self.loader()).await?;
         Ok(u.last_insert_id)
     }

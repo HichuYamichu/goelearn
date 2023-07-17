@@ -116,6 +116,11 @@ pub async fn register_user(
     let username = creadentials.username.clone();
     let id = UserRepo::create_user(data_loader, creadentials.into_active_model(has_avatar)).await?;
 
+    // skip email sending in debug mode
+    if cfg!(debug_assertions) {
+        return Ok(id);
+    }
+
     let host = HOST_URL.to_string();
     let body = format!(
         r#"Hello, {username}! Please, follow the link to activate your account: <a href="{host}/api/v1/user/activate/{id}<a>">{host}/api/v1/user/activate/{id}<a>"#

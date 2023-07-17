@@ -1,15 +1,16 @@
 use crate::api::user::UserRepo;
+use crate::core::LoggedInGuard;
 use crate::core::{auth, AppError, UserError};
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 use auth::Claims;
+use redis::AsyncCommands;
+use redis::Client;
 use sea_orm::DatabaseConnection;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::core::LoggedInGuard;
-
-use super::object::CreateClassInput;
+use super::object::{CreateClassInput, UpdateClassInput};
 use super::{ClassObject, ClassRepo};
 
 #[derive(Default)]
@@ -94,6 +95,50 @@ impl ClassMutation {
         }
 
         ClassRepo::join_user_to_class(data_loader, user_id, class_id).await?;
+
+        Ok(true)
+    }
+
+    #[instrument(skip(self, ctx), err)]
+    #[graphql(guard = "LoggedInGuard")]
+    pub async fn delete_class(&self, ctx: &Context<'_>, class_id: ID) -> Result<bool, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let client = ctx.data_unchecked::<Client>();
+        let mut conn = client.get_async_connection().await?;
+
+        let class_id = Uuid::parse_str(class_id.as_str())?;
+        ClassRepo::delete_class(data_loader, class_id).await?;
+        conn.publish(
+            format!("class_deleted:{}", class_id.to_string()),
+            serde_json::to_string(&class_id).expect("ClassID should serialize"),
+        )
+        .await?;
+
+        Ok(true)
+    }
+
+    #[instrument(skip(self, ctx), err)]
+    #[graphql(guard = "LoggedInGuard")]
+    pub async fn update_class(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+        class_input: UpdateClassInput,
+    ) -> Result<bool, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let client = ctx.data_unchecked::<Client>();
+        let mut conn = client.get_async_connection().await?;
+
+        let class_id = Uuid::parse_str(class_id.as_str())?;
+        let update_data = class_input.into_active_model();
+        let updated = ClassRepo::update_class(data_loader, class_id, update_data).await?;
+        let updated = ClassObject::from(updated);
+
+        conn.publish(
+            format!("class_updated:{}", class_id.to_string()),
+            serde_json::to_string(&updated).expect("Class should serialize"),
+        )
+        .await?;
 
         Ok(true)
     }

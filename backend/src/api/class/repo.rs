@@ -2,6 +2,7 @@ use ::entity::{channel, file, membership, membership::Entity as Membership, sea_
 use ::entity::{class, class::Entity as Class};
 use async_graphql::dataloader::{DataLoader, Loader};
 use async_trait::async_trait;
+use chrono::Utc;
 
 use sea_orm::DatabaseConnection;
 use sea_orm::*;
@@ -9,6 +10,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::instrument;
 use uuid::Uuid;
+
+use crate::core::{AppError, UserError};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 struct ClassById(Uuid);
@@ -46,8 +49,12 @@ impl Loader<ClassesByOwnerId> for DatabaseConnection {
         &self,
         keys: &[ClassesByOwnerId],
     ) -> Result<HashMap<ClassesByOwnerId, Self::Value>, Self::Error> {
+        let condition = Condition::all()
+            .add(class::Column::OwnerId.is_in(keys.iter().map(|k| k.0)))
+            .add(class::Column::DeletedAt.is_null());
+
         let classes = Class::find()
-            .filter(class::Column::OwnerId.is_in(keys.iter().map(|k| k.0)))
+            .filter(condition)
             .all(self)
             .await
             .map_err(Arc::new)?;
@@ -75,33 +82,28 @@ impl Loader<ClassesByUserId> for DatabaseConnection {
         &self,
         keys: &[ClassesByUserId],
     ) -> Result<HashMap<ClassesByUserId, Self::Value>, Self::Error> {
-        // TODO: untested / use join
-        let memberships = Membership::find()
-            .filter(membership::Column::UserId.is_in(keys.iter().map(|k| k.0)))
+        let condition = Condition::all()
+            .add(membership::Column::UserId.is_in(keys.iter().map(|k| k.0)))
+            .add(class::Column::DeletedAt.is_null());
+        let classes = Membership::find()
+            .filter(condition)
+            .find_also_related(Class)
             .all(self)
             .await
-            .map_err(Arc::new)?;
-
-        let classes_ids = memberships
-            .iter()
-            .map(|m| m.class_id)
-            .collect::<Vec<Uuid>>();
-
-        let classes = Class::find()
-            .filter(class::Column::Id.is_in(classes_ids.iter().copied()))
-            .all(self)
-            .await
-            .map_err(Arc::new)?;
+            .map_err(Arc::new)?
+            .into_iter()
+            .map(|(m, c)| (m, c.expect("class should be present")))
+            .collect::<Vec<_>>();
 
         let mut res = HashMap::<_, _>::new();
         for key in keys.iter() {
             let e = res.entry(*key).or_insert_with(Vec::new);
-            e.extend(
-                classes
-                    .iter()
-                    .filter(|c| memberships.iter().any(|m| m.class_id == c.id))
-                    .cloned(),
-            );
+            let user_classes = classes
+                .iter()
+                .filter(|(m, _)| m.user_id == key.0)
+                .map(|(_, c)| c.clone())
+                .collect::<Vec<_>>();
+            e.extend(user_classes);
         }
 
         Ok(res)
@@ -122,6 +124,12 @@ pub trait ClassRepo {
         model: class::ActiveModel,
     ) -> Result<class::Model, TransactionError<DbErr>>;
     async fn find_by_id(&self, id: Uuid) -> Result<Option<class::Model>, DbErr>;
+    async fn delete_class(&self, class_id: Uuid) -> Result<(), DbErr>;
+    async fn update_class(
+        &self,
+        class_id: Uuid,
+        model: class::ActiveModel,
+    ) -> Result<class::Model, DbErr>;
 
     async fn find_by_user_id(&self, user_id: Uuid)
         -> Result<Option<Vec<class::Model>>, Arc<DbErr>>;
@@ -187,7 +195,10 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
 
     #[instrument(skip(self), err)]
     async fn find_by_id(&self, id: Uuid) -> Result<Option<class::Model>, DbErr> {
-        let class = Class::find_by_id(id).one(self.loader()).await?;
+        let class = Class::find_by_id(id)
+            .filter(class::Column::DeletedAt.is_null())
+            .one(self.loader())
+            .await?;
         Ok(class)
     }
 
@@ -195,6 +206,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
     async fn find_random(&self, limit: u64) -> Result<Vec<class::Model>, TransactionError<DbErr>> {
         let classes = Class::find()
             .order_by_asc(class::Column::Id)
+            .filter(class::Column::DeletedAt.is_null())
             .limit(Some(limit))
             .all(self.loader())
             .await?;
@@ -212,7 +224,9 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
             user_id: Set(user_id),
             class_id: Set(class_id),
         };
-
+        // TODO: check if user is already a member
+        // TODO: check if class exists
+        // FIXME: User can join deleted classes
         let member = member.insert(self.loader()).await?;
 
         Ok(member)
@@ -230,6 +244,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
                 from "class"
                 where search @@ websearch_to_tsquery('english', $1)
                 or search @@ websearch_to_tsquery('simple', $1)
+                and deleted_at is null
                 order by rank desc;
                 "#,
                 [query.into()],
@@ -256,5 +271,36 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
     ) -> Result<Option<Vec<class::Model>>, Arc<DbErr>> {
         let classes = self.load_one(ClassesByOwnerId(owner_id)).await?;
         Ok(classes)
+    }
+
+    #[instrument(skip(self), err)]
+    async fn delete_class(&self, class_id: Uuid) -> Result<(), DbErr> {
+        let class = Class::find_by_id(class_id).one(self.loader()).await?;
+        if let Some(class) = class {
+            let mut active = class.into_active_model();
+            active.deleted_at = Set(Some(Utc::now().naive_utc()));
+            active.update(self.loader()).await?;
+        }
+        Ok(())
+    }
+
+    #[instrument(skip(self), err)]
+    async fn update_class(
+        &self,
+        class_id: Uuid,
+        model: class::ActiveModel,
+    ) -> Result<class::Model, DbErr> {
+        let class = Class::find_by_id(class_id).one(self.loader()).await?;
+        if let Some(class) = class {
+            let mut active = class.into_active_model();
+            active.name = model.name;
+            active.description = model.description;
+            active.public = model.public;
+            active.tags = model.tags;
+            let updated = active.update(self.loader()).await?;
+            Ok(updated)
+        } else {
+            Err(DbErr::RecordNotFound("class not found".into()))
+        }
     }
 }

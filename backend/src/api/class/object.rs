@@ -6,6 +6,7 @@ use crate::api::file::FileObject;
 use crate::api::file::FileRepo;
 use crate::api::user::UserObject;
 use crate::api::user::UserRepo;
+use crate::core::option_to_active_value;
 use crate::core::AppError;
 use crate::core::LoggedInGuard;
 use async_graphql::Upload;
@@ -13,11 +14,17 @@ use async_graphql::{
     dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, ID,
 };
 use partialdebug::placeholder::PartialDebug;
+use redis::FromRedisValue;
+use redis::RedisResult;
+use redis::RedisWrite;
+use redis::ToRedisArgs;
 use sea_orm::{DatabaseConnection, Set};
+use serde::Deserialize;
+use serde::Serialize;
 use tracing::instrument;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, SimpleObject)]
+#[derive(Clone, Debug, SimpleObject, Serialize, Deserialize)]
 #[graphql(complex)]
 #[graphql(name = "Class")]
 pub struct ClassObject {
@@ -64,7 +71,6 @@ impl ClassObject {
         let files = FileRepo::find_by_class_id(data_loader, class_id)
             .await?
             .expect("Id should be valid");
-
         Ok(files.into_iter().map(FileObject::from).collect())
     }
 
@@ -112,6 +118,39 @@ impl From<::entity::class::Model> for ClassObject {
     }
 }
 
+impl ToRedisArgs for ClassObject {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
+        let vec = vec![
+            self.id.to_string(),
+            self.name.clone(),
+            self.description.clone(),
+            self.owner_id.to_string(),
+            self.public.to_string(),
+            self.tags.clone(),
+            self.has_image.to_string(),
+        ];
+        vec.write_redis_args(out)
+    }
+}
+
+impl FromRedisValue for ClassObject {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        let vec = Vec::<String>::from_redis_value(v)?;
+        Ok(Self {
+            id: ID::from(vec[0].clone()),
+            name: vec[1].clone(),
+            description: vec[2].clone(),
+            owner_id: ID::from(vec[3].clone()),
+            public: vec[4].parse::<bool>().unwrap(),
+            tags: vec[5].clone(),
+            has_image: vec[6].parse::<bool>().unwrap(),
+        })
+    }
+}
+
 #[derive(InputObject, PartialDebug)]
 pub struct CreateClassInput {
     pub name: String,
@@ -135,6 +174,32 @@ impl CreateClassInput {
             public: Set(self.public),
             tags: Set(self.tags),
             has_image: Set(has_image),
+            deleted_at: Set(None),
+        }
+    }
+}
+
+#[derive(PartialDebug, InputObject)]
+pub struct UpdateClassInput {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub public: Option<bool>,
+    pub tags: Option<String>,
+    pub image: Option<Upload>,
+}
+
+use sea_orm::NotSet;
+impl UpdateClassInput {
+    pub fn into_active_model(self) -> ::entity::class::ActiveModel {
+        ::entity::class::ActiveModel {
+            id: NotSet,
+            name: option_to_active_value(self.name),
+            description: option_to_active_value(self.description),
+            owner_id: NotSet,
+            public: option_to_active_value(self.public),
+            tags: option_to_active_value(self.tags),
+            has_image: NotSet,
+            deleted_at: NotSet,
         }
     }
 }
