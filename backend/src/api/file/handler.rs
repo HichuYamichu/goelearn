@@ -38,14 +38,22 @@ impl FileHandler {
                     .header("Content-Type", "image/jpeg")
                     .body(Body::from(object.to_vec()))
                     .unwrap();
-
                 Ok(response)
             }
-            Err(s3::error::S3Error::Http(404, _)) => Err(AppError::NotFound {
-                what: "user avatar",
-                with: "user id",
-                why: user_id.to_string(),
-            }),
+            Err(s3::error::S3Error::Http(404, _)) => {
+                let s3_path = format!("user-avatars/user.png");
+                let object = s3_bucket.get_object(s3_path).await;
+                match object {
+                    Ok(object) => {
+                        let response = Response::builder()
+                            .header("Content-Type", "image/jpeg")
+                            .body(Body::from(object.to_vec()))
+                            .unwrap();
+                        Ok(response)
+                    }
+                    Err(e) => Err(e.into()),
+                }
+            }
             Err(e) => Err(e.into()),
         }
     }
@@ -111,48 +119,66 @@ impl FileHandler {
         State(conn): State<DatabaseConnection>,
         Json(payload): Json<GetClassFilesPayload>,
     ) -> Result<impl IntoResponse, AppError> {
-        // let mut buf = Vec::new();
-        // let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf[..]));
-        // let options =
-        //     zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
         let data_loader = DataLoader::new(conn, tokio::spawn);
-        let files_data = FileRepo::find_many_with_nested(&data_loader, payload.file_ids).await?;
-        tracing::debug!("files_data: {:?}", files_data);
 
-        // let zip_path = "directory_structure.zip";
-        // create_zip_directory_structure(files_data, zip_path);
-
-        Ok("ok")
+        let files = FileRepo::find_many_with_nested(&data_loader, payload.file_ids).await?;
+        let zip_data = create_zip_archive(files, &s3_bucket, &class_id.to_string())
+            .await
+            .unwrap();
+        Ok(axum::body::Bytes::from(zip_data).into_response())
     }
 }
 
-fn create_zip_directory_structure(files: Vec<file::Model>, zip_path: &str) {
-    let mut zip = ZipWriter::new(std::fs::File::create(zip_path).unwrap());
+async fn create_zip_archive(
+    files: Vec<file::Model>,
+    s3_bucket: &s3::Bucket,
+    class_id: &str,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use std::io::Write;
+    let options = FileOptions::default()
+        .compression_method(CompressionMethod::Stored)
+        .unix_permissions(0o755);
 
-    let c = files.clone();
-    for file in files {
-        let file_path = get_file_path(&c, &file);
+    let mut zip_buffer = Vec::new();
+    {
+        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut zip_buffer));
+        for file in &files {
+            let file_path = get_file_path(&files, &file);
 
-        if file.file_type == FileType::Directory {
-            // Create directory entry in the zip archive
-            let options = FileOptions::default()
-                .compression_method(CompressionMethod::Stored)
-                .unix_permissions(0o755); // Set appropriate permissions for directories
+            if file.file_type == FileType::Directory {
+                let options = FileOptions::default()
+                    .compression_method(CompressionMethod::Stored)
+                    .unix_permissions(0o755);
 
-            zip.add_directory(file_path, options)
-                .expect("Failed to add directory to zip archive");
-        } else {
-            // Create file entry in the zip archive
-            let options = FileOptions::default()
-                .compression_method(CompressionMethod::Deflated) // You can choose the desired compression method
-                .unix_permissions(0o644); // Set appropriate permissions for files
+                zip.add_directory(file_path, options)
+                    .expect("Failed to add directory to zip archive");
+            } else {
+                let options = FileOptions::default()
+                    .compression_method(CompressionMethod::Deflated)
+                    .unix_permissions(0o644);
 
-            zip.start_file(file_path, options)
-                .expect("Failed to create file in zip archive");
+                zip.start_file(&file_path, options)
+                    .expect("Failed to create file in zip archive");
+
+                let s3_path = format!("class-files/{class_id}/{file_path}");
+                let object = s3_bucket.get_object(s3_path).await;
+                if let Ok(object) = object {
+                    zip.write_all(&object.to_vec())
+                        .expect("Failed to write file to zip archive");
+                }
+            }
         }
+
+        zip.finish().expect("Failed to finish writing zip archive");
     }
 
-    zip.finish().expect("Failed to finish writing zip archive");
+    Ok(zip_buffer)
+}
+
+fn create_zip_directory_structure(
+    files: Vec<file::Model>,
+    zip: &mut zip::ZipWriter<std::io::Cursor<&mut [u8]>>,
+) {
 }
 
 fn get_file_path(files: &[file::Model], file: &file::Model) -> String {

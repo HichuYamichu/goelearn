@@ -37,6 +37,11 @@ impl FileMutation {
             .map(|f| f.value(ctx))
             .collect::<Result<Vec<_>, _>>()?;
 
+        if files.is_empty() {
+            // TODO: return error
+            return Ok(false);
+        }
+
         let file_models = files
             .iter()
             .map(|file| ::entity::file::ActiveModel {

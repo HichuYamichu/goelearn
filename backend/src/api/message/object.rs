@@ -1,7 +1,7 @@
 use async_graphql::{
     dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, ID,
 };
-use chrono::Utc;
+use chrono::{NaiveDateTime, Utc};
 use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use sea_orm::{DatabaseConnection, Set};
 use serde::{Deserialize, Serialize};
@@ -19,6 +19,7 @@ pub struct MessageObject {
     pub id: ID,
     pub content: String,
     pub author_id: ID,
+    pub created_at: NaiveDateTime,
 }
 
 #[ComplexObject]
@@ -44,6 +45,7 @@ impl From<::entity::message::Model> for MessageObject {
             id: ID::from(c.id),
             content: c.content,
             author_id: ID::from(c.author_id),
+            created_at: c.created_at,
         }
     }
 }
@@ -53,7 +55,13 @@ impl ToRedisArgs for MessageObject {
     where
         W: ?Sized + RedisWrite,
     {
-        let vec = vec![self.id.as_str(), &self.content, self.author_id.as_str()];
+        let timestamp = self.created_at.to_string();
+        let vec = vec![
+            self.id.as_str(),
+            &self.content,
+            self.author_id.as_str(),
+            &timestamp,
+        ];
         vec.write_redis_args(out);
     }
 }
@@ -65,6 +73,7 @@ impl FromRedisValue for MessageObject {
             id: ID::from(vec[0].clone()),
             content: vec[1].clone(),
             author_id: ID::from(vec[2].clone()),
+            created_at: NaiveDateTime::parse_from_str(&vec[3], "%Y-%m-%d %H:%M:%S%.f").unwrap(),
         })
     }
 }

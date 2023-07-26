@@ -5,6 +5,7 @@ use ::entity::{
 use async_graphql::dataloader::{DataLoader, Loader};
 use async_trait::async_trait;
 
+use migration::ArrayType;
 use sea_orm::DatabaseConnection;
 use sea_orm::*;
 use std::collections::HashMap;
@@ -123,8 +124,13 @@ impl FileRepo for DataLoader<DatabaseConnection> {
     }
 
     #[instrument(skip(self), err)]
-    async fn find_many_with_nested(&self, file_ids: Vec<Uuid>) -> Result<Vec<file::Model>, DbErr> {
-        let ids = file_ids.into_iter().map(|id| id.into()).collect::<Vec<_>>();
+    async fn find_many_with_nested(&self, ids: Vec<Uuid>) -> Result<Vec<file::Model>, DbErr> {
+        let tuple = Value::Array(
+            ArrayType::Uuid,
+            Some(Box::new(
+                ids.into_iter().map(|id| id.into()).collect::<Vec<_>>(),
+            )),
+        );
 
         let files = File::find()
             .from_raw_sql(Statement::from_sql_and_values(
@@ -133,7 +139,7 @@ impl FileRepo for DataLoader<DatabaseConnection> {
                 WITH RECURSIVE file_hierarchy AS (
                     SELECT "id", "name", "public", CAST(file_type AS TEXT), parent_id, message_id, class_id
                     FROM public.file
-                    WHERE id IN ($1)
+                    WHERE id = ANY($1::uuid[])
     
                     UNION ALL
     
@@ -144,10 +150,12 @@ impl FileRepo for DataLoader<DatabaseConnection> {
                 SELECT *
                 FROM file_hierarchy;
             "#,
-                ids,
+            [tuple],
             ))
             .all(self.loader())
             .await?;
+
+        dbg!(&files);
 
         Ok(files)
     }

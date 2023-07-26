@@ -1,6 +1,10 @@
 <template>
-  <v-card class="d-flex flex-column flex-grow-1 h">
-    <v-virtual-scroll :items="messages" ref="messageBox">
+  <v-card class="d-flex flex-column h">
+    <v-virtual-scroll
+      :items="messages"
+      ref="messageBox"
+      v-on:scroll.native="handleScroll"
+    >
       <template v-slot:default="{ item }">
         <v-list-item
           class="py-2"
@@ -11,11 +15,19 @@
             v-text="item.author.username"
           ></v-list-item-title>
           {{ item.content }}
+          <template v-slot:append>
+            <v-list-item-subtitle
+              class="font-weight-light"
+              v-text="new Date(item.createdAt).toLocaleString()"
+            ></v-list-item-subtitle>
+          </template>
         </v-list-item>
       </template>
     </v-virtual-scroll>
   </v-card>
-  <v-text-field
+  <v-textarea
+    rows="1"
+    no-resize
     v-model="msg"
     append-innerdasda-icon="mdi-send"
     variant="outlined"
@@ -26,7 +38,7 @@
     hide-details="auto"
     @click:append="sendMsg"
     @keyup.enter.native="sendMsg"
-  ></v-text-field>
+  ></v-textarea>
 </template>
 
 <script lang="ts" setup>
@@ -38,12 +50,57 @@ const props = defineProps<{
   selectedChannelId?: string | null;
 }>();
 
+const MeQuery = graphql(/* GraphQL */ `
+  query MessageListMeQuery {
+    me {
+      id
+    }
+  }
+`);
+
+const { result: meResult } = useQuery(MeQuery);
+
+const id = computed(() => meResult.value?.me.id ?? "");
+
+const handleScroll = (e: Event) => {
+  const target = e.target as HTMLDivElement;
+  if (target.scrollTop === 0) {
+    fetchMore({
+      variables: {
+        channelId: selectedChannelId.value!,
+        before: edges.value[0].cursor,
+        last: 15,
+      },
+      updateQuery: (prev, { fetchMoreResult }) => {
+        if (!fetchMoreResult) {
+          return prev;
+        }
+
+        const newEdges = fetchMoreResult.messages.edges;
+        const newNodes = fetchMoreResult.messages.nodes;
+        const pageInfo = fetchMoreResult.messages.pageInfo;
+
+        return {
+          ...prev,
+          messages: {
+            ...prev.messages,
+            nodes: [...newNodes, ...prev.messages.nodes],
+            edges: [...newEdges, ...prev.messages.edges],
+            pageInfo,
+          },
+        };
+      },
+    });
+  }
+};
+
 const selectedChannelId = toRef(props, "selectedChannelId");
 
 const MessageFragment = graphql(/* GraphQL */ `
   fragment MessageFragment on Message {
     id
     content
+    createdAt
     author {
       id
       username
@@ -52,20 +109,41 @@ const MessageFragment = graphql(/* GraphQL */ `
 `);
 
 const MessagesQuery = graphql(/* GraphQL */ `
-  query MessagesQuery($classId: ID!, $channelId: ID!) {
-    messages(classId: $classId, channelId: $channelId) {
+  query MessagesQuery(
+    $classId: ID!
+    $channelId: ID!
+    $before: String
+    $last: Int
+  ) {
+    messages(
+      classId: $classId
+      channelId: $channelId
+      before: $before
+      last: $last
+    ) {
       nodes {
         ...MessageFragment
+      }
+      edges {
+        cursor
+        node {
+          ...MessageFragment
+        }
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
       }
     }
   }
 `);
 
-const { result, onResult, subscribeToMore, refetch } = useQuery(
+const { result, onResult, subscribeToMore, refetch, fetchMore } = useQuery(
   MessagesQuery,
   () => ({
     channelId: selectedChannelId.value!,
     classId: "",
+    last: 15,
   }),
   () => ({
     enabled: !!selectedChannelId.value,
@@ -73,17 +151,53 @@ const { result, onResult, subscribeToMore, refetch } = useQuery(
 );
 
 const messages = computed(() => result.value?.messages.nodes ?? []);
+const edges = computed(() => result.value?.messages.edges ?? []);
 
 const messageBox = ref();
-onResult(() => {
-  console.log(result.value);
-  nextTick(() => {
-    scroll();
-  });
+let isFirstLoad = true;
+
+watch(messages, (newMessages, oldMessages) => {
+  const newMessageAdded = newMessages.length > oldMessages.length;
+  const newestMessage = newMessages[newMessages.length - 1];
+  //@ts-ignore graphql-codegen is trash
+  const isMyMessage = newestMessage.author.id === id.value;
+  const wasAtBottom =
+    messageBox.value?.$el.scrollHeight -
+      messageBox.value?.$el.scrollTop -
+      messageBox.value?.$el.clientHeight <
+    10;
+  const wasAtTop = messageBox.value?.$el.scrollTop < 10;
+
+  if (isFirstLoad && newMessageAdded) {
+    isFirstLoad = false;
+    nextTick(() => {
+      messageBox.value?.$el.scrollTo(
+        0,
+        messageBox.value?.$el.scrollHeight + 100
+      );
+    });
+    return;
+  }
+
+  if (!wasAtTop && newMessageAdded && (isMyMessage || wasAtBottom)) {
+    nextTick(() => {
+      scrollDown();
+    });
+  }
+
+  if (wasAtTop && newMessageAdded) {
+    nextTick(() => {
+      scrollMiddle();
+    });
+  }
 });
 
-const scroll = () => {
+const scrollDown = () => {
   messageBox.value?.scrollToIndex(messages.value.length - 1);
+};
+
+const scrollMiddle = () => {
+  messageBox.value?.scrollToIndex(13);
 };
 
 const MessageCreatedSubscription = graphql(/* GraphQL */ `
@@ -135,6 +249,7 @@ const sendMsg = () => {
 
 <style scoped>
 .h {
-  height: calc(100vh - 170px);
+  height: calc(100vh - 174px) !important;
+  width: 100%;
 }
 </style>

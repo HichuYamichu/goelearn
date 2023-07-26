@@ -15,6 +15,7 @@ async-graphql-axum = "5.0.6"
 axum = { version = "0.6.8", features = ["headers", "macros"] }
 sea-orm = { version = "^0", features = [
   "sqlx-postgres",
+  "postgres-array",
   "runtime-tokio-native-tls",
   "macros",
 ] }

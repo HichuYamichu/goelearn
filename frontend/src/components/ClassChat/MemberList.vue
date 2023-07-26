@@ -7,6 +7,7 @@
       :key="user.id"
       :title="user.username"
       link
+      :prependAvatar="`http://localhost:3000/files/user-avatar/${user.id}`"
     >
     </v-list-item>
   </v-list>

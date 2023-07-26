@@ -2,12 +2,12 @@ use ::entity::{message, message::Entity as Message};
 use async_graphql::dataloader::DataLoader;
 use async_trait::async_trait;
 
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveDateTime};
 
 use sea_orm::DatabaseConnection;
 use sea_orm::*;
 
-use tracing::instrument;
+use tracing::{info, instrument};
 use uuid::Uuid;
 
 #[async_trait]
@@ -17,10 +17,8 @@ pub trait MessageRepo {
     async fn load_messages(
         &self,
         channel_id: Uuid,
-        after: Option<NaiveDate>,
-        before: Option<NaiveDate>,
-        first: usize,
-        _last: usize,
+        start: NaiveDateTime,
+        end: NaiveDateTime,
     ) -> Result<Vec<message::Model>, DbErr>;
 }
 
@@ -36,22 +34,25 @@ impl MessageRepo for DataLoader<DatabaseConnection> {
     async fn load_messages(
         &self,
         channel_id: Uuid,
-        after: Option<NaiveDate>,
-        before: Option<NaiveDate>,
-        first: usize,
-        _last: usize,
+        start: NaiveDateTime,
+        end: NaiveDateTime,
     ) -> Result<Vec<message::Model>, DbErr> {
+        info!(
+            "Loading messages for channel {} start {} end {}",
+            channel_id, start, end
+        );
         let condition = Condition::all()
             .add(message::Column::ChannelId.eq(channel_id))
-            .add_option(after.map(|after| message::Column::CreatedAt.gt(after)))
-            .add_option(before.map(|before| message::Column::CreatedAt.lt(before)));
+            .add(message::Column::CreatedAt.gt(start))
+            .add(message::Column::CreatedAt.lte(end));
 
         let messages = Message::find()
             .filter(condition)
-            .order_by(message::Column::CreatedAt, Order::Desc)
-            .limit(first as u64)
+            .order_by(message::Column::CreatedAt, Order::Asc)
             .all(self.loader())
             .await?;
+
+        info!("Loaded {} messages", messages.len());
 
         Ok(messages)
     }

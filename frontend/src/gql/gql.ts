@@ -20,8 +20,9 @@ const documents = {
     "\n  fragment ChannelsFragment on Channel {\n    id\n    name\n  }\n": types.ChannelsFragmentFragmentDoc,
     "\n  fragment ChatFragment on Class {\n    description\n    channels {\n      id\n      ...ChannelsFragment\n    }\n    members {\n      ...MembersFragment\n    }\n  }\n": types.ChatFragmentFragmentDoc,
     "\n  fragment MembersFragment on User {\n    id\n    username\n  }\n": types.MembersFragmentFragmentDoc,
-    "\n  fragment MessageFragment on Message {\n    id\n    content\n    author {\n      id\n      username\n    }\n  }\n": types.MessageFragmentFragmentDoc,
-    "\n  query MessagesQuery($classId: ID!, $channelId: ID!) {\n    messages(classId: $classId, channelId: $channelId) {\n      nodes {\n        ...MessageFragment\n      }\n    }\n  }\n": types.MessagesQueryDocument,
+    "\n  query MessageListMeQuery {\n    me {\n      id\n    }\n  }\n": types.MessageListMeQueryDocument,
+    "\n  fragment MessageFragment on Message {\n    id\n    content\n    createdAt\n    author {\n      id\n      username\n    }\n  }\n": types.MessageFragmentFragmentDoc,
+    "\n  query MessagesQuery(\n    $classId: ID!\n    $channelId: ID!\n    $before: String\n    $last: Int\n  ) {\n    messages(\n      classId: $classId\n      channelId: $channelId\n      before: $before\n      last: $last\n    ) {\n      nodes {\n        ...MessageFragment\n      }\n      edges {\n        cursor\n        node {\n          ...MessageFragment\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n      }\n    }\n  }\n": types.MessagesQueryDocument,
     "\n  subscription MessagesSubscription($channelId: ID!) {\n    messageCreated(channelId: $channelId) {\n      ...MessageFragment\n    }\n  }\n": types.MessagesSubscriptionDocument,
     "\n  mutation SendMessage($channelId: ID!, $content: String!) {\n    createMessage(input: { channelId: $channelId, content: $content }) {\n      id\n      content\n    }\n  }\n": types.SendMessageDocument,
     "\n  fragment FilesFragment on Class {\n    id\n    ownerId\n    files {\n      id\n      name\n      fileType\n      parent\n    }\n  }\n": types.FilesFragmentFragmentDoc,
@@ -84,11 +85,15 @@ export function graphql(source: "\n  fragment MembersFragment on User {\n    id\
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  fragment MessageFragment on Message {\n    id\n    content\n    author {\n      id\n      username\n    }\n  }\n"): (typeof documents)["\n  fragment MessageFragment on Message {\n    id\n    content\n    author {\n      id\n      username\n    }\n  }\n"];
+export function graphql(source: "\n  query MessageListMeQuery {\n    me {\n      id\n    }\n  }\n"): (typeof documents)["\n  query MessageListMeQuery {\n    me {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query MessagesQuery($classId: ID!, $channelId: ID!) {\n    messages(classId: $classId, channelId: $channelId) {\n      nodes {\n        ...MessageFragment\n      }\n    }\n  }\n"): (typeof documents)["\n  query MessagesQuery($classId: ID!, $channelId: ID!) {\n    messages(classId: $classId, channelId: $channelId) {\n      nodes {\n        ...MessageFragment\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  fragment MessageFragment on Message {\n    id\n    content\n    createdAt\n    author {\n      id\n      username\n    }\n  }\n"): (typeof documents)["\n  fragment MessageFragment on Message {\n    id\n    content\n    createdAt\n    author {\n      id\n      username\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MessagesQuery(\n    $classId: ID!\n    $channelId: ID!\n    $before: String\n    $last: Int\n  ) {\n    messages(\n      classId: $classId\n      channelId: $channelId\n      before: $before\n      last: $last\n    ) {\n      nodes {\n        ...MessageFragment\n      }\n      edges {\n        cursor\n        node {\n          ...MessageFragment\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n      }\n    }\n  }\n"): (typeof documents)["\n  query MessagesQuery(\n    $classId: ID!\n    $channelId: ID!\n    $before: String\n    $last: Int\n  ) {\n    messages(\n      classId: $classId\n      channelId: $channelId\n      before: $before\n      last: $last\n    ) {\n      nodes {\n        ...MessageFragment\n      }\n      edges {\n        cursor\n        node {\n          ...MessageFragment\n        }\n      }\n      pageInfo {\n        hasNextPage\n        hasPreviousPage\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
