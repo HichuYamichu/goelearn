@@ -1,5 +1,7 @@
 pub mod auth;
 pub mod errors;
+pub mod errors2;
+// pub use errors2 as errors;
 
 pub use auth::*;
 pub use errors::*;
