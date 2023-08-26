@@ -28,7 +28,7 @@ pub struct UserObject {
 
 #[ComplexObject]
 impl UserObject {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn clesses(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
@@ -41,7 +41,7 @@ impl UserObject {
         Ok(classes.into_iter().map(|c| c.into()).collect())
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn owned_classes(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();

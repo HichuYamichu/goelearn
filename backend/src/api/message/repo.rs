@@ -24,13 +24,13 @@ pub trait MessageRepo {
 
 #[async_trait]
 impl MessageRepo for DataLoader<DatabaseConnection> {
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn create_message(&self, model: message::ActiveModel) -> Result<message::Model, DbErr> {
         let msg = model.insert(self.loader()).await?;
         Ok(msg)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load_messages(
         &self,
         channel_id: Uuid,

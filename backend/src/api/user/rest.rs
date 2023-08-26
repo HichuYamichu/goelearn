@@ -11,7 +11,7 @@ use super::UserRepo;
 pub struct UserRest;
 
 impl UserRest {
-    #[instrument(err, skip(conn))]
+    #[instrument(skip(conn), err(Debug))]
     pub async fn activate(
         Path(user_id): Path<Uuid>,
         State(conn): State<DatabaseConnection>,

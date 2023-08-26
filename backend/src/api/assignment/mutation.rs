@@ -1,5 +1,6 @@
 use crate::core::AppError;
 use crate::core::LoggedInGuard;
+use async_graphql::ResultExt;
 use async_graphql::{dataloader::DataLoader, Context, Object};
 use sea_orm::DatabaseConnection;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
@@ -13,13 +14,13 @@ pub struct AssignmentMutation;
 
 #[Object]
 impl AssignmentMutation {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn create_assignment(
         &self,
         ctx: &Context<'_>,
         input: CreateAssignmentInput,
-    ) -> Result<AssignmentObject, AppError> {
+    ) -> Result<AssignmentObject, async_graphql::Error> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
 
@@ -52,7 +53,7 @@ impl AssignmentMutation {
         Ok(assignment.into())
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn submit_assignment(
         &self,

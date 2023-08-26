@@ -21,7 +21,7 @@ impl Loader<ClassById> for DatabaseConnection {
     type Value = class::Model;
     type Error = Arc<DbErr>;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load(
         &self,
         keys: &[ClassById],
@@ -44,7 +44,7 @@ impl Loader<ClassesByOwnerId> for DatabaseConnection {
     type Value = Vec<class::Model>;
     type Error = Arc<DbErr>;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load(
         &self,
         keys: &[ClassesByOwnerId],
@@ -77,7 +77,7 @@ impl Loader<ClassesByUserId> for DatabaseConnection {
     type Value = Vec<class::Model>;
     type Error = Arc<DbErr>;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load(
         &self,
         keys: &[ClassesByUserId],
@@ -141,7 +141,7 @@ pub trait ClassRepo {
 
 #[async_trait]
 impl ClassRepo for DataLoader<DatabaseConnection> {
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn create_class(
         &self,
         model: class::ActiveModel,
@@ -193,7 +193,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         Ok(class)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_id(&self, id: Uuid) -> Result<Option<class::Model>, DbErr> {
         let class = Class::find_by_id(id)
             .filter(class::Column::DeletedAt.is_null())
@@ -202,7 +202,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         Ok(class)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_random(&self, limit: u64) -> Result<Vec<class::Model>, TransactionError<DbErr>> {
         let classes = Class::find()
             .order_by_asc(class::Column::Id)
@@ -214,7 +214,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         Ok(classes)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn join_user_to_class(
         &self,
         user_id: Uuid,
@@ -232,7 +232,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         Ok(member)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_query(&self, query: String) -> Result<Vec<class::Model>, DbErr> {
         let classes = Class::find()
             .from_raw_sql(Statement::from_sql_and_values(
@@ -255,7 +255,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         Ok(classes)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_user_id(
         &self,
         user_id: Uuid,
@@ -264,7 +264,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         Ok(classes)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_owner_id(
         &self,
         owner_id: Uuid,
@@ -273,7 +273,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         Ok(classes)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn delete_class(&self, class_id: Uuid) -> Result<(), DbErr> {
         let class = Class::find_by_id(class_id).one(self.loader()).await?;
         if let Some(class) = class {
@@ -284,7 +284,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         Ok(())
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn update_class(
         &self,
         class_id: Uuid,

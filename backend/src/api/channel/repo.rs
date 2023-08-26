@@ -18,7 +18,7 @@ impl Loader<ChannelsByClassId> for DatabaseConnection {
     type Value = Vec<channel::Model>;
     type Error = Arc<DbErr>;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load(
         &self,
         keys: &[ChannelsByClassId],
@@ -50,12 +50,12 @@ pub trait ChannelRepo {
 
 #[async_trait]
 impl ChannelRepo for DataLoader<DatabaseConnection> {
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn create_channel(&self, model: channel::ActiveModel) -> Result<channel::Model, DbErr> {
         model.insert(self.loader()).await
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_class_id(
         &self,
         class_id: Uuid,

@@ -39,7 +39,7 @@ pub struct ClassObject {
 
 #[ComplexObject]
 impl ClassObject {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn channels(&self, ctx: &Context<'_>) -> Result<Vec<ChannelObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
@@ -50,7 +50,7 @@ impl ClassObject {
         Ok(channels.into_iter().map(ChannelObject::from).collect())
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn members(&self, ctx: &Context<'_>) -> Result<Vec<UserObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
@@ -62,7 +62,7 @@ impl ClassObject {
         Ok(users.into_iter().map(UserObject::from).collect())
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn files(&self, ctx: &Context<'_>) -> Result<Vec<FileObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
@@ -74,7 +74,7 @@ impl ClassObject {
         Ok(files.into_iter().map(FileObject::from).collect())
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn owner(&self, ctx: &Context<'_>) -> Result<UserObject, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
@@ -87,7 +87,7 @@ impl ClassObject {
         Ok(UserObject::from(user))
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn assignments(&self, ctx: &Context<'_>) -> Result<Vec<AssignmentObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();

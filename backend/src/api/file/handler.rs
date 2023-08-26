@@ -25,7 +25,7 @@ pub struct GetClassFilesPayload {
 }
 
 impl FileHandler {
-    #[instrument(err, skip(s3_bucket))]
+    #[instrument(skip(s3_bucket), err(Debug))]
     pub async fn get_user_avatar(
         Path(user_id): Path<Uuid>,
         State(s3_bucket): State<s3::Bucket>,
@@ -58,7 +58,7 @@ impl FileHandler {
         }
     }
 
-    #[instrument(err, skip(s3_bucket))]
+    #[instrument(skip(s3_bucket), err(Debug))]
     pub async fn get_class_image(
         Path(class_id): Path<Uuid>,
         State(s3_bucket): State<s3::Bucket>,
@@ -74,16 +74,17 @@ impl FileHandler {
 
                 Ok(response)
             }
-            Err(s3::error::S3Error::Http(404, _)) => Err(AppError::NotFound {
-                what: "class image",
-                with: "class id",
-                why: class_id.to_string(),
-            }),
+            Err(s3::error::S3Error::Http(404, _)) => Err(AppError::not_found(
+                "Class image not found".into(),
+                "class image",
+                "id",
+                class_id.to_string(),
+            )),
             Err(e) => Err(e.into()),
         }
     }
 
-    #[instrument(err, skip(s3_bucket))]
+    #[instrument(skip(s3_bucket), err(Debug))]
     pub async fn get_class_file(
         Path((class_id, file_id)): Path<(Uuid, Uuid)>,
         State(s3_bucket): State<s3::Bucket>,
@@ -103,16 +104,17 @@ impl FileHandler {
 
                 Ok(response)
             }
-            Err(s3::error::S3Error::Http(404, _)) => Err(AppError::NotFound {
-                what: "class file",
-                with: "class_id",
-                why: class_id.to_string(),
-            }),
+            Err(s3::error::S3Error::Http(404, _)) => Err(AppError::not_found(
+                "Class file not found".into(),
+                "class file",
+                "id",
+                class_id.to_string(),
+            )),
             Err(e) => Err(e.into()),
         }
     }
 
-    #[instrument(err, skip(s3_bucket, conn))]
+    #[instrument(skip(s3_bucket, conn), err(Debug))]
     pub async fn get_class_files(
         Path(class_id): Path<Uuid>,
         State(s3_bucket): State<s3::Bucket>,

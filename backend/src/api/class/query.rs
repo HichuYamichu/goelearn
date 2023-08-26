@@ -12,7 +12,7 @@ pub struct ClassQuery;
 
 #[Object]
 impl ClassQuery {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn class_by_id(
         &self,
@@ -26,7 +26,7 @@ impl ClassQuery {
         Ok(c.map(|c| c.into()))
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn random_classes(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
@@ -35,7 +35,7 @@ impl ClassQuery {
         Ok(c.into_iter().map(|c| c.into()).collect())
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     async fn classes_by_search(
         &self,

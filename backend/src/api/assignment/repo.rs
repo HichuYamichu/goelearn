@@ -21,7 +21,7 @@ impl Loader<AssignmentsByClassId> for DatabaseConnection {
     type Value = Vec<assignment::Model>;
     type Error = Arc<DbErr>;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load(
         &self,
         keys: &[AssignmentsByClassId],
@@ -58,7 +58,7 @@ pub trait AssignmentRepo {
 
 #[async_trait]
 impl AssignmentRepo for DataLoader<DatabaseConnection> {
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn create_assignment(
         &self,
         model: assignment::ActiveModel,
@@ -122,7 +122,7 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
         Ok((assignment, file_ids))
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_class_id(
         &self,
         class_id: Uuid,

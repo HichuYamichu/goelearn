@@ -22,7 +22,7 @@ pub struct AssignmentObject {
 
 #[ComplexObject]
 impl AssignmentObject {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     async fn files<'ctx>(&self, ctx: &'ctx Context<'_>) -> Result<Vec<FileObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 

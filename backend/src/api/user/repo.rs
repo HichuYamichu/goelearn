@@ -18,7 +18,7 @@ impl Loader<UsersByClassId> for DatabaseConnection {
     type Value = Vec<user::Model>;
     type Error = Arc<DbErr>;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load(
         &self,
         keys: &[UsersByClassId],
@@ -53,7 +53,7 @@ impl Loader<UserByAuthorId> for DatabaseConnection {
     type Value = user::Model;
     type Error = Arc<DbErr>;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load(
         &self,
         keys: &[UserByAuthorId],
@@ -88,7 +88,7 @@ pub trait UserRepo {
 
 #[async_trait]
 impl UserRepo for DataLoader<DatabaseConnection> {
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_username(&self, username: String) -> Result<Option<user::Model>, DbErr> {
         let user = User::find()
             .filter(user::Column::Username.eq(username))
@@ -98,7 +98,7 @@ impl UserRepo for DataLoader<DatabaseConnection> {
         Ok(user)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_id(&self, id: Uuid) -> Result<Option<user::Model>, DbErr> {
         let user = User::find()
             .filter(user::Column::Id.eq(id))
@@ -107,7 +107,7 @@ impl UserRepo for DataLoader<DatabaseConnection> {
         Ok(user)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn create_user(&self, mut si: user::ActiveModel) -> Result<Uuid, DbErr> {
         if cfg!(debug_assertions) {
             si.active = Set(true);
@@ -116,7 +116,7 @@ impl UserRepo for DataLoader<DatabaseConnection> {
         Ok(u.last_insert_id)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn activate_user(&self, id: Uuid) -> Result<(), DbErr> {
         User::update(user::ActiveModel {
             id: Set(id),
@@ -129,7 +129,7 @@ impl UserRepo for DataLoader<DatabaseConnection> {
         Ok(())
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_class_id(
         &self,
         class_id: Uuid,

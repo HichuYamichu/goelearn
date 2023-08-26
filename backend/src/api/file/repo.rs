@@ -21,7 +21,7 @@ impl Loader<FilesByClassId> for DatabaseConnection {
     type Value = Vec<file::Model>;
     type Error = Arc<DbErr>;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load(
         &self,
         keys: &[FilesByClassId],
@@ -50,7 +50,7 @@ impl Loader<FilesByAssignmentId> for DatabaseConnection {
     type Value = Vec<file::Model>;
     type Error = Arc<DbErr>;
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn load(
         &self,
         keys: &[FilesByAssignmentId],
@@ -103,19 +103,19 @@ pub trait FileRepo {
 
 #[async_trait]
 impl FileRepo for DataLoader<DatabaseConnection> {
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn save_file(&self, model: file::ActiveModel) -> Result<file::Model, DbErr> {
         model.insert(self.loader()).await
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn save_files(&self, models: Vec<file::ActiveModel>) -> Result<(), DbErr> {
         File::insert_many(models).exec(self.loader()).await?;
 
         Ok(())
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_many(&self, file_ids: Vec<Uuid>) -> Result<Vec<file::Model>, DbErr> {
         File::find()
             .filter(file::Column::Id.is_in(file_ids))
@@ -123,7 +123,7 @@ impl FileRepo for DataLoader<DatabaseConnection> {
             .await
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_many_with_nested(&self, ids: Vec<Uuid>) -> Result<Vec<file::Model>, DbErr> {
         let tuple = Value::Array(
             ArrayType::Uuid,
@@ -160,7 +160,7 @@ impl FileRepo for DataLoader<DatabaseConnection> {
         Ok(files)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn delete_many_with_nested(&self, file_ids: Vec<Uuid>) -> Result<(), DbErr> {
         let ids = file_ids.into_iter().map(|id| id.into()).collect::<Vec<_>>();
 
@@ -187,12 +187,12 @@ impl FileRepo for DataLoader<DatabaseConnection> {
         Ok(())
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn update_file(&self, model: file::ActiveModel) -> Result<file::Model, DbErr> {
         model.update(self.loader()).await
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_class_id(
         &self,
         class_id: Uuid,
@@ -201,7 +201,7 @@ impl FileRepo for DataLoader<DatabaseConnection> {
         Ok(files)
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self), err(Debug))]
     async fn find_by_assignment_id(
         &self,
         assignment_id: Uuid,

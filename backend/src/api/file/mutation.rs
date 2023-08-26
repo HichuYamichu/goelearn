@@ -19,7 +19,7 @@ pub struct FileMutation;
 
 #[Object]
 impl FileMutation {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn upload_files(
         &self,
@@ -81,7 +81,7 @@ impl FileMutation {
         Ok(true)
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn create_direcotry(
         &self,
@@ -95,7 +95,7 @@ impl FileMutation {
         Ok(file_model.into())
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn delete_files(
         &self,
@@ -125,7 +125,7 @@ impl FileMutation {
         Ok(true)
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn update_file(
         &self,

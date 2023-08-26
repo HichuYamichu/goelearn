@@ -16,7 +16,7 @@ pub struct MessageMutation;
 
 #[Object]
 impl MessageMutation {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn create_message(
         &self,

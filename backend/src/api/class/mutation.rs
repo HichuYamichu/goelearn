@@ -18,7 +18,7 @@ pub struct ClassMutation;
 
 #[Object]
 impl ClassMutation {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn create_class(
         &self,
@@ -38,10 +38,13 @@ impl ClassMutation {
             let image = image.value(ctx)?;
             if image.content_type.is_none() || image.content_type.as_ref().unwrap() != "image/jpeg"
             {
-                return Err(AppError::UserError(UserError::BadInput {
-                    simple: "image must be a jpeg image",
-                    detailed: "image must be a jpeg image".into(),
-                }));
+                return Err(AppError::user(
+                    "Image must be a jpeg",
+                    UserError::BadInput {
+                        parameter: "image",
+                        given_value: "non jpeg image".into(),
+                    },
+                ));
             }
 
             let s3_path = format!("class-images/{}", class_id.as_ref_uuid().unwrap());
@@ -55,7 +58,7 @@ impl ClassMutation {
         Ok(class.into())
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn join_class(&self, ctx: &Context<'_>, class_id: ID) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
@@ -68,19 +71,23 @@ impl ClassMutation {
         let class = match class {
             Some(class) => class,
             None => {
-                return Err(AppError::NotFound {
-                    what: "class",
-                    with: "id",
-                    why: class_id.to_string(),
-                })
+                return Err(AppError::not_found(
+                    "Class not found".into(),
+                    "class",
+                    "id",
+                    class_id.to_string(),
+                ))
             }
         };
 
         if !class.public {
-            return Err(AppError::UserError(crate::core::UserError::BadInput {
-                simple: "class is private",
-                detailed: "class is private".into(),
-            }));
+            return Err(AppError::user(
+                "You cannot join private class without explicit invite",
+                UserError::BadInput {
+                    parameter: "class_id",
+                    given_value: class_id.to_string(),
+                },
+            ));
         }
 
         let members = UserRepo::find_by_class_id(data_loader, class_id)
@@ -88,10 +95,13 @@ impl ClassMutation {
             .expect("class id is valid");
 
         if members.iter().any(|m| m.id == user_id) {
-            return Err(AppError::UserError(crate::core::UserError::BadInput {
-                simple: "already joined",
-                detailed: "already joined".into(),
-            }));
+            return Err(AppError::user(
+                "You cannot join class your're already member of",
+                UserError::BadInput {
+                    parameter: "class_id",
+                    given_value: class_id.to_string(),
+                },
+            ));
         }
 
         ClassRepo::join_user_to_class(data_loader, user_id, class_id).await?;
@@ -99,7 +109,7 @@ impl ClassMutation {
         Ok(true)
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn delete_class(&self, ctx: &Context<'_>, class_id: ID) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
@@ -117,7 +127,7 @@ impl ClassMutation {
         Ok(true)
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
     pub async fn update_class(
         &self,

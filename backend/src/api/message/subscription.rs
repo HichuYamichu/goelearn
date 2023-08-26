@@ -11,7 +11,7 @@ pub struct MessageSubscription;
 
 #[Subscription]
 impl MessageSubscription {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     async fn message_created(
         &self,
         ctx: &Context<'_>,

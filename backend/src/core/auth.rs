@@ -29,7 +29,7 @@ where
         let TypedHeader(Authorization(bearer)) =
             TypedHeader::<Authorization<Bearer>>::from_request_parts(req, state)
                 .await
-                .map_err(|_| AppError::Auth)?;
+                .map_err(|_| AppError::auth("Malformed JWT"))?;
 
         let validation = Validation::new(Algorithm::HS256);
         let token_data = decode::<Claims>(
@@ -37,7 +37,7 @@ where
             &DecodingKey::from_secret(SECRET.as_ref()),
             &validation,
         )
-        .map_err(|_| AppError::Auth)?;
+        .map_err(|_| AppError::auth("Malformed JWT"))?;
 
         Ok(token_data.claims)
     }
@@ -52,7 +52,7 @@ impl Guard for LoggedInGuard {
 
         match claims {
             Some(_) => Ok(()),
-            None => Err(AppError::Auth.into()),
+            None => Err(AppError::auth("Missing JWT claims").into()),
         }
     }
 }

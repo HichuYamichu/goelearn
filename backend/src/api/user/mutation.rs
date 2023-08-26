@@ -18,7 +18,7 @@ pub struct UserMutation;
 
 #[Object]
 impl UserMutation {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     pub async fn signup(
         &self,
         ctx: &Context<'_>,
@@ -35,10 +35,13 @@ impl UserMutation {
             if avatar.content_type.is_none()
                 || avatar.content_type.as_ref().unwrap() != "image/jpeg"
             {
-                return Err(AppError::UserError(UserError::BadInput {
-                    simple: "avatar must be a jpeg image",
-                    detailed: "avatar must be a jpeg image".into(),
-                }));
+                return Err(AppError::user(
+                    "Avatar must be a jpeg",
+                    UserError::BadInput {
+                        parameter: "avatar",
+                        given_value: "non jpeg image".into(),
+                    },
+                ));
             }
 
             let s3_path = format!("user-avatars/{id}");
@@ -51,7 +54,7 @@ impl UserMutation {
         Ok(id.to_string())
     }
 
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     pub async fn login(
         &self,
         ctx: &Context<'_>,
@@ -72,25 +75,21 @@ pub async fn login_user(
     let user = match user {
         Some(user) => user,
         None => {
-            return Err(AppError::NotFound {
-                what: "User",
-                with: "username",
-                why: creadentials.username,
-            })
+            return Err(AppError::auth("Bad credentials"));
         }
     };
 
     if !user.active {
-        return Err(AppError::Auth);
+        return Err(AppError::auth("User is not active"));
     }
 
     if user.deleted_at.is_some() {
-        return Err(AppError::Auth);
+        return Err(AppError::auth("User is deleted"));
     }
 
     let is_match = argon2_async::verify(creadentials.password, user.password).await?;
     if !is_match {
-        return Err(AppError::Auth);
+        return Err(AppError::auth("Bad credentials"));
     }
 
     let token = jsonwebtoken::encode(
@@ -105,6 +104,7 @@ pub async fn login_user(
     Ok(LoginResult { token })
 }
 
+#[instrument(skip(creadentials, data_loader, has_avatar), err(Debug))]
 pub async fn register_user(
     mut creadentials: SignupInput,
     data_loader: &DataLoader<DatabaseConnection>,

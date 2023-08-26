@@ -6,7 +6,10 @@ use axum::{
 };
 use sea_orm::{error::DbErr, TransactionError};
 use serde_json::json;
-use std::sync::Arc;
+use std::{
+    fmt::{Display, Formatter},
+    sync::Arc,
+};
 
 const INTERNAL_ERROR_MSG: &'static str = "Something went wrong when processing your request.";
 
@@ -17,32 +20,62 @@ pub struct AppError {
 }
 
 impl AppError {
-    pub fn not_found(
-        message: String,
+    pub fn auth<T: Into<String>>(message: T) -> Self {
+        AppError {
+            message: message.into(),
+            kind: ErrorKind::Auth,
+        }
+    }
+
+    pub fn not_found<T: Into<String>>(
+        message: T,
         resource: &'static str,
         attribute: &'static str,
-        value: String,
+        value: T,
     ) -> Self {
         AppError {
-            message,
+            message: message.into(),
             kind: ErrorKind::NotFound {
                 resource,
                 attribute,
-                value,
+                value: value.into(),
             },
         }
     }
 
-    pub fn user(message: String, user_err: UserError) -> Self {
+    pub fn user<T: Into<String>>(message: T, user_err: UserError) -> Self {
         AppError {
-            message,
+            message: message.into(),
             kind: ErrorKind::User(user_err),
         }
     }
 }
 
+// INFO: Display is not implemented because of https://github.com/async-graphql/async-graphql/issues/1265
+// impl Display for AppError {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+//         match &self.kind {
+//             ErrorKind::Auth => write!(f, "Authentication error"),
+//             ErrorKind::NotFound {
+//                 resource,
+//                 attribute,
+//                 value,
+//             } => write!(
+//                 f,
+//                 "`{resource}` with `{attribute}` = `{value}` was not found",
+//                 resource = resource,
+//                 attribute = attribute,
+//                 value = value
+//             ),
+//             ErrorKind::User(user_err) => write!(f, "User error: {user_err}"),
+//             ErrorKind::Internal(internal_err) => write!(f, "Internal server error: {internal_err}"),
+//         }
+//     }
+// }
+
 #[derive(Debug)]
 pub enum ErrorKind {
+    Auth,
     NotFound {
         resource: &'static str,
         attribute: &'static str,
@@ -58,6 +91,7 @@ impl ErrorExtensions for AppError {
         let AppError { message, kind } = self;
 
         async_graphql::Error::new(message).extend_with(|err, e| match kind {
+            ErrorKind::Auth => {}
             ErrorKind::NotFound {
                 resource,
                 attribute,
@@ -79,6 +113,12 @@ impl ErrorExtensions for AppError {
     }
 }
 
+impl From<AppError> for async_graphql::Error {
+    fn from(inner: AppError) -> Self {
+        inner.extend()
+    }
+}
+
 #[derive(Debug)]
 pub enum InternalError {
     DB(DbErr),
@@ -92,12 +132,43 @@ pub enum InternalError {
     S3(s3::error::S3Error),
 }
 
+impl std::fmt::Display for InternalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InternalError::DB(err) => write!(f, "Database error: {err}"),
+            InternalError::DBTrans(err) => write!(f, "Database error: {err}"),
+            InternalError::DBArced(err) => write!(f, "Database error: {err}"),
+            InternalError::Jwt(err) => write!(f, "Jwt error: {err}"),
+            InternalError::Argon2(err) => write!(f, "Argon2 error: {err}"),
+            InternalError::Redis(err) => write!(f, "Redis error: {err}"),
+            InternalError::Email(err) => write!(f, "Email error: {err}"),
+            InternalError::Io(err) => write!(f, "IO error: {err}"),
+            InternalError::S3(err) => write!(f, "S3 error: {err}"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum UserError {
     BadInput {
         parameter: &'static str,
         given_value: String,
     },
+}
+
+impl std::fmt::Display for UserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserError::BadInput {
+                parameter,
+                given_value,
+            } => write!(
+                f,
+                "Bad input for parameter `{}` with value `{}`",
+                parameter, given_value
+            ),
+        }
+    }
 }
 
 impl From<DbErr> for AppError {
@@ -122,7 +193,7 @@ impl From<TransactionError<DbErr>> for AppError {
     fn from(inner: TransactionError<DbErr>) -> Self {
         AppError {
             message: INTERNAL_ERROR_MSG.to_owned(),
-            kind: ErrorKind::Internal(InternalError::DBTrans(inner))
+            kind: ErrorKind::Internal(InternalError::DBTrans(inner)),
         }
     }
 }
@@ -131,7 +202,7 @@ impl From<jsonwebtoken::errors::Error> for AppError {
     fn from(inner: jsonwebtoken::errors::Error) -> Self {
         AppError {
             message: INTERNAL_ERROR_MSG.to_owned(),
-            kind: ErrorKind::Internal(InternalError::Jwt(inner))
+            kind: ErrorKind::Internal(InternalError::Jwt(inner)),
         }
     }
 }
@@ -140,7 +211,7 @@ impl From<argon2_async::Error> for AppError {
     fn from(inner: argon2_async::Error) -> Self {
         AppError {
             message: INTERNAL_ERROR_MSG.to_owned(),
-            kind: ErrorKind::Internal(InternalError::Argon2(inner))
+            kind: ErrorKind::Internal(InternalError::Argon2(inner)),
         }
     }
 }
@@ -152,7 +223,7 @@ impl From<uuid::Error> for AppError {
             kind: ErrorKind::User(UserError::BadInput {
                 parameter: "uuid",
                 given_value: inner.to_string(),
-            })
+            }),
         }
     }
 }
@@ -161,7 +232,7 @@ impl From<redis::RedisError> for AppError {
     fn from(inner: redis::RedisError) -> Self {
         AppError {
             message: INTERNAL_ERROR_MSG.to_owned(),
-            kind: ErrorKind::Internal(InternalError::Redis(inner))
+            kind: ErrorKind::Internal(InternalError::Redis(inner)),
         }
     }
 }
@@ -170,7 +241,7 @@ impl From<lettre::transport::smtp::Error> for AppError {
     fn from(inner: lettre::transport::smtp::Error) -> Self {
         AppError {
             message: INTERNAL_ERROR_MSG.to_owned(),
-            kind: ErrorKind::Internal(InternalError::Email(inner))
+            kind: ErrorKind::Internal(InternalError::Email(inner)),
         }
     }
 }
@@ -179,7 +250,7 @@ impl From<std::io::Error> for AppError {
     fn from(inner: std::io::Error) -> Self {
         AppError {
             message: INTERNAL_ERROR_MSG.to_owned(),
-            kind: ErrorKind::Internal(InternalError::Io(inner))
+            kind: ErrorKind::Internal(InternalError::Io(inner)),
         }
     }
 }
@@ -188,14 +259,13 @@ impl From<s3::error::S3Error> for AppError {
     fn from(inner: s3::error::S3Error) -> Self {
         AppError {
             message: INTERNAL_ERROR_MSG.to_owned(),
-            kind: ErrorKind::Internal(InternalError::S3(inner))
+            kind: ErrorKind::Internal(InternalError::S3(inner)),
         }
     }
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        
         todo!()
         // (status, body).into_response()
     }

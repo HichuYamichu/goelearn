@@ -26,7 +26,7 @@ pub struct MessageObject {
 impl MessageObject {
     // TODO: Websocket authentication needed
     // #[graphql(guard = "LoggedInGuard")]
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     async fn author(&self, ctx: &Context<'_>) -> Result<UserObject, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 

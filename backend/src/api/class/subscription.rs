@@ -12,7 +12,7 @@ pub struct ClassSubscription;
 
 #[Subscription]
 impl ClassSubscription {
-    #[instrument(skip(self, ctx), err)]
+    #[instrument(skip(self, ctx), err(Debug))]
     async fn class_updated(
         &self,
         ctx: &Context<'_>,
