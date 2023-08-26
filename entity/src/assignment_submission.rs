@@ -8,6 +8,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
     pub created_at: DateTime,
+    pub updated_at: DateTime,
     pub assignment_id: Uuid,
     pub user_id: Uuid,
 }
@@ -22,6 +23,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Assignment,
+    #[sea_orm(has_many = "super::assignment_submission_feedback::Entity")]
+    AssignmentSubmissionFeedback,
     #[sea_orm(has_many = "super::assignment_submission_file::Entity")]
     AssignmentSubmissionFile,
     #[sea_orm(
@@ -37,6 +40,12 @@ pub enum Relation {
 impl Related<super::assignment::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Assignment.def()
+    }
+}
+
+impl Related<super::assignment_submission_feedback::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::AssignmentSubmissionFeedback.def()
     }
 }
 

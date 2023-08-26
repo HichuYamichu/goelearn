@@ -91,6 +91,7 @@ impl SubmitAssignmentInput {
                 id: Set(Uuid::new_v4()),
                 assignment_id: Set(assignment_id),
                 created_at: Set(Utc::now().naive_utc()),
+                updated_at: Set(Utc::now().naive_utc()),
                 user_id: Set(user_id),
             },
             self.files,

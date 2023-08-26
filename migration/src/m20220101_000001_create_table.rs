@@ -240,6 +240,11 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(
+                        ColumnDef::new(AssignmentSubmission::UpdatedAt)
+                            .timestamp()
+                            .not_null(),
+                    )
+                    .col(
                         ColumnDef::new(AssignmentSubmission::AssignmentId)
                             .uuid()
                             .not_null(),
@@ -279,10 +284,54 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_table(
+                Table::create()
+                    .table(AssignmentSubmissionFeedback::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(AssignmentSubmissionFeedback::Id)
+                            .string()
+                            .not_null()
+                            .uuid()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentSubmissionFeedback::AssignmentSubmissionId)
+                            .uuid()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentSubmissionFeedback::Feedback)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentSubmissionFeedback::CreatedAt)
+                            .timestamp()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(AssignmentSubmissionFeedback::UpdatedAt)
+                            .timestamp()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(
+                Table::drop()
+                    .table(AssignmentSubmissionFeedback::Table)
+                    .to_owned(),
+            )
+            .await?;
+
         manager
             .drop_table(
                 Table::drop()
@@ -471,6 +520,7 @@ pub enum AssignmentSubmission {
     Table,
     Id,
     CreatedAt,
+    UpdatedAt,
     AssignmentId,
     UserId,
 }
@@ -481,6 +531,16 @@ pub enum AssignmentSubmissionFile {
     Id,
     AssignmentSubmissionId,
     FileId,
+}
+
+#[derive(Iden)]
+pub enum AssignmentSubmissionFeedback {
+    Table,
+    Id,
+    AssignmentSubmissionId,
+    Feedback,
+    CreatedAt,
+    UpdatedAt,
 }
 
 #[derive(Iden)]

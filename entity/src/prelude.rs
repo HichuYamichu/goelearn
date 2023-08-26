@@ -3,6 +3,7 @@
 pub use super::assignment::Entity as Assignment;
 pub use super::assignment_file::Entity as AssignmentFile;
 pub use super::assignment_submission::Entity as AssignmentSubmission;
+pub use super::assignment_submission_feedback::Entity as AssignmentSubmissionFeedback;
 pub use super::assignment_submission_file::Entity as AssignmentSubmissionFile;
 pub use super::channel::Entity as Channel;
 pub use super::class::Entity as Class;

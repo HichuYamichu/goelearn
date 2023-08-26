@@ -1,8 +1,8 @@
 use sea_orm_migration::prelude::*;
 
 use crate::m20220101_000001_create_table::{
-    Assignment, AssignmentFile, AssignmentSubmission, AssignmentSubmissionFile, Channel, Class,
-    File, Invite, Membership, Message, Report, User,
+    Assignment, AssignmentFile, AssignmentSubmission, AssignmentSubmissionFeedback,
+    AssignmentSubmissionFile, Channel, Class, File, Invite, Membership, Message, Report, User,
 };
 
 #[derive(DeriveMigrationName)]
@@ -236,10 +236,34 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_assignment_submission_feedback_assignment_id")
+                    .from(
+                        AssignmentSubmissionFeedback::Table,
+                        AssignmentSubmissionFeedback::AssignmentSubmissionId,
+                    )
+                    .to(AssignmentSubmission::Table, AssignmentSubmission::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_assignment_submission_feedback_assignment_id")
+                    .table(AssignmentSubmissionFeedback::Table)
+                    .to_owned(),
+            )
+            .await?;
+
         manager
             .drop_foreign_key(
                 ForeignKey::drop()

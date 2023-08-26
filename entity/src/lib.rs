@@ -5,6 +5,7 @@ pub mod prelude;
 pub mod assignment;
 pub mod assignment_file;
 pub mod assignment_submission;
+pub mod assignment_submission_feedback;
 pub mod assignment_submission_file;
 pub mod channel;
 pub mod class;
