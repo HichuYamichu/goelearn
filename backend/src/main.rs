@@ -1,5 +1,6 @@
 mod api;
 mod core;
+mod rtc;
 mod ws;
 
 use crate::api::{FileHandler, Mutation, Query, Subscription, UserRest};
@@ -17,7 +18,13 @@ use axum::{
     routing::get,
     Router,
 };
+use deadpool_redis::{
+    redis::{cmd, FromRedisValue},
+    Config, Runtime,
+};
+use deadpool_redis::{Connection, Manager, Pool};
 use migration::{Migrator, MigratorTrait};
+// use redis::aio::ConnectionManager;
 use std::env;
 use tower_http::cors::CorsLayer;
 
@@ -48,6 +55,7 @@ pub struct AppState {
     schema: AppSchema,
     conn: DatabaseConnection,
     s3_bucket: s3::Bucket,
+    redis_pool: Pool,
 }
 
 #[tokio::main]
@@ -72,7 +80,10 @@ pub async fn main() {
     let config = argon2_async::Config::default();
     argon2_async::set_config(config).await;
 
-    let redis_client = redis::Client::open(REDIS_URL.to_string()).unwrap();
+    // TODO: create long lived pubsubs
+    let mut cfg = Config::from_url(REDIS_URL.to_string());
+    let redis_pool = cfg.create_pool(Some(Runtime::Tokio1)).unwrap();
+
     let conn: DatabaseConnection = Database::connect(ConnectOptions::new(DATABASE_URL.to_string()))
         .await
         .unwrap();
@@ -91,7 +102,7 @@ pub async fn main() {
         Mutation::default(),
         Subscription::default(),
     )
-    .data(redis_client)
+    .data(redis_pool.clone())
     .data(s3_bucket.clone())
     .extension(Tracing)
     .finish();
@@ -100,6 +111,7 @@ pub async fn main() {
         schema: schema.clone(),
         conn,
         s3_bucket,
+        redis_pool,
     };
 
     let user_routes = Router::new().route("/activate/:user_id", get(UserRest::activate));
@@ -120,6 +132,7 @@ pub async fn main() {
             "/api/v1/graphql",
             get(graphql_playground).post(graphql_handler),
         )
+        .route("/rtc-ws", get(rtc::websocket))
         .route_service("/ws", ws::GraphQLSubscription::new(schema, state.clone()))
         .nest("/api/v1/user", user_routes)
         .nest("/files", file_routes)

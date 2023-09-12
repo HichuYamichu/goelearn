@@ -1,7 +1,7 @@
 <template>
   <v-app-bar density="compact" border flat>
     <v-skeleton-loader v-if="loading" type="heading"> </v-skeleton-loader>
-    <h5 v-else class="text-h5 mx-4 pa-3 font-weight-medium">
+    <h5 v-else class="text-h5 mx-4 pa-3 font-weight-medium d-none d-sm-flex">
       {{ name }}
     </h5>
     <v-divider vertical></v-divider>
@@ -30,7 +30,9 @@
               :class_="class_"
             ></ClassAssignments>
           </v-window-item>
-          <v-window-item value="Meeting"> </v-window-item>
+          <v-window-item value="Meeting">
+            <ClassMeeting :loading="loading" :class_="class_"></ClassMeeting>
+          </v-window-item>
           <v-window-item value="Settings">
             <ClassSettings :loading="loading" :class_="class_"></ClassSettings>
           </v-window-item>
@@ -46,6 +48,7 @@ import ClassChat from "@/components/ClassChat/ClassChat.vue";
 import ClassFiles from "@/components/ClassFiles.vue";
 import ClassAssignments from "@/components/ClassAssignments.vue";
 import ClassSettings from "@/components/ClassSettings.vue";
+import ClassMeeting from "@/components/ClassMeeting.vue";
 import { graphql, useFragment } from "@/gql";
 import { useQuery } from "@vue/apollo-composable";
 import { computed } from "vue";
@@ -62,6 +65,7 @@ const ClassQuery = graphql(/* GraphQL */ `
       ...ChatFragment
       ...FilesFragment
       ...AssignmentsFragment
+      ...MeetingFragment
     }
   }
 `);

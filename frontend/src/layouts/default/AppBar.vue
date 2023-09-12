@@ -1,9 +1,12 @@
 <template>
   <v-app-bar>
-    <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
+    <v-app-bar-nav-icon
+      class="hidden-md-and-up"
+      @click="drawer = !drawer"
+    ></v-app-bar-nav-icon>
     <v-spacer></v-spacer>
 
-    <v-container class="fill-height d-flex align-center">
+    <v-container class="fill-height align-center d-none d-sm-flex">
       <v-btn
         v-for="link in links"
         :key="link.target"
@@ -15,14 +18,6 @@
       </v-btn>
 
       <v-spacer></v-spacer>
-
-      <v-responsive max-width="260">
-        <v-text-field
-          density="compact"
-          hide-details
-          variant="solo"
-        ></v-text-field>
-      </v-responsive>
     </v-container>
 
     <div class="fill-height d-flex align-center mr-3" v-if="!isLoggedIn">
@@ -44,7 +39,7 @@
 
   <v-navigation-drawer v-model="drawer" temporary>
     <v-list nav>
-      <v-list-item v-for="link in links" :key="link.target">{{
+      <v-list-item v-for="link in links" :key="link.target" :to="link.target">{{
         link.text
       }}</v-list-item>
     </v-list>

@@ -30,17 +30,20 @@ where
             TypedHeader::<Authorization<Bearer>>::from_request_parts(req, state)
                 .await
                 .map_err(|_| AppError::auth("Malformed JWT"))?;
-
-        let validation = Validation::new(Algorithm::HS256);
-        let token_data = decode::<Claims>(
-            bearer.token(),
-            &DecodingKey::from_secret(SECRET.as_ref()),
-            &validation,
-        )
-        .map_err(|_| AppError::auth("Malformed JWT"))?;
-
-        Ok(token_data.claims)
+        validate_token(bearer.token())
     }
+}
+
+pub fn validate_token(token: &str) -> Result<Claims, AppError> {
+    let validation = Validation::new(Algorithm::HS256);
+    let token_data = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(SECRET.as_ref()),
+        &validation,
+    )
+    .map_err(|_| AppError::auth("Malformed JWT"))?;
+
+    Ok(token_data.claims)
 }
 
 pub struct LoggedInGuard;

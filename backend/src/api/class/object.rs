@@ -13,6 +13,7 @@ use async_graphql::Upload;
 use async_graphql::{
     dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, ID,
 };
+use deadpool_redis::redis;
 use partialdebug::placeholder::PartialDebug;
 use redis::FromRedisValue;
 use redis::RedisResult;

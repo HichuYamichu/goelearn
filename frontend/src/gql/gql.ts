@@ -29,9 +29,11 @@ const documents = {
     "\n  mutation CreateDirecotry($classId: ID!, $name: String!, $parentId: ID) {\n    createDirecotry(\n      input: { classId: $classId, name: $name, parentId: $parentId }\n    ) {\n      id\n    }\n  }\n": types.CreateDirecotryDocument,
     "\n  mutation UploadFiles(\n    $classId: ID!\n    $files: [Upload!]!\n    $parentId: ID\n    $public: Boolean!\n  ) {\n    uploadFiles(\n      input: {\n        classId: $classId\n        files: $files\n        parentId: $parentId\n        public: $public\n      }\n    )\n  }\n": types.UploadFilesDocument,
     "\n  mutation DeleteFiles($fileIds: [ID!]!) {\n    deleteFiles(fileIds: $fileIds)\n  }\n": types.DeleteFilesDocument,
+    "\n  query MeetingMeQuery {\n    me {\n      id\n    }\n  }\n": types.MeetingMeQueryDocument,
+    "\n  fragment MeetingFragment on Class {\n    id\n    ownerId\n  }\n": types.MeetingFragmentFragmentDoc,
     "\n  query AppBarMeQuery {\n    me {\n      id\n      hasAvatar\n    }\n  }\n": types.AppBarMeQueryDocument,
     "\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n": types.MyIdQueryDocument,
-    "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n    }\n  }\n": types.ClassClassByIdQueryDocument,
+    "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n    }\n  }\n": types.ClassClassByIdQueryDocument,
     "\n  mutation CreateClass($input: CreateClassInput!) {\n    createClass(input: $input) {\n      id\n    }\n  }\n": types.CreateClassDocument,
     "\n  query classesBySearch($query: String!) {\n    classesBySearch(query: $query) {\n      id\n      name\n      description\n      hasImage\n    }\n  }\n": types.ClassesBySearchDocument,
     "\n  mutation JoinClass($classId: ID!) {\n    joinClass(classId: $classId)\n  }\n": types.JoinClassDocument,
@@ -121,6 +123,14 @@ export function graphql(source: "\n  mutation DeleteFiles($fileIds: [ID!]!) {\n 
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "\n  query MeetingMeQuery {\n    me {\n      id\n    }\n  }\n"): (typeof documents)["\n  query MeetingMeQuery {\n    me {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment MeetingFragment on Class {\n    id\n    ownerId\n  }\n"): (typeof documents)["\n  fragment MeetingFragment on Class {\n    id\n    ownerId\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "\n  query AppBarMeQuery {\n    me {\n      id\n      hasAvatar\n    }\n  }\n"): (typeof documents)["\n  query AppBarMeQuery {\n    me {\n      id\n      hasAvatar\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -129,7 +139,7 @@ export function graphql(source: "\n  query MyIdQuery {\n    me {\n      id\n    
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n    }\n  }\n"): (typeof documents)["\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n    }\n  }\n"];
+export function graphql(source: "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n    }\n  }\n"): (typeof documents)["\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

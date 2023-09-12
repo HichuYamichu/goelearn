@@ -4,7 +4,7 @@ use crate::core::AppError;
 use async_graphql::futures_util::StreamExt;
 use async_graphql::ID;
 use async_graphql::{futures_util::Stream, Context, Subscription};
-use redis::Client;
+use deadpool_redis::Pool;
 use tracing::instrument;
 
 #[derive(Default)]
@@ -18,8 +18,10 @@ impl ClassSubscription {
         ctx: &Context<'_>,
         class_id: ID,
     ) -> Result<impl Stream<Item = ClassObject>, AppError> {
-        let client = ctx.data_unchecked::<Client>();
-        let mut conn = client.get_async_connection().await?.into_pubsub();
+        let redis_pool = ctx.data_unchecked::<Pool>();
+        let conn = deadpool_redis::Connection::take(redis_pool.get().await?);
+        let mut conn = conn.into_pubsub();
+
         conn.subscribe(format!("class_updated:{}", class_id.as_str()))
             .await?;
         Ok(conn.into_on_message().filter_map(|msg| async move {
@@ -34,8 +36,10 @@ impl ClassSubscription {
         ctx: &Context<'_>,
         class_id: ID,
     ) -> Result<impl Stream<Item = bool>, AppError> {
-        let client = ctx.data_unchecked::<Client>();
-        let mut conn = client.get_async_connection().await?.into_pubsub();
+        let redis_pool = ctx.data_unchecked::<Pool>();
+        // INFO: this could be nicer
+        let conn = deadpool_redis::Connection::take(redis_pool.get().await?);
+        let mut conn = conn.into_pubsub();
         conn.subscribe(format!("class_deleted:{}", class_id.as_str()))
             .await?;
         Ok(conn

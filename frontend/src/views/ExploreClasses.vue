@@ -1,61 +1,46 @@
 <template>
-  <v-container class="mt-5">
-    <v-row>
-      <v-col cols="12" class="d-flex">
-        <h1>Learn what interests you!</h1>
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col cols="12" class="d-flex">
-        <v-text-field
-          @keyup.enter.native="forceRefetch"
-          v-model="query"
-          variant="outlined"
-          label="Search for classes by their name, description or tags"
-          hide-details="auto"
-          autofocus
-        ></v-text-field>
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col v-for="c in classes" :key="c.id" cols="4">
-        <v-dialog v-model="dialog" width="auto">
-          <template v-slot:activator="{ props }">
-            <v-card v-bind="props" height="300" @click="join(c.id)">
-              <v-img
-                v-if="c.hasImage"
-                :src="`http://localhost:3000/files/class-image/${c.id}`"
-                alt="avatar"
-                height="200px"
-                cover
-              ></v-img>
-              <v-img
-                v-else
-                :src="`https://ui-avatars.com/api/?size=200&name=${c.name}`"
-                height="200px"
-              ></v-img>
-              <v-card-title> {{ c.name }} </v-card-title>
-              <v-card-subtitle>
-                {{ c.description }}
-              </v-card-subtitle>
-            </v-card>
-          </template>
+  <div class="d-flex flex-wrap px-lg-16 py-8 pa-6">
+    <div class="d-flex w-100 flex-wrap">
+      <h1>Learn what interests you!</h1>
+    </div>
+    <div class="d-flex w-100 mt-4">
+      <v-text-field
+        @keyup.enter.native="forceRefetch"
+        v-model="query"
+        variant="outlined"
+        label="Search for classes by their name, description or tags"
+        hide-details="auto"
+        autofocus
+      ></v-text-field>
+    </div>
+    <div class="d-flex w-100 gap mt-5 flex-wrap justify-space-between">
+      <div
+        class="d-flex w-45 full-mobile flex-wrap"
+        v-for="c in classes"
+        :key="c.id"
+      >
+        <v-card class="w-100" height="300" @click="join(c.id)">
+          <v-img
+            v-if="c.hasImage"
+            :src="`http://localhost:3000/files/class-image/${c.id}`"
+            alt="avatar"
+            height="200px"
+            cover
+          ></v-img>
+          <v-img
+            v-else
+            :src="`https://ui-avatars.com/api/?size=200&name=szydelkowanie`"
+            height="200px"
+          ></v-img>
+          <v-card-title> {{ c.name }} </v-card-title>
 
-          <v-card>
-            <v-card-text>
-              You are about to join
-              <span class="text-weight-bold">{{ c.name }}</span
-              >. Are you sure?
-            </v-card-text>
-            <v-card-actions>
-              <v-btn color="bg-primary" @click="join(c.id)">Join</v-btn>
-              <v-btn color="bg-warning" @click="dialog = false">Close</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
-      </v-col>
-    </v-row>
-  </v-container>
+          <v-card-subtitle>
+            {{ c.description }}
+          </v-card-subtitle>
+        </v-card>
+      </div>
+    </div>
+  </div>
   <v-dialog v-model="errDialog" width="auto">
     <v-card>
       <v-card-text>
@@ -125,3 +110,15 @@ onError((e) => {
   errDialog.value = true;
 });
 </script>
+
+<style scoped>
+.w-45 {
+  width: 49%;
+}
+
+@media only screen and (max-width: 500px) {
+  .full-mobile {
+    width: 100% !important;
+  }
+}
+</style>

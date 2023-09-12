@@ -2,6 +2,7 @@ use async_graphql::{
     dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, ID,
 };
 use chrono::{NaiveDateTime, Utc};
+use deadpool_redis::redis;
 use redis::{FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use sea_orm::{DatabaseConnection, Set};
 use serde::{Deserialize, Serialize};

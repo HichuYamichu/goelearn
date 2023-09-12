@@ -157,9 +157,12 @@ const messageBox = ref();
 let isFirstLoad = true;
 
 watch(messages, (newMessages, oldMessages) => {
+  if (newMessages.length === 0) {
+    return;
+  }
   const newMessageAdded = newMessages.length > oldMessages.length;
   const newestMessage = newMessages[newMessages.length - 1];
-  //@ts-ignore graphql-codegen is trash
+  // @ts-ignore graphql-codegen is trash
   const isMyMessage = newestMessage.author.id === id.value;
   const wasAtBottom =
     messageBox.value?.$el.scrollHeight -

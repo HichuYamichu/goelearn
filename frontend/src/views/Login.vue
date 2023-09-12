@@ -1,17 +1,25 @@
 <template>
-  <v-sheet width="500" class="mx-auto my-10">
-    <form @keyup.enter.native="login">
-      <v-text-field
-        label="Username or Email"
-        v-model="username"
-        required
-        focused
-      ></v-text-field>
-      <v-text-field label="Password" v-model="password" required></v-text-field>
-      <v-btn @click="login" class="me-4 bg-primary"> submit </v-btn>
-      <v-btn @click="clear"> clear </v-btn>
-    </form>
-  </v-sheet>
+  <v-container fluid>
+    <v-row>
+      <v-col xl="4" sm="12" class="mx-auto">
+        <form @keyup.enter.native="login" class="pa-5">
+          <v-text-field
+            label="Username or Email"
+            v-model="username"
+            required
+            focused
+          ></v-text-field>
+          <v-text-field
+            label="Password"
+            v-model="password"
+            required
+          ></v-text-field>
+          <v-btn @click="login" class="me-4 bg-primary"> submit </v-btn>
+          <v-btn @click="clear"> clear </v-btn>
+        </form>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script lang="ts" setup>

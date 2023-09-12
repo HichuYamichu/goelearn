@@ -3,8 +3,8 @@ use crate::core::LoggedInGuard;
 use crate::core::{auth, AppError, UserError};
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 use auth::Claims;
-use redis::AsyncCommands;
-use redis::Client;
+use deadpool_redis::redis::AsyncCommands;
+use deadpool_redis::Pool;
 use sea_orm::DatabaseConnection;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tracing::instrument;
@@ -113,8 +113,8 @@ impl ClassMutation {
     #[graphql(guard = "LoggedInGuard")]
     pub async fn delete_class(&self, ctx: &Context<'_>, class_id: ID) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
-        let client = ctx.data_unchecked::<Client>();
-        let mut conn = client.get_async_connection().await?;
+        let redis_pool = ctx.data_unchecked::<Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let class_id = Uuid::parse_str(class_id.as_str())?;
         ClassRepo::delete_class(data_loader, class_id).await?;
@@ -136,8 +136,8 @@ impl ClassMutation {
         class_input: UpdateClassInput,
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
-        let client = ctx.data_unchecked::<Client>();
-        let mut conn = client.get_async_connection().await?;
+        let redis_pool = ctx.data_unchecked::<Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let class_id = Uuid::parse_str(class_id.as_str())?;
         let update_data = class_input.into_active_model();

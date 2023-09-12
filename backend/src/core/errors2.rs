@@ -4,6 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use deadpool_redis::{redis, PoolError};
 use sea_orm::{error::DbErr, TransactionError};
 use serde_json::json;
 use std::{
@@ -127,6 +128,7 @@ pub enum InternalError {
     Jwt(jsonwebtoken::errors::Error),
     Argon2(argon2_async::Error),
     Redis(redis::RedisError),
+    RedisPool(PoolError),
     Email(lettre::transport::smtp::Error),
     Io(std::io::Error),
     S3(s3::error::S3Error),
@@ -141,6 +143,7 @@ impl std::fmt::Display for InternalError {
             InternalError::Jwt(err) => write!(f, "Jwt error: {err}"),
             InternalError::Argon2(err) => write!(f, "Argon2 error: {err}"),
             InternalError::Redis(err) => write!(f, "Redis error: {err}"),
+            InternalError::RedisPool(err) => write!(f, "Redis pool error: {err}"),
             InternalError::Email(err) => write!(f, "Email error: {err}"),
             InternalError::Io(err) => write!(f, "IO error: {err}"),
             InternalError::S3(err) => write!(f, "S3 error: {err}"),
@@ -237,6 +240,15 @@ impl From<redis::RedisError> for AppError {
     }
 }
 
+impl From<PoolError> for AppError {
+    fn from(inner: PoolError) -> Self {
+        AppError {
+            message: INTERNAL_ERROR_MSG.to_owned(),
+            kind: ErrorKind::Internal(InternalError::RedisPool(inner)),
+        }
+    }
+}
+
 impl From<lettre::transport::smtp::Error> for AppError {
     fn from(inner: lettre::transport::smtp::Error) -> Self {
         AppError {
@@ -266,7 +278,19 @@ impl From<s3::error::S3Error> for AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        todo!()
-        // (status, body).into_response()
+        let AppError { message, kind } = self;
+
+        let status = match kind {
+            ErrorKind::Auth => StatusCode::UNAUTHORIZED,
+            ErrorKind::NotFound { .. } => StatusCode::NOT_FOUND,
+            ErrorKind::User(_) => StatusCode::BAD_REQUEST,
+            ErrorKind::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+
+        let body = json!({
+            "message": message,
+        });
+
+        (status, Json(body)).into_response()
     }
 }

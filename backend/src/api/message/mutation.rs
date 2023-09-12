@@ -3,6 +3,7 @@ use crate::core::LoggedInGuard;
 use crate::core::{auth, AppError};
 use async_graphql::{dataloader::DataLoader, Context, Object};
 use auth::Claims;
+use deadpool_redis::redis;
 use redis::{AsyncCommands, Client};
 use sea_orm::DatabaseConnection;
 use tracing::instrument;
