@@ -1,7 +1,7 @@
 <template>
   <v-card width="100%">
     <v-toolbar dark color="primary">
-      <v-btn icon dark @click="dialog = false">
+      <v-btn icon dark @click="emit('close')">
         <v-icon>mdi-close</v-icon>
       </v-btn>
       <v-toolbar-title>Create assignment</v-toolbar-title>
@@ -53,6 +53,8 @@ import { useMutation } from "@vue/apollo-composable";
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 
+const emit = defineEmits(["close"]);
+
 const router = useRouter();
 const classId = router.currentRoute.value.params.classId;
 
@@ -71,13 +73,9 @@ const content = ref("");
 const dueDate = ref("");
 const files = ref<File[]>([]);
 
-const { mutate } = useMutation(CreateAssignmentMutation, {
-  refetchQueries: ["ClassClassByIdQuery"],
-});
+const { mutate } = useMutation(CreateAssignmentMutation);
 
 const submit = () => {
-  console.log(dueDate.value);
-  console.log(new Date(dueDate.value).toISOString());
   mutate({
     input: {
       name: name.value,
@@ -87,5 +85,6 @@ const submit = () => {
       classId: classId as string,
     },
   });
+  emit("close");
 };
 </script>

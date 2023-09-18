@@ -9,3 +9,5 @@ pub use object::ClassObject;
 pub use query::ClassQuery;
 pub use repo::ClassRepo;
 pub use subscription::ClassSubscription;
+
+pub use subscription::*;

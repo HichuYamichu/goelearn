@@ -1,24 +1,34 @@
 <template>
-  <v-container class="ma-0 pa-0 fill-height" fluid fill-height>
+  <v-navigation-drawer
+    v-model="shouldShowChannelDrawer"
+    :permanent="!mobile"
+    touchless
+  >
+    <ChannelList
+      @changeSelectedChannelId="changeSelectedChannelId"
+      :selectedChannelId="selectedChannelId"
+      :channels="class_?.channels"
+    ></ChannelList>
+  </v-navigation-drawer>
+  <v-container class="ma-0 pa-0 fill-height" fluid fill-height ref="chat">
     <v-row justify="space-between" no-gutters class="fill-height">
-      <v-col cols="2">
-        <ChannelList
-          @changeSelectedChannelId="changeSelectedChannelId"
+      <v-col cols="12" class="h d-flex flex-column">
+        <MessageList
+          @toggleChannelDrawer="toggleChannelDrawer"
+          @toggleMemberDrawer="toggleMemberDrawer"
           :selectedChannelId="selectedChannelId"
-          :loading="loading"
-          :channels="class_?.channels"
-        ></ChannelList>
-      </v-col>
-      <v-divider vertical></v-divider>
-      <v-col cols="8" class="h d-flex flex-column">
-        <MessageList :selectedChannelId="selectedChannelId"></MessageList>
-      </v-col>
-      <v-divider vertical></v-divider>
-      <v-col cols="2">
-        <MemberList :users="class_?.members" :loading="loading"></MemberList>
+        ></MessageList>
       </v-col>
     </v-row>
   </v-container>
+  <v-navigation-drawer
+    v-model="shouldShowMemberDrawer"
+    :permanent="!mobile"
+    touchless
+    location="right"
+  >
+    <MemberList :users="class_?.members"></MemberList>
+  </v-navigation-drawer>
 </template>
 
 <script lang="ts" setup>
@@ -28,6 +38,7 @@ import MessageList from "./MessageList.vue";
 import { FragmentType, graphql, useFragment } from "@/gql";
 import { Ref, onMounted, reactive, watch } from "vue";
 import { computed, ref, toRef } from "vue";
+import { useDisplay } from "vuetify";
 
 const ChatFragment = graphql(/* GraphQL */ `
   fragment ChatFragment on Class {
@@ -44,20 +55,36 @@ const ChatFragment = graphql(/* GraphQL */ `
 
 const props = defineProps<{
   class_?: FragmentType<typeof ChatFragment> | null;
-  loading: boolean;
+  isActive: boolean;
 }>();
 
-const class_ = ref(useFragment(ChatFragment, props.class_));
+const class_ = computed(() => useFragment(ChatFragment, props.class_));
 const selectedChannelId = ref(class_.value?.channels[0]?.id ?? null);
 
-watch(props, () => {
-  class_.value = useFragment(ChatFragment, props.class_);
+watch(class_, () => {
   selectedChannelId.value = class_.value?.channels[0]?.id ?? null;
 });
 
 const changeSelectedChannelId = (channelId: string) => {
   selectedChannelId.value = channelId;
 };
+
+const { mobile } = useDisplay();
+const channelDrawer = ref(!mobile.value);
+const toggleChannelDrawer = () => {
+  channelDrawer.value = !channelDrawer.value;
+};
+const shouldShowChannelDrawer = computed(() => {
+  return channelDrawer && props.isActive;
+});
+
+const memberDrawer = ref(!mobile.value);
+const toggleMemberDrawer = () => {
+  memberDrawer.value = !memberDrawer.value;
+};
+const shouldShowMemberDrawer = computed(() => {
+  return memberDrawer && props.isActive;
+});
 </script>
 
 <style scoped>

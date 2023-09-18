@@ -11,6 +11,7 @@ const config: CodegenConfig = {
       config: {
         useTypeImports: true,
         skipTypename: true,
+        fragmentMasking: false,
       },
     },
   },

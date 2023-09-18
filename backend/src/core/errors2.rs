@@ -52,27 +52,29 @@ impl AppError {
     }
 }
 
-// INFO: Display is not implemented because of https://github.com/async-graphql/async-graphql/issues/1265
-// impl Display for AppError {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         match &self.kind {
-//             ErrorKind::Auth => write!(f, "Authentication error"),
-//             ErrorKind::NotFound {
-//                 resource,
-//                 attribute,
-//                 value,
-//             } => write!(
-//                 f,
-//                 "`{resource}` with `{attribute}` = `{value}` was not found",
-//                 resource = resource,
-//                 attribute = attribute,
-//                 value = value
-//             ),
-//             ErrorKind::User(user_err) => write!(f, "User error: {user_err}"),
-//             ErrorKind::Internal(internal_err) => write!(f, "Internal server error: {internal_err}"),
-//         }
-//     }
-// }
+// INFO: https://github.com/async-graphql/async-graphql/issues/1265
+impl Display for AppError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.kind {
+            ErrorKind::Auth => write!(f, "Authentication error"),
+            ErrorKind::NotFound {
+                resource,
+                attribute,
+                value,
+            } => write!(
+                f,
+                "`{resource}` with `{attribute}` = `{value}` was not found",
+                resource = resource,
+                attribute = attribute,
+                value = value
+            ),
+            ErrorKind::User(user_err) => write!(f, "User error: {user_err}"),
+            ErrorKind::Internal(internal_err) => write!(f, "Internal server error: {internal_err}"),
+        }
+    }
+}
+
+impl std::error::Error for AppError {}
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -114,11 +116,11 @@ impl ErrorExtensions for AppError {
     }
 }
 
-impl From<AppError> for async_graphql::Error {
-    fn from(inner: AppError) -> Self {
-        inner.extend()
-    }
-}
+// impl From<AppError> for async_graphql::Error {
+//     fn from(inner: AppError) -> Self {
+//         inner.extend()
+//     }
+// }
 
 #[derive(Debug)]
 pub enum InternalError {
@@ -197,6 +199,15 @@ impl From<TransactionError<DbErr>> for AppError {
         AppError {
             message: INTERNAL_ERROR_MSG.to_owned(),
             kind: ErrorKind::Internal(InternalError::DBTrans(inner)),
+        }
+    }
+}
+
+impl From<sea_orm::TransactionError<AppError>> for AppError {
+    fn from(inner: sea_orm::TransactionError<AppError>) -> Self {
+        match inner {
+            TransactionError::Connection(err) => AppError::from(err),
+            TransactionError::Transaction(err) => err,
         }
     }
 }

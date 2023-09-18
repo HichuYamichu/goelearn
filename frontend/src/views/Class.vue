@@ -14,32 +14,23 @@
     </v-tabs>
   </v-app-bar>
 
-  <v-container fluid class="fill-height pa-0">
-    <v-row class="fill-height" no-gutters>
-      <v-col cols="12" class="fill-height">
-        <v-window v-model="tabValue" class="fill-height">
-          <v-window-item value="Chat" class="fill-height">
-            <ClassChat :loading="loading" :class_="class_"></ClassChat>
-          </v-window-item>
-          <v-window-item value="Files" class="fill-height">
-            <ClassFiles :loading="loading" :class_="class_"></ClassFiles>
-          </v-window-item>
-          <v-window-item value="Assignments" class="fill-height">
-            <ClassAssignments
-              :loading="loading"
-              :class_="class_"
-            ></ClassAssignments>
-          </v-window-item>
-          <v-window-item value="Meeting">
-            <ClassMeeting :loading="loading" :class_="class_"></ClassMeeting>
-          </v-window-item>
-          <v-window-item value="Settings">
-            <ClassSettings :loading="loading" :class_="class_"></ClassSettings>
-          </v-window-item>
-        </v-window>
-      </v-col>
-    </v-row>
-  </v-container>
+  <v-window v-model="tabValue" class="fill-height">
+    <v-window-item value="Chat" class="fill-height">
+      <ClassChat :class_="class_" :isActive="tabValue == 'Chat'"></ClassChat>
+    </v-window-item>
+    <v-window-item value="Files" class="fill-height">
+      <ClassFiles :class_="class_"></ClassFiles>
+    </v-window-item>
+    <v-window-item value="Assignments" class="fill-height">
+      <ClassAssignments :class_="class_"></ClassAssignments>
+    </v-window-item>
+    <v-window-item value="Meeting">
+      <ClassMeeting :class_="class_"></ClassMeeting>
+    </v-window-item>
+    <v-window-item value="Settings">
+      <ClassSettings :class_="class_"></ClassSettings>
+    </v-window-item>
+  </v-window>
 </template>
 
 <script lang="ts" setup>
@@ -50,12 +41,14 @@ import ClassAssignments from "@/components/ClassAssignments.vue";
 import ClassSettings from "@/components/ClassSettings.vue";
 import ClassMeeting from "@/components/ClassMeeting.vue";
 import { graphql, useFragment } from "@/gql";
-import { useQuery } from "@vue/apollo-composable";
+import { useQuery, useSubscription } from "@vue/apollo-composable";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
+import { ChannelsFragmentFragment, ChatFragmentFragment } from "@/gql/graphql";
+import { FragmentType } from "@/gql";
+import { cache } from "@/client";
 
 const route = useRoute();
-
 const tabValue = ref("Chat");
 
 const ClassQuery = graphql(/* GraphQL */ `
@@ -70,7 +63,7 @@ const ClassQuery = graphql(/* GraphQL */ `
   }
 `);
 
-const { result, loading, onResult, refetch } = useQuery(
+const { result, loading, onResult, refetch, subscribeToMore } = useQuery(
   ClassQuery,
   () => ({
     id: route.params.classId as string,
@@ -82,4 +75,161 @@ const { result, loading, onResult, refetch } = useQuery(
 
 const class_ = computed(() => result.value?.classById ?? null);
 const name = computed(() => class_.value?.name ?? "");
+
+const FileFragment = graphql(/* GraphQL */ `
+  fragment FileFragment on File {
+    id
+    name
+    fileType
+    parent
+  }
+`);
+
+const AssignmentFragment = graphql(/* GraphQL */ `
+  fragment AssignmentFragment on Assignment {
+    submissions {
+      id
+      createdAt
+      updatedAt
+      user {
+        id
+        username
+      }
+      files {
+        id
+        name
+      }
+    }
+  }
+`);
+
+const ClassResourceCreateSubscription = graphql(/* GraphQL */ `
+  subscription ClassResourceCreateSubscription($classId: ID!) {
+    classResourceCreated(classId: $classId) {
+      __typename
+      ... on Channel {
+        ...ChannelsFragment
+      }
+      ... on File {
+        ...FileFragment
+      }
+      ... on Assignment {
+        ...AssignmentFragment
+      }
+    }
+  }
+`);
+
+subscribeToMore(() => ({
+  document: ClassResourceCreateSubscription,
+  variables: {
+    classId: route.params.classId as string,
+  },
+  updateQuery: (prev, { subscriptionData }) => {
+    if (!subscriptionData.data) return prev;
+    const updatedClass = subscriptionData.data.classResourceCreated;
+
+    if (updatedClass.__typename == "Channel") {
+      return {
+        classById: {
+          ...prev.classById!,
+          channels: [...prev.classById!.channels, updatedClass],
+        },
+      };
+    }
+
+    if (updatedClass.__typename == "Assignment") {
+      return {
+        classById: {
+          ...prev.classById!,
+          assignments: [...prev.classById!.assignments, updatedClass],
+        },
+      };
+    }
+
+    if (updatedClass.__typename == "File") {
+      return {
+        classById: {
+          ...prev.classById!,
+          files: [...prev.classById!.files, updatedClass],
+        },
+      };
+    }
+
+    return {
+      ...prev,
+    };
+  },
+}));
+
+const ClassResourceUpdateSubscription = graphql(/* GraphQL */ `
+  subscription ClassResourceUpdateSubscription($classId: ID!) {
+    classResourceUpdated(classId: $classId) {
+      __typename
+      ... on Channel {
+        ...ChannelsFragment
+      }
+    }
+  }
+`);
+
+subscribeToMore(() => ({
+  document: ClassResourceUpdateSubscription,
+  variables: {
+    classId: route.params.classId as string,
+  },
+  updateQuery: (prev, { subscriptionData }) => {
+    if (!subscriptionData.data) return prev;
+    const updatedClass = subscriptionData.data.classResourceUpdated;
+
+    if (updatedClass.__typename == "Channel") {
+      console.log(updatedClass);
+    }
+
+    return {
+      ...prev,
+    };
+  },
+}));
+
+const ClassResourceDeletedSubscription = graphql(/* GraphQL */ `
+  subscription ClassResourceDeletedSubscription($classId: ID!) {
+    classResourceDeleted(classId: $classId) {
+      __typename
+      ... on ChannelDeleteInfo {
+        id
+      }
+      ... on AssignmentDeleteInfo {
+        id
+      }
+      ... on FileDeleteInfo {
+        id
+      }
+    }
+  }
+`);
+
+const { result: onDelete } = useSubscription(
+  ClassResourceDeletedSubscription,
+  () => ({
+    classId: route.params.classId as string,
+  })
+);
+watch(onDelete, () => {
+  console.log(onDelete.value);
+  if (!onDelete.value) return;
+  const data = onDelete.value.classResourceDeleted;
+
+  if (data.__typename == "ChannelDeleteInfo") {
+    cache.evict({ id: `Channel:${data.id}` });
+  }
+  if (data.__typename == "FileDeleteInfo") {
+    cache.evict({ id: `File:${data.id}` });
+  }
+  if (data.__typename == "AssignmentDeleteInfo") {
+    console.log(data.id);
+
+    cache.evict({ id: `Assignment:${data.id}` });
+  }
+});
 </script>

@@ -1,112 +1,101 @@
 <template>
-  <v-container class="ma-0 full-height pad" fluid>
-    <v-row class="grow pa-0" no-gutters>
-      <v-col cols="12" class="d-flex px-5">
-        <v-row>
-          <v-col cols="2">
-            <v-text-field
-              v-model="newDirName"
-              label="Folder name"
-              variant="outlined"
-              hide-details="auto"
-            ></v-text-field>
-            <v-btn @click="createDir" class="bg-primary" block>Create</v-btn>
-          </v-col>
-          <v-col cols="2">
-            <v-file-input
-              v-model="filesToUpload"
-              label="Your file"
-              variant="outlined"
-              hide-details="auto"
-            ></v-file-input>
-            <v-btn @click="uploadFiles" block>Upload here</v-btn>
-          </v-col>
-          <v-col cols="2">
-            <v-text-field
-              style="visibility: hidden"
-              variant="outlined"
-              hide-details="auto"
-            ></v-text-field>
-            <v-btn class="bg-success" block @click="downloadAll">
-              Download selected
-            </v-btn>
-          </v-col>
-          <v-col cols="2">
-            <v-text-field
-              style="visibility: hidden"
-              variant="outlined"
-              hide-details="auto"
-            ></v-text-field>
-            <v-btn class="bg-error" block @click="deleteAll">
-              Delete selected
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-col>
-    </v-row>
-    <v-row>
-      <v-col cols="12" class="px-5">
-        <v-breadcrumbs class="pa-0">
-          <template v-for="item in selectedDirectoryTree" :key="item.name">
-            <v-breadcrumbs-item @click="open(item)" class="pointer">
-              <span class="font-weight-bold text-h5">
-                {{ item.name }}
-              </span>
-            </v-breadcrumbs-item>
-            <v-breadcrumbs-divider class="pa-0">/</v-breadcrumbs-divider>
-          </template>
-        </v-breadcrumbs>
-        <v-table>
-          <thead>
-            <tr>
-              <th class="text-left font-weight-black">
-                <v-checkbox-btn
-                  class="pa-0 ma-0"
-                  @click="checkAll"
-                ></v-checkbox-btn>
-              </th>
-              <th class="text-left font-weight-black">Name</th>
-              <th class="text-left font-weight-black">Size</th>
-              <th class="text-left font-weight-black">Type</th>
-              <th class="text-left font-weight-black">Date modified</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="file in files" :key="file.id">
-              <td>
-                <v-checkbox-btn
-                  v-model="selectedFiles"
-                  :value="file.id"
-                ></v-checkbox-btn>
-              </td>
-              <td>
-                <p
-                  @click="
-                    open({
-                      id: file.id,
-                      name: file.name,
-                      fileType: file.fileType,
-                    })
-                  "
-                  class="pointer"
-                >
-                  <v-icon
-                    v-if="file.fileType == 'DIRECTORY'"
-                    icon="mdi-folder"
-                  ></v-icon>
-                  <v-icon v-else icon="mdi-file-download-outline"></v-icon>
-                  {{ file.name }}
-                </p>
-              </td>
-              <td></td>
-              <td>{{ file.fileType }}</td>
-              <td></td>
-            </tr>
-          </tbody>
-        </v-table>
-      </v-col>
-    </v-row>
-  </v-container>
+  <div class="d-flex flex-wrap mt-4 px-16">
+    <div class="pa-4 full-mobile w-25">
+      <v-text-field
+        v-model="newDirName"
+        label="Folder name"
+        variant="outlined"
+        hide-details="auto"
+      ></v-text-field>
+      <v-btn @click="createDir" class="bg-primary" size="large" block
+        >Create</v-btn
+      >
+    </div>
+    <div class="pa-4 full-mobile w-25">
+      <v-file-input
+        v-model="filesToUpload"
+        label="Your file"
+        variant="outlined"
+        hide-details="auto"
+      ></v-file-input>
+      <v-btn @click="uploadFiles" size="large" block>Upload here</v-btn>
+    </div>
+    <div class="pa-4 full-mobile w-25">
+      <v-text-field
+        :style="!mobile ? 'visibility: hidden' : 'display: none'"
+        variant="outlined"
+        hide-details="auto"
+      ></v-text-field>
+      <v-btn class="bg-success" size="large" block @click="downloadAll">
+        Download selected
+      </v-btn>
+    </div>
+    <div class="pa-4 full-mobile w-25">
+      <v-text-field
+        :style="!mobile ? 'visibility: hidden' : 'display: none'"
+        variant="outlined"
+        hide-details="auto"
+      ></v-text-field>
+      <v-btn class="bg-error" block size="large" @click="deleteAll">
+        Delete selected
+      </v-btn>
+    </div>
+    <v-breadcrumbs class="pa-4 w-100">
+      <template v-for="item in selectedDirectoryTree" :key="item.name">
+        <v-breadcrumbs-item @click="open(item)" class="pointer">
+          <span class="font-weight-bold text-h5">
+            {{ item.name }}
+          </span>
+        </v-breadcrumbs-item>
+        <v-breadcrumbs-divider class="pa-0">/</v-breadcrumbs-divider>
+      </template>
+    </v-breadcrumbs>
+    <v-table density="compact" class="w-100">
+      <thead>
+        <tr>
+          <th class="text-left font-weight-black" style="width: 10%">
+            <v-checkbox-btn @click="checkAll"></v-checkbox-btn>
+          </th>
+          <th class="text-left font-weight-black" style="width: 50%">Name</th>
+          <th class="text-left font-weight-black" style="width: 10%">Size</th>
+          <th class="text-left font-weight-black" style="width: 30%">
+            Date modified
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="file in files" :key="file.id">
+          <td>
+            <v-checkbox-btn
+              v-model="selectedFiles"
+              :value="file.id"
+            ></v-checkbox-btn>
+          </td>
+          <td>
+            <p
+              @click="
+                open({
+                  id: file.id,
+                  name: file.name,
+                  fileType: file.fileType,
+                })
+              "
+              class="pointer"
+            >
+              <v-icon
+                v-if="file.fileType == 'DIRECTORY'"
+                icon="mdi-folder"
+              ></v-icon>
+              <v-icon v-else icon="mdi-file-download-outline"></v-icon>
+              {{ file.name }}
+            </p>
+          </td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </v-table>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -114,6 +103,9 @@ import { FragmentType, graphql, useFragment } from "@/gql";
 import { useMutation } from "@vue/apollo-composable";
 import { computed } from "vue";
 import { ref, watch } from "vue";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 const FilesFragment = graphql(/* GraphQL */ `
   fragment FilesFragment on Class {
@@ -130,7 +122,6 @@ const FilesFragment = graphql(/* GraphQL */ `
 
 const props = defineProps<{
   class_?: FragmentType<typeof FilesFragment> | null;
-  loading: boolean;
 }>();
 
 const class_ = ref(useFragment(FilesFragment, props.class_));
@@ -205,9 +196,7 @@ const CreateDirectoryMutation = graphql(/* GraphQL */ `
   }
 `);
 
-const { mutate: send } = useMutation(CreateDirectoryMutation, {
-  refetchQueries: ["ClassClassByIdQuery"],
-});
+const { mutate: send } = useMutation(CreateDirectoryMutation);
 
 const createDir = () => {
   send({
@@ -239,9 +228,7 @@ const UploadFilesMutation = graphql(/* GraphQL */ `
   }
 `);
 
-const { mutate: upload } = useMutation(UploadFilesMutation, {
-  refetchQueries: ["ClassClassByIdQuery"],
-});
+const { mutate: upload } = useMutation(UploadFilesMutation);
 
 const uploadFiles = () => {
   upload({
@@ -292,9 +279,7 @@ const DeleteFilesMutation = graphql(/* GraphQL */ `
   }
 `);
 
-const { mutate: deleteFiles } = useMutation(DeleteFilesMutation, {
-  refetchQueries: ["ClassClassByIdQuery"],
-});
+const { mutate: deleteFiles } = useMutation(DeleteFilesMutation);
 
 const deleteAll = () => {
   deleteFiles({
@@ -307,7 +292,10 @@ const deleteAll = () => {
 .pointer {
   cursor: pointer;
 }
-.pad {
-  padding: 2em 4em;
+
+@media only screen and (max-width: 500px) {
+  .full-mobile {
+    width: 100% !important;
+  }
 }
 </style>

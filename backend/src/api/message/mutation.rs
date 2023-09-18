@@ -3,7 +3,7 @@ use crate::core::LoggedInGuard;
 use crate::core::{auth, AppError};
 use async_graphql::{dataloader::DataLoader, Context, Object};
 use auth::Claims;
-use deadpool_redis::redis;
+use deadpool_redis::{redis, Pool};
 use redis::{AsyncCommands, Client};
 use sea_orm::DatabaseConnection;
 use tracing::instrument;
@@ -26,8 +26,8 @@ impl MessageMutation {
     ) -> Result<MessageObject, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let claims = ctx.data_unchecked::<Option<Claims>>();
-        let client = ctx.data_unchecked::<Client>();
-        let mut conn = client.get_async_connection().await?;
+        let redis_pool = ctx.data_unchecked::<Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
         let channel_id = input.channel_id.clone();

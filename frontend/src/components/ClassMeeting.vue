@@ -42,7 +42,6 @@ const MeetingFragment = graphql(/* GraphQL */ `
 
 const props = defineProps<{
   class_?: FragmentType<typeof MeetingFragment> | null;
-  loading: boolean;
 }>();
 
 const class_ = computed(() => useFragment(MeetingFragment, props.class_));

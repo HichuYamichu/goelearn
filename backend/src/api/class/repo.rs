@@ -185,6 +185,16 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
                     };
                     chat_files.insert(txn).await?;
 
+                    let submission_files = file::ActiveModel {
+                        id: Set(Uuid::new_v4()),
+                        name: Set("Assignment submission files".to_string()),
+                        class_id: Set(class.id),
+                        file_type: Set(sea_orm_active_enums::FileType::Directory),
+                        public: Set(true),
+                        ..Default::default()
+                    };
+                    submission_files.insert(txn).await?;
+
                     Ok(class)
                 })
             })

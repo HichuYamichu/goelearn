@@ -45,7 +45,7 @@ const link = split(
   httpLink
 );
 
-const cache = new InMemoryCache();
+export const cache = new InMemoryCache();
 
 const IS_LOGGED_IN = gql`
   query IsLoggedIn {

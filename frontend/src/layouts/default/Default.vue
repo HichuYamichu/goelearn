@@ -1,5 +1,5 @@
 <template>
-  <v-app class="h">
+  <v-app>
     <default-bar />
     <default-view />
   </v-app>
@@ -10,10 +10,4 @@ import DefaultBar from "./AppBar.vue";
 import DefaultView from "./View.vue";
 </script>
 
-<style scoped>
-.h {
-  display: flex;
-  flex-direction: column;
-  height: 100vh !important;
-}
-</style>
+<style scoped></style>

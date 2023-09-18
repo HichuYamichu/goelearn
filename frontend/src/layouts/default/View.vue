@@ -1,5 +1,5 @@
 <template>
-  <v-main fill-height class="d-flex flex-column">
+  <v-main fill-height>
     <router-view />
   </v-main>
 </template>

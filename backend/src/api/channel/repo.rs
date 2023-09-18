@@ -1,4 +1,5 @@
 use ::entity::channel;
+use ::entity::channel::Entity as Channel;
 
 use async_graphql::dataloader::{DataLoader, Loader};
 use async_trait::async_trait;
@@ -46,6 +47,8 @@ pub trait ChannelRepo {
         &self,
         class_id: Uuid,
     ) -> Result<Option<Vec<channel::Model>>, Arc<DbErr>>;
+    async fn update_channel(&self, model: channel::ActiveModel) -> Result<channel::Model, DbErr>;
+    async fn delete_channel(&self, id: Uuid) -> Result<(), DbErr>;
 }
 
 #[async_trait]
@@ -62,5 +65,16 @@ impl ChannelRepo for DataLoader<DatabaseConnection> {
     ) -> Result<Option<Vec<channel::Model>>, Arc<DbErr>> {
         let channels = self.load_one(ChannelsByClassId(class_id)).await?;
         Ok(channels)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn update_channel(&self, model: channel::ActiveModel) -> Result<channel::Model, DbErr> {
+        model.update(self.loader()).await
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn delete_channel(&self, id: Uuid) -> Result<(), DbErr> {
+        Channel::delete_by_id(id).exec(self.loader()).await?;
+        Ok(())
     }
 }

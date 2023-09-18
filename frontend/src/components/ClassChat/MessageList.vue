@@ -25,26 +25,46 @@
       </template>
     </v-virtual-scroll>
   </v-card>
-  <v-textarea
-    rows="1"
-    no-resize
-    v-model="msg"
-    append-innerdasda-icon="mdi-send"
-    variant="outlined"
-    clear-icon="mdi-close-circle"
-    clearable
-    label="Message"
-    type="text"
-    hide-details="auto"
-    @click:append="sendMsg"
-    @keyup.enter.native="sendMsg"
-  ></v-textarea>
+  <div class="d-flex">
+    <v-btn
+      variant="outlined"
+      height="100%"
+      size="small"
+      class="hidden-md-and-up"
+      @click="emit('toggleChannelDrawer')"
+      ><v-icon icon="$vuetify"></v-icon
+    ></v-btn>
+    <v-textarea
+      rows="1"
+      no-resize
+      v-model="msg"
+      append-innerdasda-icon="mdi-send"
+      variant="outlined"
+      clear-icon="mdi-close-circle"
+      clearable
+      label="Message"
+      type="text"
+      hide-details="auto"
+      @click:append="sendMsg"
+      @keyup.enter.native="sendMsg"
+    ></v-textarea>
+    <v-btn
+      variant="outlined"
+      height="100%"
+      size="small"
+      class="hidden-md-and-up"
+      @click="emit('toggleMemberDrawer')"
+      ><v-icon icon="$vuetify"></v-icon
+    ></v-btn>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import { graphql } from "@/gql";
 import { useMutation, useQuery } from "@vue/apollo-composable";
 import { Ref, computed, nextTick, ref, toRef, watch } from "vue";
+
+const emit = defineEmits(["toggleChannelDrawer", "toggleMemberDrawer"]);
 
 const props = defineProps<{
   selectedChannelId?: string | null;

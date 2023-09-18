@@ -1,6 +1,6 @@
 <template>
-  <h5 class="text-h5 text-center pa-3">Members</h5>
-  <v-skeleton-loader v-if="loading" type="list-item"> </v-skeleton-loader>
+  <h5 class="text-h5 text-center pa-3">Students</h5>
+  <v-skeleton-loader v-if="!hasUsers" type="list-item"> </v-skeleton-loader>
   <v-list v-else class="pa-0">
     <v-list-item
       v-for="user in users!"
@@ -25,13 +25,14 @@ const MembersFragment = graphql(/* GraphQL */ `
   }
 `);
 
-const props = defineProps<{
-  users?: FragmentType<typeof MembersFragment>[] | null;
-  loading: boolean;
-}>();
+export interface Props {
+  users?: FragmentType<typeof MembersFragment>[];
+}
 
-const users = ref(useFragment(MembersFragment, props.users));
-watch(props, () => {
-  users.value = useFragment(MembersFragment, props.users);
+const props = withDefaults(defineProps<Props>(), {
+  users: [] as any,
 });
+
+const users = computed(() => useFragment(MembersFragment, props.users));
+const hasUsers = computed(() => users.value?.length ?? 0 > 0);
 </script>

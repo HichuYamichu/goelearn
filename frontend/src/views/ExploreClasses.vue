@@ -55,6 +55,7 @@
 
 <script lang="ts" setup>
 import { graphql } from "@/gql";
+import router from "@/router";
 import { useMutation, useQuery } from "@vue/apollo-composable";
 import { computed, ref } from "vue";
 
@@ -103,6 +104,7 @@ const { mutate: joinClass, onError } = useMutation(JoinClassMutation, {
 const join = (id: string) => {
   joinClass({ classId: id });
   dialog.value = false;
+  router.push(`/class/${id}`);
 };
 
 onError((e) => {

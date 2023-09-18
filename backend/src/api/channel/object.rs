@@ -2,10 +2,13 @@ use std::str::FromStr;
 
 use crate::api::message::MessageObject;
 use crate::api::message::MessageRepo;
+use crate::core::option_to_active_value;
 use crate::core::AppError;
 use crate::core::LoggedInGuard;
 use async_graphql::connection::Connection;
+use async_graphql::Enum;
 use async_graphql::InputObject;
+use async_graphql::Union;
 use async_graphql::{dataloader::DataLoader, ComplexObject, Context, SimpleObject, ID};
 
 use async_graphql::connection::{self, Edge, EmptyFields};
@@ -14,12 +17,19 @@ use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
 use chrono::DateTime;
 use chrono::Utc;
 use chrono::{NaiveDateTime, Timelike};
+use deadpool_redis::redis;
+use deadpool_redis::redis::FromRedisValue;
+use deadpool_redis::redis::RedisResult;
+use deadpool_redis::redis::RedisWrite;
+use deadpool_redis::redis::ToRedisArgs;
 use sea_orm::DatabaseConnection;
 use sea_orm::Set;
+use serde::Deserialize;
+use serde::Serialize;
 use tracing::instrument;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, SimpleObject)]
+#[derive(Clone, Debug, SimpleObject, Serialize, Deserialize)]
 #[graphql(complex)]
 #[graphql(name = "Channel")]
 pub struct ChannelObject {
@@ -35,6 +45,31 @@ impl From<::entity::channel::Model> for ChannelObject {
             name: c.name,
             description: c.description,
         }
+    }
+}
+
+impl ToRedisArgs for ChannelObject {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
+        let vec = vec![
+            self.id.to_string(),
+            self.name.clone(),
+            self.description.clone().unwrap_or("".to_string()),
+        ];
+        vec.write_redis_args(out)
+    }
+}
+
+impl FromRedisValue for ChannelObject {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        let vec = Vec::<String>::from_redis_value(v)?;
+        Ok(Self {
+            id: ID::from(vec[0].clone()),
+            name: vec[1].clone(),
+            description: Some(vec[2].clone()),
+        })
     }
 }
 
@@ -147,6 +182,26 @@ impl CreateChannelInput {
             description: Set(self.description),
             class_id: Set(Uuid::parse_str(self.class_id.as_str())?),
             allow_members_to_post: Set(self.allow_members_to_post),
+        })
+    }
+}
+
+#[derive(Clone, Debug, InputObject)]
+pub struct UpdateChannelInput {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub class_id: ID,
+    pub allow_members_to_post: Option<bool>,
+}
+
+impl UpdateChannelInput {
+    pub fn try_into_active_model(self) -> Result<::entity::channel::ActiveModel, AppError> {
+        Ok(::entity::channel::ActiveModel {
+            id: Set(Uuid::parse_str(self.class_id.as_str())?),
+            name: option_to_active_value(self.name),
+            description: Set(self.description),
+            class_id: Set(Uuid::parse_str(self.class_id.as_str())?),
+            allow_members_to_post: option_to_active_value(self.allow_members_to_post),
         })
     }
 }

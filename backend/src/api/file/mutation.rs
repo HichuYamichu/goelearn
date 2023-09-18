@@ -1,5 +1,11 @@
-use crate::core::AppError;
+use crate::{
+    api::class::{
+        ClassResourceCreate, ClassResourceDelete, CLASS_RESOURCE_CREATED, CLASS_RESOURCE_DELETED,
+    },
+    core::AppError,
+};
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
+use deadpool_redis::redis::AsyncCommands;
 use tracing::instrument;
 
 use entity::sea_orm_active_enums;
@@ -28,6 +34,8 @@ impl FileMutation {
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let class_id = Uuid::parse_str(input.class_id.as_str())?;
 
@@ -57,6 +65,15 @@ impl FileMutation {
                 message_id: Set(None),
             })
             .collect::<Vec<_>>();
+
+        for model in file_models.iter() {
+            let update_data = ClassResourceCreate::File(model.clone().into());
+            conn.publish(
+                format!("{}:{}", CLASS_RESOURCE_CREATED, class_id.to_string()),
+                serde_json::to_string(&update_data).expect("Class should serialize"),
+            )
+            .await?;
+        }
 
         let file_ids = file_models
             .iter()
@@ -89,8 +106,20 @@ impl FileMutation {
         input: CreateDirectoryInput,
     ) -> Result<FileObject, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let file_model = FileRepo::save_file(data_loader, input.try_into_active_model()?).await?;
+        let update_data = ClassResourceCreate::File(file_model.clone().into());
+        conn.publish(
+            format!(
+                "{}:{}",
+                CLASS_RESOURCE_CREATED,
+                file_model.class_id.to_string()
+            ),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
 
         Ok(file_model.into())
     }
@@ -104,6 +133,8 @@ impl FileMutation {
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let file_ids = file_ids
             .iter()
@@ -119,6 +150,13 @@ impl FileMutation {
                 file_id = file.id
             );
             s3_bucket.delete_object(&s3_path).await?;
+
+            let update_data = ClassResourceDelete::File(file.clone().into());
+            conn.publish(
+                format!("{}:{}", CLASS_RESOURCE_DELETED, file.class_id.to_string()),
+                serde_json::to_string(&update_data).expect("Class should serialize"),
+            )
+            .await?;
         }
 
         FileRepo::delete_many_with_nested(data_loader, file_ids).await?;

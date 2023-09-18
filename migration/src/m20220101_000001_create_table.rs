@@ -196,7 +196,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Assignment::Name).string().not_null())
                     .col(ColumnDef::new(Assignment::Content).string().not_null())
                     .col(ColumnDef::new(Assignment::CreatedAt).timestamp().not_null())
-                    .col(ColumnDef::new(Assignment::DueAt).timestamp().not_null())
+                    .col(ColumnDef::new(Assignment::DueAt).timestamp().null())
                     .col(ColumnDef::new(Assignment::ClassId).uuid().not_null())
                     .to_owned(),
             )
@@ -242,7 +242,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(AssignmentSubmission::UpdatedAt)
                             .timestamp()
-                            .not_null(),
+                            .null(),
                     )
                     .col(
                         ColumnDef::new(AssignmentSubmission::AssignmentId)
@@ -314,7 +314,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(AssignmentSubmissionFeedback::UpdatedAt)
                             .timestamp()
-                            .not_null(),
+                            .null(),
                     )
                     .to_owned(),
             )

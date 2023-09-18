@@ -10,7 +10,6 @@ use async_graphql::extensions::Tracing;
 use async_graphql::http::GraphiQLSource;
 use async_graphql::{dataloader::DataLoader, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
-use awscreds::Credentials;
 use axum::routing::post;
 use axum::{
     extract::{FromRef, State},
@@ -24,6 +23,7 @@ use deadpool_redis::{
 };
 use deadpool_redis::{Connection, Manager, Pool};
 use migration::{Migrator, MigratorTrait};
+use s3::creds::Credentials;
 // use redis::aio::ConnectionManager;
 use std::env;
 use tower_http::cors::CorsLayer;

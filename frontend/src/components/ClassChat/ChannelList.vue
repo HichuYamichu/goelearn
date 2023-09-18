@@ -1,6 +1,6 @@
 <template>
   <h5 class="text-h5 text-center pa-3">Channels</h5>
-  <v-skeleton-loader v-if="loading" type="list-item"> </v-skeleton-loader>
+  <v-skeleton-loader v-if="!hasChannels" type="list-item"> </v-skeleton-loader>
   <v-list v-else class="pa-0">
     <v-list-item
       v-for="channel in channels!"
@@ -18,6 +18,9 @@
 <script lang="ts" setup>
 import { FragmentType, graphql, useFragment } from "@/gql";
 import { computed, ref, watch } from "vue";
+import { useSubscription } from "@vue/apollo-composable";
+import { useRoute, useRouter } from "vue-router";
+import { cache } from "@/client";
 
 const ChannelsFragment = graphql(/* GraphQL */ `
   fragment ChannelsFragment on Channel {
@@ -29,13 +32,10 @@ const ChannelsFragment = graphql(/* GraphQL */ `
 const props = defineProps<{
   channels?: FragmentType<typeof ChannelsFragment>[] | null;
   selectedChannelId?: string | null;
-  loading: boolean;
 }>();
 
 const emit = defineEmits(["changeSelectedChannelId"]);
 
-const channels = ref(useFragment(ChannelsFragment, props.channels));
-watch(props, () => {
-  channels.value = useFragment(ChannelsFragment, props.channels);
-});
+const channels = computed(() => useFragment(ChannelsFragment, props.channels));
+const hasChannels = computed(() => channels.value?.length ?? 0 > 0);
 </script>

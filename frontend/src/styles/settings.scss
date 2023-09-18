@@ -8,3 +8,23 @@
 // @use 'vuetify' with (
 //   $color-pack: false
 // );
+
+@for $i from 1 through 100 {
+  .w-#{$i} {
+    width: #{$i * 1%};
+  }
+
+  .h-#{$i} {
+    height: #{$i * 1%};
+  }
+
+  @media only screen and (max-width: 600px) {
+    .w-xs-#{$i} {
+      width: #{$i * 1%};
+    }
+
+    .h-xs-#{$i} {
+      height: #{$i * 1%};
+    }
+  }
+}

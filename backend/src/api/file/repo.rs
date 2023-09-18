@@ -1,5 +1,6 @@
 use ::entity::{
-    assignment_file, assignment_file::Entity as AssignmentFile, file, file::Entity as File,
+    assignment_file, assignment_file::Entity as AssignmentFile, assignment_submission_file,
+    assignment_submission_file::Entity as AssignmentSubmissionFile, file, file::Entity as File,
 };
 
 use async_graphql::dataloader::{DataLoader, Loader};
@@ -99,6 +100,11 @@ pub trait FileRepo {
         &self,
         assignment_id: Uuid,
     ) -> Result<Option<Vec<file::Model>>, Arc<DbErr>>;
+
+    async fn find_by_assignment_submission_id(
+        &self,
+        assignment_submission_id: Uuid,
+    ) -> Result<Vec<file::Model>, Arc<DbErr>>;
 }
 
 #[async_trait]
@@ -155,14 +161,17 @@ impl FileRepo for DataLoader<DatabaseConnection> {
             .all(self.loader())
             .await?;
 
-        dbg!(&files);
-
         Ok(files)
     }
 
     #[instrument(skip(self), err(Debug))]
     async fn delete_many_with_nested(&self, file_ids: Vec<Uuid>) -> Result<(), DbErr> {
-        let ids = file_ids.into_iter().map(|id| id.into()).collect::<Vec<_>>();
+        let tuple = Value::Array(
+            ArrayType::Uuid,
+            Some(Box::new(
+                file_ids.into_iter().map(|id| id.into()).collect::<Vec<_>>(),
+            )),
+        );
 
         self.loader().execute(Statement::from_sql_and_values(
             DbBackend::Postgres,
@@ -170,7 +179,7 @@ impl FileRepo for DataLoader<DatabaseConnection> {
             WITH RECURSIVE file_hierarchy AS (
                 SELECT "id", "name", "public", CAST(file_type AS TEXT), parent_id, message_id, class_id
                 FROM public.file
-                WHERE id IN ($1)
+                WHERE id = ANY($1::uuid[])
 
                 UNION ALL
 
@@ -178,9 +187,9 @@ impl FileRepo for DataLoader<DatabaseConnection> {
                 FROM public.file f
                 INNER JOIN file_hierarchy fh ON f.parent_id = fh.id
             )
-            DELETE FROM file_hierarchy;
+            DELETE FROM public.file WHERE id IN (SELECT id FROM file_hierarchy);
             "#,
-            ids,
+            [tuple],
         ))
         .await?;
 
@@ -207,6 +216,26 @@ impl FileRepo for DataLoader<DatabaseConnection> {
         assignment_id: Uuid,
     ) -> Result<Option<Vec<file::Model>>, Arc<DbErr>> {
         let files = self.load_one(FilesByAssignmentId(assignment_id)).await?;
+        Ok(files)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn find_by_assignment_submission_id(
+        &self,
+        assignment_submission_id: Uuid,
+    ) -> Result<Vec<file::Model>, Arc<DbErr>> {
+        let files = AssignmentSubmissionFile::find()
+            .filter(
+                assignment_submission_file::Column::AssignmentSubmissionId
+                    .eq(assignment_submission_id),
+            )
+            .find_also_related(File)
+            .all(self.loader())
+            .await?
+            .into_iter()
+            .map(|(_, f)| f.expect("AssignmentSubmissionFile to File is not optional"))
+            .collect::<Vec<_>>();
+
         Ok(files)
     }
 }

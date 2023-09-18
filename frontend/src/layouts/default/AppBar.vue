@@ -32,6 +32,7 @@
         ></v-img>
       </v-avatar>
       <v-avatar v-else> <v-icon icon="mdi-account-circle"></v-icon></v-avatar>
+      {{ username }}
       <v-btn @click="logout">Settings</v-btn>
       <v-btn @click="logout">Logout</v-btn>
     </div>
@@ -79,6 +80,7 @@ const MeQuery = graphql(/* GraphQL */ `
   query AppBarMeQuery {
     me {
       id
+      username
       hasAvatar
     }
   }
@@ -90,6 +92,7 @@ const { result: meResult } = useQuery(MeQuery, null, () => ({
 
 const hasAvatar = computed(() => meResult.value?.me.hasAvatar ?? false);
 const id = computed(() => meResult.value?.me.id ?? "");
+const username = computed(() => meResult.value?.me.username ?? "");
 
 const logout = () => {
   localStorage.removeItem("token");

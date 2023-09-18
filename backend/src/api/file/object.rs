@@ -1,11 +1,15 @@
+use std::fmt::Display;
+
 use crate::core::AppError;
 use async_graphql::{Enum, InputObject, Result, SimpleObject, Upload, ID};
+use deadpool_redis::redis::{self, FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use entity::sea_orm_active_enums;
 use partialdebug::placeholder::PartialDebug;
 use sea_orm::{Set, Unchanged};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Clone, Debug, SimpleObject)]
+#[derive(Clone, Debug, SimpleObject, Serialize, Deserialize)]
 #[graphql(name = "File")]
 pub struct FileObject {
     pub id: ID,
@@ -15,10 +19,65 @@ pub struct FileObject {
     pub parent: Option<ID>,
 }
 
-#[derive(Debug, Enum, Copy, Clone, Eq, PartialEq)]
+impl ToRedisArgs for FileObject {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
+        let vec = vec![
+            self.id.to_string(),
+            self.name.clone(),
+            self.public.to_string(),
+            self.file_type.to_string(),
+            self.parent
+                .clone()
+                .map(|o| o.to_string())
+                .unwrap_or("".to_string()),
+        ];
+        vec.write_redis_args(out)
+    }
+}
+
+impl FromRedisValue for FileObject {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        let vec = Vec::<String>::from_redis_value(v)?;
+        Ok(Self {
+            id: ID::from(vec[0].clone()),
+            name: vec[1].clone(),
+            public: vec[2].parse::<bool>().unwrap(),
+            file_type: vec[3].parse::<FileType>().unwrap(),
+            parent: match vec[4].as_str() {
+                "" => None,
+                _ => Some(ID::from(vec[4].clone())),
+            },
+        })
+    }
+}
+
+#[derive(Debug, Enum, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum FileType {
     File,
     Directory,
+}
+
+impl Display for FileType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FileType::File => write!(f, "File"),
+            FileType::Directory => write!(f, "Directory"),
+        }
+    }
+}
+
+impl std::str::FromStr for FileType {
+    type Err = ();
+    fn from_str(input: &str) -> Result<FileType, Self::Err> {
+        match input {
+            "File" => Ok(Self::File),
+            "Directory" => Ok(Self::Directory),
+            _ => Err(()),
+        }
+    }
 }
 
 impl From<sea_orm_active_enums::FileType> for FileType {
@@ -38,6 +97,18 @@ impl From<::entity::file::Model> for FileObject {
             public: f.public,
             file_type: f.file_type.into(),
             parent: f.parent_id.map(ID::from),
+        }
+    }
+}
+
+impl From<::entity::file::ActiveModel> for FileObject {
+    fn from(f: ::entity::file::ActiveModel) -> Self {
+        Self {
+            id: ID::from(f.id.unwrap()),
+            name: f.name.unwrap(),
+            public: f.public.unwrap(),
+            file_type: f.file_type.unwrap().into(),
+            parent: f.parent_id.unwrap().map(ID::from),
         }
     }
 }

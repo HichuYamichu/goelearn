@@ -10,7 +10,7 @@ pub struct Model {
     pub name: String,
     pub content: String,
     pub created_at: DateTime,
-    pub due_at: DateTime,
+    pub due_at: Option<DateTime>,
     pub class_id: Uuid,
 }
 

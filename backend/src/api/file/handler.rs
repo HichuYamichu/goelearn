@@ -40,7 +40,7 @@ impl FileHandler {
                     .unwrap();
                 Ok(response)
             }
-            Err(s3::error::S3Error::Http(404, _)) => {
+            Err(s3::error::S3Error::HttpFailWithBody(404, _)) => {
                 let s3_path = format!("user-avatars/user.png");
                 let object = s3_bucket.get_object(s3_path).await;
                 match object {
@@ -74,7 +74,7 @@ impl FileHandler {
 
                 Ok(response)
             }
-            Err(s3::error::S3Error::Http(404, _)) => Err(AppError::not_found(
+            Err(s3::error::S3Error::HttpFailWithBody(404, _)) => Err(AppError::not_found(
                 "Class image not found".into(),
                 "class image",
                 "id",
@@ -84,6 +84,7 @@ impl FileHandler {
         }
     }
 
+    // TODO: Add authorization
     #[instrument(skip(s3_bucket), err(Debug))]
     pub async fn get_class_file(
         Path((class_id, file_id)): Path<(Uuid, Uuid)>,
@@ -104,7 +105,7 @@ impl FileHandler {
 
                 Ok(response)
             }
-            Err(s3::error::S3Error::Http(404, _)) => Err(AppError::not_found(
+            Err(s3::error::S3Error::HttpFailWithBody(404, _)) => Err(AppError::not_found(
                 "Class file not found".into(),
                 "class file",
                 "id",
