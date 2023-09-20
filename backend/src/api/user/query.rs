@@ -23,16 +23,4 @@ impl UserQuery {
             .expect("User id cannot be invalid here");
         Ok(u.into())
     }
-
-    #[instrument(skip(self, ctx), err(Debug))]
-    async fn error_testing(&self, ctx: &Context<'_>) -> Result<bool, async_graphql::Error> {
-        Err(AppError::user(
-            "Testing error",
-            crate::core::UserError::BadInput {
-                parameter: "test",
-                given_value: "test".into(),
-            },
-        )
-        .into())
-    }
 }

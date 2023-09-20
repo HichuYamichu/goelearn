@@ -1,5 +1,10 @@
-use ::entity::{channel, file, membership, membership::Entity as Membership, sea_orm_active_enums};
+use ::entity::{
+    channel, class_blacklist, class_blacklist::Entity as ClassBlacklist, file,
+    invite::Entity as Invite, membership, membership::Entity as Membership, sea_orm_active_enums,
+    user::Entity as User,
+};
 use ::entity::{class, class::Entity as Class};
+use ::entity::{invite, user};
 use async_graphql::dataloader::{DataLoader, Loader};
 use async_trait::async_trait;
 use chrono::Utc;
@@ -117,8 +122,16 @@ pub trait ClassRepo {
         user_id: Uuid,
         class_id: Uuid,
     ) -> Result<membership::Model, DbErr>;
-    async fn find_random(&self, limit: u64) -> Result<Vec<class::Model>, TransactionError<DbErr>>;
-    async fn find_by_query(&self, query: String) -> Result<Vec<class::Model>, DbErr>;
+    async fn find_random(
+        &self,
+        limit: u64,
+        exceptions: Vec<Uuid>,
+    ) -> Result<Vec<class::Model>, TransactionError<DbErr>>;
+    async fn find_by_query(
+        &self,
+        query: String,
+        exceptions: Vec<Uuid>,
+    ) -> Result<Vec<class::Model>, DbErr>;
     async fn create_class(
         &self,
         model: class::ActiveModel,
@@ -137,6 +150,31 @@ pub trait ClassRepo {
         &self,
         owner_id: Uuid,
     ) -> Result<Option<Vec<class::Model>>, Arc<DbErr>>;
+
+    async fn ban_member(
+        &self,
+        class_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), TransactionError<DbErr>>;
+
+    async fn unban_member(
+        &self,
+        class_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), TransactionError<DbErr>>;
+
+    async fn remove_memeber(
+        &self,
+        class_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), TransactionError<DbErr>>;
+
+    async fn get_user_bans(&self, user_id: Uuid) -> Result<Vec<Uuid>, DbErr>;
+    async fn get_class_bans(&self, class_id: Uuid) -> Result<Vec<user::Model>, DbErr>;
+    async fn create_invite(&self, model: invite::ActiveModel) -> Result<invite::Model, DbErr>;
+    async fn delete_invite(&self, invite_id: Uuid) -> Result<(), DbErr>;
+    async fn get_invites(&self, class_id: Uuid) -> Result<Vec<invite::Model>, DbErr>;
+    async fn is_valid_invite(&self, invite_id: Uuid, class_id: Uuid) -> Result<bool, DbErr>;
 }
 
 #[async_trait]
@@ -213,10 +251,19 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn find_random(&self, limit: u64) -> Result<Vec<class::Model>, TransactionError<DbErr>> {
+    async fn find_random(
+        &self,
+        limit: u64,
+        exceptions: Vec<Uuid>,
+    ) -> Result<Vec<class::Model>, TransactionError<DbErr>> {
+        let condidion = Condition::all()
+            .add(class::Column::DeletedAt.is_null())
+            .add(class::Column::Public.eq(true))
+            .add(class::Column::Id.is_not_in(exceptions));
+
         let classes = Class::find()
             .order_by_asc(class::Column::Id)
-            .filter(class::Column::DeletedAt.is_null())
+            .filter(condidion)
             .limit(Some(limit))
             .all(self.loader())
             .await?;
@@ -234,16 +281,17 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
             user_id: Set(user_id),
             class_id: Set(class_id),
         };
-        // TODO: check if user is already a member
-        // TODO: check if class exists
-        // FIXME: User can join deleted classes
         let member = member.insert(self.loader()).await?;
-
         Ok(member)
     }
 
     #[instrument(skip(self), err(Debug))]
-    async fn find_by_query(&self, query: String) -> Result<Vec<class::Model>, DbErr> {
+    async fn find_by_query(
+        &self,
+        query: String,
+        exceptions: Vec<Uuid>,
+    ) -> Result<Vec<class::Model>, DbErr> {
+        // FIXME: `and id != ALL($2::uuid[])` is not working
         let classes = Class::find()
             .from_raw_sql(Statement::from_sql_and_values(
                 DbBackend::Postgres,
@@ -255,9 +303,11 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
                 where search @@ websearch_to_tsquery('english', $1)
                 or search @@ websearch_to_tsquery('simple', $1)
                 and deleted_at is null
+                and public = true
+                and id != ALL($2::uuid[])
                 order by rank desc;
                 "#,
-                [query.into()],
+                [query.into(), exceptions.into()],
             ))
             .all(self.loader())
             .await?;
@@ -312,5 +362,127 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         } else {
             Err(DbErr::RecordNotFound("class not found".into()))
         }
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn ban_member(
+        &self,
+        class_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), TransactionError<DbErr>> {
+        self.loader()
+            .transaction::<_, (), DbErr>(|txn| {
+                Box::pin(async move {
+                    Membership::delete_by_id((user_id, class_id))
+                        .exec(txn)
+                        .await?;
+
+                    let model = class_blacklist::ActiveModel {
+                        user_id: Set(user_id),
+                        class_id: Set(class_id),
+                    };
+
+                    model.insert(txn).await?;
+                    Ok(())
+                })
+            })
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn unban_member(
+        &self,
+        class_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), TransactionError<DbErr>> {
+        self.loader()
+            .transaction::<_, (), DbErr>(|txn| {
+                Box::pin(async move {
+                    ClassBlacklist::delete_by_id((user_id, class_id))
+                        .exec(txn)
+                        .await?;
+                    Ok(())
+                })
+            })
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn remove_memeber(
+        &self,
+        class_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), TransactionError<DbErr>> {
+        self.loader()
+            .transaction::<_, (), DbErr>(|txn| {
+                Box::pin(async move {
+                    Membership::delete_by_id((user_id, class_id))
+                        .exec(txn)
+                        .await?;
+                    Ok(())
+                })
+            })
+            .await?;
+
+        Ok(())
+    }
+
+    async fn get_user_bans(&self, user_id: Uuid) -> Result<Vec<Uuid>, DbErr> {
+        let found = ClassBlacklist::find()
+            .filter(class_blacklist::Column::UserId.eq(user_id))
+            .all(self.loader())
+            .await?;
+
+        Ok(found.into_iter().map(|b| b.class_id).collect())
+    }
+
+    async fn get_class_bans(&self, class_id: Uuid) -> Result<Vec<user::Model>, DbErr> {
+        let found = ClassBlacklist::find()
+            .filter(class_blacklist::Column::ClassId.eq(class_id))
+            .find_also_related(User)
+            .all(self.loader())
+            .await?;
+
+        Ok(found
+            .into_iter()
+            .map(|(_, u)| u.expect("relation is not optional"))
+            .collect())
+    }
+
+    async fn create_invite(&self, model: invite::ActiveModel) -> Result<invite::Model, DbErr> {
+        let invite = model.insert(self.loader()).await?;
+        Ok(invite)
+    }
+
+    async fn delete_invite(&self, invite_id: Uuid) -> Result<(), DbErr> {
+        Invite::delete_by_id(invite_id).exec(self.loader()).await?;
+        Ok(())
+    }
+
+    async fn get_invites(&self, class_id: Uuid) -> Result<Vec<invite::Model>, DbErr> {
+        let invites = Invite::find()
+            .filter(invite::Column::ClassId.eq(class_id))
+            .all(self.loader())
+            .await?;
+        Ok(invites)
+    }
+
+    async fn is_valid_invite(&self, invite_id: Uuid, class_id: Uuid) -> Result<bool, DbErr> {
+        let invite = Invite::find_by_id(invite_id).one(self.loader()).await?;
+
+        // TODO: invite cleanup
+        if let Some(invite) = invite {
+            if invite.class_id != class_id {
+                return Ok(false);
+            }
+        } else {
+            return Ok(false);
+        }
+
+        Ok(true)
     }
 }

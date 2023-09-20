@@ -7,6 +7,7 @@ pub use super::assignment_submission_feedback::Entity as AssignmentSubmissionFee
 pub use super::assignment_submission_file::Entity as AssignmentSubmissionFile;
 pub use super::channel::Entity as Channel;
 pub use super::class::Entity as Class;
+pub use super::class_blacklist::Entity as ClassBlacklist;
 pub use super::file::Entity as File;
 pub use super::invite::Entity as Invite;
 pub use super::membership::Entity as Membership;

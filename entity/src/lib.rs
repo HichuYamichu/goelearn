@@ -9,6 +9,7 @@ pub mod assignment_submission_feedback;
 pub mod assignment_submission_file;
 pub mod channel;
 pub mod class;
+pub mod class_blacklist;
 pub mod file;
 pub mod invite;
 pub mod membership;

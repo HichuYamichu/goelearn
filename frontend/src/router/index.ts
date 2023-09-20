@@ -68,6 +68,12 @@ const routes = [
           ),
       },
       {
+        path: "/settings",
+        name: "Settings",
+        component: () =>
+          import(/* webpackChunkName: "settings" */ "@/views/UserSettings.vue"),
+      },
+      {
         path: "/test",
         name: "Test",
         component: () =>

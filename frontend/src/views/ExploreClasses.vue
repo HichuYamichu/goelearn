@@ -97,19 +97,28 @@ const JoinClassMutation = graphql(/* GraphQL */ `
   }
 `);
 
-const { mutate: joinClass, onError } = useMutation(JoinClassMutation, {
+const {
+  mutate: joinClass,
+  onError,
+  onDone,
+} = useMutation(JoinClassMutation, {
   refetchQueries: ["UserClassesMeQuery"],
 });
 
 const join = (id: string) => {
   joinClass({ classId: id });
   dialog.value = false;
-  router.push(`/class/${id}`);
 };
 
 onError((e) => {
   errMessage.value = e.message;
   errDialog.value = true;
+});
+
+onDone((e) => {
+  if (e.data?.joinClass) {
+    router.push(`/class/${e.data.joinClass}`);
+  }
 });
 </script>
 

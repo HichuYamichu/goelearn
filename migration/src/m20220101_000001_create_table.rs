@@ -73,6 +73,22 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
+                    .table(ClassBlacklist::Table)
+                    .if_not_exists()
+                    .primary_key(
+                        index::Index::create()
+                            .col(ClassBlacklist::UserId)
+                            .col(ClassBlacklist::ClassId),
+                    )
+                    .col(ColumnDef::new(ClassBlacklist::UserId).uuid().not_null())
+                    .col(ColumnDef::new(ClassBlacklist::ClassId).uuid().not_null())
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
                     .table(Channel::Table)
                     .if_not_exists()
                     .col(ColumnDef::new(Channel::Id).not_null().uuid().primary_key())
@@ -84,6 +100,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(ColumnDef::new(Channel::ClassId).uuid().not_null())
+                    .col(ColumnDef::new(Channel::DeletedAt).timestamp().null())
                     .to_owned(),
             )
             .await?;
@@ -442,6 +459,13 @@ pub enum Class {
 }
 
 #[derive(Iden)]
+pub enum ClassBlacklist {
+    Table,
+    UserId,
+    ClassId,
+}
+
+#[derive(Iden)]
 pub enum Channel {
     Table,
     Id,
@@ -449,6 +473,7 @@ pub enum Channel {
     Description,
     AllowMembersToPost,
     ClassId,
+    DeletedAt,
 }
 
 #[derive(Iden)]

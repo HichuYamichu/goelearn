@@ -1,4 +1,4 @@
-use crate::core::LoggedInGuard;
+use crate::core::{ClassOwnerGuard, LoggedInGuard};
 use async_graphql::{connection::Connection, dataloader::DataLoader, Context, Object, ID};
 use sea_orm::DatabaseConnection;
 use tracing::instrument;
@@ -17,7 +17,7 @@ pub struct MessageQuery;
 #[Object]
 impl MessageQuery {
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
     async fn messages(
         &self,
         ctx: &Context<'_>,

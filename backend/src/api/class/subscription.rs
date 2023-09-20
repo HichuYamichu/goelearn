@@ -3,6 +3,7 @@ use crate::api::channel::{self, ChannelObject};
 use crate::api::class::ClassObject;
 use crate::api::file::FileObject;
 use crate::api::message::MessageObject;
+use crate::api::user::UserObject;
 use crate::core::AppError;
 use async_graphql::futures_util::StreamExt;
 use async_graphql::{futures_util::Stream, Context, Subscription};
@@ -77,21 +78,24 @@ async fn make_subscription<T: DeserializeOwned>(
 }
 
 #[derive(Debug, Serialize, Deserialize, Union)]
-pub enum ClassResourceUpdate {
-    Class(ClassObject),
+pub enum ClassResourceCreate {
     Channel(ChannelObject),
+    Member(UserObject),
+    File(FileObject),
+    Assignment(AssignmentObject),
 }
 
 #[derive(Debug, Serialize, Deserialize, Union)]
-pub enum ClassResourceCreate {
+pub enum ClassResourceUpdate {
+    Class(ClassObject),
     Channel(ChannelObject),
-    File(FileObject),
     Assignment(AssignmentObject),
 }
 
 #[derive(Debug, Serialize, Deserialize, Union)]
 pub enum ClassResourceDelete {
     Channel(ChannelDeleteInfo),
+    Member(MemberDeleteInfo),
     File(FileDeleteInfo),
     Assignment(AssignmentDeleteInfo),
 }
@@ -116,3 +120,4 @@ macro_rules! make_a_struct {
 make_a_struct!(Channel, entity::channel::Model);
 make_a_struct!(File, entity::file::Model);
 make_a_struct!(Assignment, entity::assignment::Model);
+make_a_struct!(Member, entity::user::Model);

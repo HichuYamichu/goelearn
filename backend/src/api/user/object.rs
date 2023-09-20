@@ -3,17 +3,20 @@ use async_graphql::{
     ComplexObject, Context, InputObject, Object, Result, SimpleObject, Upload, ID,
 };
 
+use deadpool_redis::redis::{self, FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use entity::sea_orm_active_enums::UserType;
 use entity::user;
 use partialdebug::placeholder::PartialDebug;
 use sea_orm::{DatabaseConnection, Set};
+use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::api::assignment::{AssignmentObject, AssignmentRepo};
 use crate::api::class::{ClassObject, ClassRepo};
 use crate::core::{AppError, LoggedInGuard};
 
-#[derive(Clone, Debug, SimpleObject)]
+#[derive(Clone, Debug, SimpleObject, Serialize, Deserialize)]
 #[graphql(complex)]
 #[graphql(name = "User")]
 pub struct UserObject {
@@ -24,6 +27,37 @@ pub struct UserObject {
     pub first_name: String,
     pub last_name: String,
     // pub user_type: UserType,
+}
+
+impl ToRedisArgs for UserObject {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
+        let vec = vec![
+            self.id.to_string(),
+            self.username.clone(),
+            self.email.clone(),
+            self.has_avatar.to_string(),
+            self.first_name.clone(),
+            self.last_name.clone(),
+        ];
+        vec.write_redis_args(out)
+    }
+}
+
+impl FromRedisValue for UserObject {
+    fn from_redis_value(v: &redis::Value) -> RedisResult<Self> {
+        let vec = Vec::<String>::from_redis_value(v)?;
+        Ok(Self {
+            id: ID::from(vec[0].clone()),
+            username: vec[1].clone(),
+            email: vec[2].clone(),
+            has_avatar: vec[3].parse::<bool>().unwrap(),
+            first_name: vec[4].clone(),
+            last_name: vec[5].clone(),
+        })
+    }
 }
 
 #[ComplexObject]
@@ -52,6 +86,17 @@ impl UserObject {
             .expect("owner id is valid");
 
         Ok(classes.into_iter().map(|c| c.into()).collect())
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard")]
+    async fn assignments(&self, ctx: &Context<'_>) -> Result<Vec<AssignmentObject>, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+
+        let user_id = Uuid::parse_str(&self.id)?;
+        let assignments = AssignmentRepo::find_by_user_id(data_loader, user_id).await?;
+
+        todo!()
     }
 }
 

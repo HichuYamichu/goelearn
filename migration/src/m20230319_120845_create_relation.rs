@@ -2,7 +2,8 @@ use sea_orm_migration::prelude::*;
 
 use crate::m20220101_000001_create_table::{
     Assignment, AssignmentFile, AssignmentSubmission, AssignmentSubmissionFeedback,
-    AssignmentSubmissionFile, Channel, Class, File, Invite, Membership, Message, Report, User,
+    AssignmentSubmissionFile, Channel, Class, ClassBlacklist, File, Invite, Membership, Message,
+    Report, User,
 };
 
 #[derive(DeriveMigrationName)]
@@ -17,6 +18,30 @@ impl MigrationTrait for Migration {
                     .name("FK_class_owner_id")
                     .from(Class::Table, Class::OwnerId)
                     .to(User::Table, User::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_classblacklist_user_id")
+                    .from(ClassBlacklist::Table, ClassBlacklist::UserId)
+                    .to(User::Table, User::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_classblacklist_class_id")
+                    .from(ClassBlacklist::Table, ClassBlacklist::ClassId)
+                    .to(Class::Table, Class::Id)
                     .on_delete(ForeignKeyAction::Restrict)
                     .on_update(ForeignKeyAction::Restrict)
                     .to_owned(),

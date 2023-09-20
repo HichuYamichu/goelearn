@@ -1,5 +1,6 @@
 use ::entity::channel;
 use ::entity::channel::Entity as Channel;
+use chrono::Utc;
 
 use async_graphql::dataloader::{DataLoader, Loader};
 use async_trait::async_trait;
@@ -24,8 +25,12 @@ impl Loader<ChannelsByClassId> for DatabaseConnection {
         &self,
         keys: &[ChannelsByClassId],
     ) -> Result<HashMap<ChannelsByClassId, Self::Value>, Self::Error> {
+        let condidion = Condition::all()
+            .add(channel::Column::DeletedAt.is_null())
+            .add(channel::Column::ClassId.is_in(keys.iter().map(|k| k.0)));
+
         let channels = channel::Entity::find()
-            .filter(channel::Column::ClassId.is_in(keys.iter().map(|k| k.0)))
+            .filter(condidion)
             .all(self)
             .await
             .map_err(Arc::new)?;
@@ -74,7 +79,12 @@ impl ChannelRepo for DataLoader<DatabaseConnection> {
 
     #[instrument(skip(self), err(Debug))]
     async fn delete_channel(&self, id: Uuid) -> Result<(), DbErr> {
-        Channel::delete_by_id(id).exec(self.loader()).await?;
+        let model = channel::ActiveModel {
+            id: Set(id),
+            deleted_at: Set(Some(Utc::now().naive_utc())),
+            ..Default::default()
+        };
+        model.update(self.loader()).await?;
         Ok(())
     }
 }

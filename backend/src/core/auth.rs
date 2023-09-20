@@ -1,5 +1,8 @@
-use crate::SECRET;
-use async_graphql::{Context, Guard};
+use crate::{
+    api::{ClassRepo, UserRepo},
+    SECRET,
+};
+use async_graphql::{dataloader::DataLoader, Context, Guard, ID};
 use async_trait::async_trait;
 use axum::{
     extract::FromRequestParts,
@@ -7,8 +10,11 @@ use axum::{
     http::request::Parts,
     TypedHeader,
 };
+use entity::class;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::AppError;
 
@@ -57,5 +63,75 @@ impl Guard for LoggedInGuard {
             Some(_) => Ok(()),
             None => Err(AppError::auth("Missing JWT claims").into()),
         }
+    }
+}
+
+pub struct ClassMemberGuard {
+    class_id: ID,
+}
+
+impl ClassMemberGuard {
+    pub fn new(class_id: ID) -> Self {
+        Self { class_id }
+    }
+}
+
+#[async_trait]
+impl Guard for ClassMemberGuard {
+    async fn check(&self, ctx: &Context<'_>) -> Result<(), async_graphql::Error> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
+
+        let user_id = Uuid::parse_str(claims.as_ref().expect("claims exist").sub.as_str())?;
+        let class_id = self.class_id.parse::<Uuid>()?;
+
+        let members = UserRepo::find_by_class_id(data_loader, class_id).await?;
+
+        if let Some(members) = members {
+            if members.iter().any(|m| m.id == user_id) {
+                return Ok(());
+            }
+        }
+
+        return Err(AppError::auth("User is not a member of this class").into());
+    }
+}
+
+pub struct ClassOwnerGuard {
+    class_id: ID,
+}
+
+impl ClassOwnerGuard {
+    pub fn new(class_id: ID) -> Self {
+        Self { class_id }
+    }
+}
+
+#[async_trait]
+impl Guard for ClassOwnerGuard {
+    async fn check(&self, ctx: &Context<'_>) -> Result<(), async_graphql::Error> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
+
+        let user_id = Uuid::parse_str(claims.as_ref().expect("claims exist").sub.as_str())?;
+        let class_id = self.class_id.parse::<Uuid>()?;
+
+        let class = ClassRepo::find_by_id(data_loader, class_id).await?;
+        if let Some(class) = class {
+            if class.owner_id == user_id {
+                return Ok(());
+            }
+        }
+
+        return Err(AppError::auth("User is not the owner of this class").into());
+    }
+}
+
+pub struct ResourceOwnerGuard;
+
+#[async_trait]
+impl Guard for ResourceOwnerGuard {
+    async fn check(&self, ctx: &Context<'_>) -> Result<(), async_graphql::Error> {
+        todo!()
     }
 }

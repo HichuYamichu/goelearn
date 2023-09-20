@@ -1,11 +1,16 @@
+use crate::core::ClassOwnerGuard;
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
+use entity::class;
 use sea_orm::DatabaseConnection;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::core::{AppError, LoggedInGuard};
+use crate::{
+    api::user::UserObject,
+    core::{AppError, Claims, ClassMemberGuard, LoggedInGuard},
+};
 
-use super::{ClassObject, ClassRepo};
+use super::{object::InviteObject, ClassObject, ClassRepo};
 
 #[derive(Default)]
 pub struct ClassQuery;
@@ -13,7 +18,7 @@ pub struct ClassQuery;
 #[Object]
 impl ClassQuery {
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassMemberGuard::new(id.clone()))")]
     async fn class_by_id(
         &self,
         ctx: &Context<'_>,
@@ -30,8 +35,18 @@ impl ClassQuery {
     #[graphql(guard = "LoggedInGuard")]
     async fn random_classes(&self, ctx: &Context<'_>) -> Result<Vec<ClassObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
 
-        let c = ClassRepo::find_random(data_loader, 10).await?;
+        let user_id = Uuid::parse_str(
+            claims
+                .as_ref()
+                .expect("Guard ensures claims exist")
+                .sub
+                .as_str(),
+        )?;
+        let banned_in = ClassRepo::get_user_bans(data_loader, user_id).await?;
+        let c = ClassRepo::find_random(data_loader, 10, banned_in).await?;
+
         Ok(c.into_iter().map(|c| c.into()).collect())
     }
 
@@ -43,10 +58,49 @@ impl ClassQuery {
         query: String,
     ) -> Result<Vec<ClassObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
+
+        let user_id = Uuid::parse_str(
+            claims
+                .as_ref()
+                .expect("Guard ensures claims exist")
+                .sub
+                .as_str(),
+        )?;
+        let banned_in = ClassRepo::get_user_bans(data_loader, user_id).await?;
         let c = match query.as_str() {
-            "" => ClassRepo::find_random(data_loader, 10).await?,
-            _ => ClassRepo::find_by_query(data_loader, query).await?,
+            "" => ClassRepo::find_random(data_loader, 10, banned_in).await?,
+            _ => ClassRepo::find_by_query(data_loader, query, banned_in).await?,
         };
+
         Ok(c.into_iter().map(|c| c.into()).collect())
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
+    pub async fn banned_members(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+    ) -> Result<Vec<UserObject>, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+
+        let users =
+            ClassRepo::get_class_bans(data_loader, Uuid::parse_str(class_id.as_str())?).await?;
+        Ok(users.into_iter().map(|u| u.into()).collect())
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
+    pub async fn invites(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+    ) -> Result<Vec<InviteObject>, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+
+        let invites =
+            ClassRepo::get_invites(data_loader, Uuid::parse_str(class_id.as_str())?).await?;
+        Ok(invites.into_iter().map(|i| i.into()).collect())
     }
 }

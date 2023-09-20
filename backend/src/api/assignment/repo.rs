@@ -140,6 +140,8 @@ pub trait AssignmentRepo {
         new_file_names: Vec<String>,
         old_files: Vec<Uuid>,
     ) -> Result<(assignment::Model, Vec<Uuid>), TransactionError<DbErr>>;
+
+    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<assignment::Model>, DbErr>;
 }
 
 #[async_trait]
@@ -633,5 +635,9 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
             .await?;
 
         Ok((assignment, files))
+    }
+
+    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<assignment::Model>, DbErr> {
+        todo!()
     }
 }

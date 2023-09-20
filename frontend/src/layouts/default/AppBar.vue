@@ -33,7 +33,7 @@
       </v-avatar>
       <v-avatar v-else> <v-icon icon="mdi-account-circle"></v-icon></v-avatar>
       {{ username }}
-      <v-btn @click="logout">Settings</v-btn>
+      <v-btn to="/settings">Settings</v-btn>
       <v-btn @click="logout">Logout</v-btn>
     </div>
   </v-app-bar>

@@ -4,7 +4,16 @@ import { getOperationAST } from "graphql";
 import { createUploadLink } from "apollo-upload-client";
 import { createClient } from "graphql-ws";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
+import jwt_decode from "jwt-decode";
 import gql from "graphql-tag";
+
+const token = localStorage.getItem("token");
+if (token) {
+  const decoded: { exp: number } = jwt_decode(token);
+  if (decoded.exp * 1000 < Date.now()) {
+    localStorage.removeItem("token");
+  }
+}
 
 const authMiddleware = new ApolloLink((operation, forward) => {
   const token = localStorage.getItem("token");

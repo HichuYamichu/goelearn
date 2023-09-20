@@ -182,12 +182,14 @@ impl CreateChannelInput {
             description: Set(self.description),
             class_id: Set(Uuid::parse_str(self.class_id.as_str())?),
             allow_members_to_post: Set(self.allow_members_to_post),
+            deleted_at: Set(None),
         })
     }
 }
 
 #[derive(Clone, Debug, InputObject)]
 pub struct UpdateChannelInput {
+    pub id: ID,
     pub name: Option<String>,
     pub description: Option<String>,
     pub class_id: ID,
@@ -197,11 +199,12 @@ pub struct UpdateChannelInput {
 impl UpdateChannelInput {
     pub fn try_into_active_model(self) -> Result<::entity::channel::ActiveModel, AppError> {
         Ok(::entity::channel::ActiveModel {
-            id: Set(Uuid::parse_str(self.class_id.as_str())?),
+            id: Set(Uuid::parse_str(self.id.as_str())?),
             name: option_to_active_value(self.name),
             description: Set(self.description),
             class_id: Set(Uuid::parse_str(self.class_id.as_str())?),
             allow_members_to_post: option_to_active_value(self.allow_members_to_post),
+            deleted_at: Set(None),
         })
     }
 }

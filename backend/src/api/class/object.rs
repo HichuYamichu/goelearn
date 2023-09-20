@@ -13,6 +13,8 @@ use async_graphql::Upload;
 use async_graphql::{
     dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, ID,
 };
+use chrono::NaiveDate;
+use chrono::NaiveDateTime;
 use deadpool_redis::redis;
 use partialdebug::placeholder::PartialDebug;
 use redis::FromRedisValue;
@@ -34,7 +36,7 @@ pub struct ClassObject {
     pub description: String,
     pub owner_id: ID,
     pub public: bool,
-    pub tags: String,
+    pub tags: Vec<String>,
     pub has_image: bool,
 }
 
@@ -113,7 +115,7 @@ impl From<::entity::class::Model> for ClassObject {
             description: c.description,
             owner_id: ID::from(c.owner_id),
             public: c.public,
-            tags: c.tags,
+            tags: c.tags.split(" ").map(|s| s.to_string()).collect(),
             has_image: c.has_image,
         }
     }
@@ -130,7 +132,7 @@ impl ToRedisArgs for ClassObject {
             self.description.clone(),
             self.owner_id.to_string(),
             self.public.to_string(),
-            self.tags.clone(),
+            self.tags.join(" "),
             self.has_image.to_string(),
         ];
         vec.write_redis_args(out)
@@ -146,7 +148,7 @@ impl FromRedisValue for ClassObject {
             description: vec[2].clone(),
             owner_id: ID::from(vec[3].clone()),
             public: vec[4].parse::<bool>().unwrap(),
-            tags: vec[5].clone(),
+            tags: vec[5].split(" ").map(|s| s.to_string()).collect(),
             has_image: vec[6].parse::<bool>().unwrap(),
         })
     }
@@ -202,5 +204,42 @@ impl UpdateClassInput {
             has_image: NotSet,
             deleted_at: NotSet,
         }
+    }
+}
+
+#[derive(Clone, Debug, SimpleObject)]
+pub struct InviteObject {
+    pub id: ID,
+    pub class_id: ID,
+    pub multiuse: bool,
+    pub expires_at: Option<NaiveDateTime>,
+}
+
+impl From<::entity::invite::Model> for InviteObject {
+    fn from(i: ::entity::invite::Model) -> Self {
+        Self {
+            id: ID::from(i.id),
+            class_id: ID::from(i.class_id),
+            multiuse: i.multiuse,
+            expires_at: i.expires_at,
+        }
+    }
+}
+
+#[derive(Clone, Debug, InputObject)]
+pub struct CreateInviteInput {
+    pub class_id: ID,
+    pub multiuse: bool,
+    pub expires_at: Option<NaiveDateTime>,
+}
+
+impl CreateInviteInput {
+    pub fn try_into_active_model(self) -> Result<::entity::invite::ActiveModel, AppError> {
+        Ok(::entity::invite::ActiveModel {
+            class_id: Set(Uuid::parse_str(&self.class_id)?),
+            multiuse: Set(self.multiuse),
+            expires_at: Set(self.expires_at),
+            ..Default::default()
+        })
     }
 }

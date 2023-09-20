@@ -43,22 +43,37 @@ import ClassMeeting from "@/components/ClassMeeting.vue";
 import { graphql, useFragment } from "@/gql";
 import { useQuery, useSubscription } from "@vue/apollo-composable";
 import { computed } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { ChannelsFragmentFragment, ChatFragmentFragment } from "@/gql/graphql";
 import { FragmentType } from "@/gql";
 import { cache } from "@/client";
 
+const MeQuery = graphql(/* GraphQL */ `
+  query MeetingMeQuery {
+    me {
+      id
+    }
+  }
+`);
+
+const { result: meResult } = useQuery(MeQuery);
+const myId = computed(() => meResult.value?.me.id ?? "");
+
 const route = useRoute();
+const router = useRouter();
+
 const tabValue = ref("Chat");
 
 const ClassQuery = graphql(/* GraphQL */ `
   query ClassClassByIdQuery($id: ID!) {
     classById(id: $id) {
+      id
       name
       ...ChatFragment
       ...FilesFragment
       ...AssignmentsFragment
       ...MeetingFragment
+      ...ClassDataFragment
     }
   }
 `);
@@ -103,6 +118,13 @@ const AssignmentFragment = graphql(/* GraphQL */ `
   }
 `);
 
+const UserFragment = graphql(/* GraphQL */ `
+  fragment UserFragment on User {
+    id
+    username
+  }
+`);
+
 const ClassResourceCreateSubscription = graphql(/* GraphQL */ `
   subscription ClassResourceCreateSubscription($classId: ID!) {
     classResourceCreated(classId: $classId) {
@@ -115,6 +137,9 @@ const ClassResourceCreateSubscription = graphql(/* GraphQL */ `
       }
       ... on Assignment {
         ...AssignmentFragment
+      }
+      ... on User {
+        ...UserFragment
       }
     }
   }
@@ -156,6 +181,15 @@ subscribeToMore(() => ({
       };
     }
 
+    if (updatedClass.__typename == "User") {
+      return {
+        classById: {
+          ...prev.classById!,
+          members: [...prev.classById!.members, updatedClass],
+        },
+      };
+    }
+
     return {
       ...prev,
     };
@@ -168,6 +202,9 @@ const ClassResourceUpdateSubscription = graphql(/* GraphQL */ `
       __typename
       ... on Channel {
         ...ChannelsFragment
+      }
+      ... on Class {
+        ...ClassDataFragment
       }
     }
   }
@@ -184,6 +221,13 @@ subscribeToMore(() => ({
 
     if (updatedClass.__typename == "Channel") {
       console.log(updatedClass);
+    }
+
+    if (updatedClass.__typename == "Class") {
+      return {
+        ...prev,
+        ...updatedClass,
+      };
     }
 
     return {
@@ -205,14 +249,19 @@ const ClassResourceDeletedSubscription = graphql(/* GraphQL */ `
       ... on FileDeleteInfo {
         id
       }
+      ... on MemberDeleteInfo {
+        id
+      }
     }
   }
 `);
 
+const classId = route.params.classId as string;
+
 const { result: onDelete } = useSubscription(
   ClassResourceDeletedSubscription,
   () => ({
-    classId: route.params.classId as string,
+    classId: classId,
   })
 );
 watch(onDelete, () => {
@@ -230,6 +279,25 @@ watch(onDelete, () => {
     console.log(data.id);
 
     cache.evict({ id: `Assignment:${data.id}` });
+  }
+
+  if (data.__typename == "MemberDeleteInfo") {
+    cache.modify({
+      id: `Class:${classId}`,
+      fields: {
+        members(cachedMembers) {
+          console.log(
+            cachedMembers.filter((m: any) => m.__ref != `User:${data.id}`)
+          );
+          return cachedMembers.filter((m: any) => m.__ref != `User:${data.id}`);
+        },
+      },
+    });
+
+    if (data.id == myId.value) {
+      router.push({ name: "Home" });
+      cache.evict({ id: `Class:${classId}` });
+    }
   }
 });
 </script>

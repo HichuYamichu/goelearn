@@ -1,8 +1,9 @@
 use crate::api::user::UserRepo;
-use crate::core::LoggedInGuard;
 use crate::core::{auth, AppError, UserError};
+use crate::core::{ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 use auth::Claims;
+use chrono::{DateTime, NaiveDate, NaiveDateTime};
 use deadpool_redis::redis::AsyncCommands;
 use deadpool_redis::Pool;
 use sea_orm::DatabaseConnection;
@@ -10,8 +11,11 @@ use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tracing::instrument;
 use uuid::Uuid;
 
-use super::object::{CreateClassInput, UpdateClassInput};
-use super::{ClassObject, ClassRepo};
+use super::object::{CreateClassInput, CreateInviteInput, InviteObject, UpdateClassInput};
+use super::{
+    ClassObject, ClassRepo, ClassResourceCreate, ClassResourceDelete, ClassResourceUpdate,
+    CLASS_RESOURCE_CREATED, CLASS_RESOURCE_DELETED, CLASS_RESOURCE_UPDATED,
+};
 
 #[derive(Default)]
 pub struct ClassMutation;
@@ -60,9 +64,16 @@ impl ClassMutation {
 
     #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
-    pub async fn join_class(&self, ctx: &Context<'_>, class_id: ID) -> Result<bool, AppError> {
+    pub async fn join_class(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+        invite_id: Option<ID>,
+    ) -> Result<ID, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let claims = ctx.data_unchecked::<Option<Claims>>();
+        let redis_pool = ctx.data_unchecked::<Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let user_id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
         let class_id = Uuid::parse_str(class_id.as_str())?;
@@ -81,13 +92,28 @@ impl ClassMutation {
         };
 
         if !class.public {
-            return Err(AppError::user(
-                "You cannot join private class without explicit invite",
-                UserError::BadInput {
-                    parameter: "class_id",
-                    given_value: class_id.to_string(),
-                },
-            ));
+            if invite_id.is_none() {
+                return Err(AppError::user(
+                    "You cannot join private class without explicit invite",
+                    UserError::BadInput {
+                        parameter: "class_id",
+                        given_value: class_id.to_string(),
+                    },
+                ));
+            }
+
+            let invite_id = Uuid::parse_str(invite_id.unwrap().as_str())?;
+            let is_valid = ClassRepo::is_valid_invite(data_loader, invite_id, class_id).await?;
+
+            if !is_valid {
+                return Err(AppError::user(
+                    "You cannot join class with invalid invite",
+                    UserError::BadInput {
+                        parameter: "invite_id",
+                        given_value: invite_id.to_string(),
+                    },
+                ));
+            }
         }
 
         let members = UserRepo::find_by_class_id(data_loader, class_id)
@@ -104,13 +130,100 @@ impl ClassMutation {
             ));
         }
 
+        let bans = ClassRepo::get_user_bans(data_loader, user_id).await?;
+        if bans.iter().any(|b| *b == class_id) {
+            return Err(AppError::user(
+                "You cannot join class you're banned from",
+                UserError::BadInput {
+                    parameter: "class_id",
+                    given_value: class_id.to_string(),
+                },
+            ));
+        }
+
+        let user = UserRepo::find_by_id(data_loader, user_id)
+            .await?
+            .expect("user exists");
         ClassRepo::join_user_to_class(data_loader, user_id, class_id).await?;
+
+        let update_data = ClassResourceCreate::Member(user.into());
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_CREATED, class_id.to_string()),
+            serde_json::to_string(&update_data).expect("User should serialize"),
+        )
+        .await?;
+
+        Ok(ID::from(class_id))
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassMemberGuard::new(class_id.clone()))")]
+    pub async fn leave_class(&self, ctx: &Context<'_>, class_id: ID) -> Result<bool, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
+        let redis_pool = ctx.data_unchecked::<Pool>();
+        let mut conn = redis_pool.get().await?;
+
+        let user_id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
+        let original_id = ID::from(user_id);
+        let class_id = Uuid::parse_str(class_id.as_str())?;
+        ClassRepo::remove_memeber(data_loader, class_id, user_id).await?;
+
+        let update_data = ClassResourceDelete::Member(super::MemberDeleteInfo { id: original_id });
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id.to_string()),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
 
         Ok(true)
     }
 
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
+    pub async fn ban_member(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+        user_id: ID,
+    ) -> Result<bool, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let redis_pool = ctx.data_unchecked::<Pool>();
+        let mut conn = redis_pool.get().await?;
+
+        let original_id = user_id.clone();
+        let class_id = Uuid::parse_str(class_id.as_str())?;
+        let user_id = Uuid::parse_str(user_id.as_str())?;
+        ClassRepo::ban_member(data_loader, class_id, user_id).await?;
+
+        let update_data = ClassResourceDelete::Member(super::MemberDeleteInfo { id: original_id });
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id.to_string()),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
+
+        Ok(true)
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
+    pub async fn unban_member(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+        user_id: ID,
+    ) -> Result<bool, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+
+        let class_id = Uuid::parse_str(class_id.as_str())?;
+        let user_id = Uuid::parse_str(user_id.as_str())?;
+        ClassRepo::unban_member(data_loader, class_id, user_id).await?;
+        Ok(true)
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
     pub async fn delete_class(&self, ctx: &Context<'_>, class_id: ID) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let redis_pool = ctx.data_unchecked::<Pool>();
@@ -128,7 +241,7 @@ impl ClassMutation {
     }
 
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
     pub async fn update_class(
         &self,
         ctx: &Context<'_>,
@@ -144,11 +257,43 @@ impl ClassMutation {
         let updated = ClassRepo::update_class(data_loader, class_id, update_data).await?;
         let updated = ClassObject::from(updated);
 
+        let update_data = ClassResourceUpdate::Class(updated.clone().into());
         conn.publish(
-            format!("class_updated:{}", class_id.to_string()),
-            serde_json::to_string(&updated).expect("Class should serialize"),
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id.to_string()),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
         )
         .await?;
+
+        Ok(true)
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(input.class_id.clone()))")]
+    pub async fn create_invite(
+        &self,
+        ctx: &Context<'_>,
+        input: CreateInviteInput,
+    ) -> Result<InviteObject, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+
+        let model = input.try_into_active_model()?;
+        let invite = ClassRepo::create_invite(data_loader, model).await?;
+
+        Ok(invite.into())
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
+    pub async fn delete_invite(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+        invite_id: ID,
+    ) -> Result<bool, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+
+        let invite_id = Uuid::parse_str(invite_id.as_str())?;
+        ClassRepo::delete_invite(data_loader, invite_id).await?;
 
         Ok(true)
     }

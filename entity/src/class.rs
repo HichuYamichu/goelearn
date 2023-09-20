@@ -62,6 +62,15 @@ impl Related<super::invite::Entity> for Entity {
     }
 }
 
+impl Related<super::class_blacklist::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::class_blacklist::Relation::User.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::class_blacklist::Relation::Class.def().rev())
+    }
+}
+
 impl Related<super::user::Entity> for Entity {
     fn to() -> RelationDef {
         super::membership::Relation::User.def()

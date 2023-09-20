@@ -13,7 +13,9 @@ use file::FileMutation;
 use message::MessageMutation;
 use user::{UserMutation, UserQuery};
 
+pub use class::ClassRepo;
 pub use file::FileHandler;
+pub use user::UserRepo;
 pub use user::UserRest;
 
 use self::{
