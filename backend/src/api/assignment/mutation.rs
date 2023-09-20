@@ -64,7 +64,7 @@ impl AssignmentMutation {
 
         let update_data = ClassResourceCreate::Assignment(assignment.clone().into());
         conn.publish(
-            format!("{}:{}", CLASS_RESOURCE_CREATED, class_id.to_string()),
+            format!("{}:{}", CLASS_RESOURCE_CREATED, class_id),
             serde_json::to_string(&update_data).expect("Class should serialize"),
         )
         .await?;
@@ -151,7 +151,7 @@ impl AssignmentMutation {
             format!("{}:{}", CLASS_RESOURCE_DELETED, class_id.to_string())
         );
         conn.publish(
-            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id.to_string()),
+            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id),
             serde_json::to_string(&update_data).expect("Class should serialize"),
         )
         .await?;

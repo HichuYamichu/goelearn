@@ -13,7 +13,6 @@ use tracing::instrument;
 use uuid::Uuid;
 use zip::write::FileOptions;
 use zip::CompressionMethod;
-use zip::ZipWriter;
 
 use crate::{api::file::FileRepo, core::AppError};
 
@@ -41,7 +40,7 @@ impl FileHandler {
                 Ok(response)
             }
             Err(s3::error::S3Error::HttpFailWithBody(404, _)) => {
-                let s3_path = format!("user-avatars/user.png");
+                let s3_path = "user-avatars/user.png".to_string();
                 let object = s3_bucket.get_object(s3_path).await;
                 match object {
                     Ok(object) => {
@@ -138,7 +137,7 @@ async fn create_zip_archive(
     class_id: &str,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use std::io::Write;
-    let options = FileOptions::default()
+    let _options = FileOptions::default()
         .compression_method(CompressionMethod::Stored)
         .unix_permissions(0o755);
 
@@ -146,7 +145,7 @@ async fn create_zip_archive(
     {
         let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut zip_buffer));
         for file in &files {
-            let file_path = get_file_path(&files, &file);
+            let file_path = get_file_path(&files, file);
 
             if file.file_type == FileType::Directory {
                 let options = FileOptions::default()
@@ -179,8 +178,8 @@ async fn create_zip_archive(
 }
 
 fn create_zip_directory_structure(
-    files: Vec<file::Model>,
-    zip: &mut zip::ZipWriter<std::io::Cursor<&mut [u8]>>,
+    _files: Vec<file::Model>,
+    _zip: &mut zip::ZipWriter<std::io::Cursor<&mut [u8]>>,
 ) {
 }
 

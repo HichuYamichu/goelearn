@@ -1,17 +1,13 @@
 // https://github.com/meeting-rs/meeting.rs/blob/master/coordinator/src/main.rs
 // https://github.com/webrtc-rs/webrtc/tree/master/examples/examples/broadcast
 
-use std::hash::Hash;
-
-use crate::core::{AppError, Claims};
+use crate::core::AppError;
 use axum::{
     extract::{
         ws::{Message, WebSocket},
-        Extension, State, WebSocketUpgrade,
+        State, WebSocketUpgrade,
     },
-    http::{Request, Response},
     response::IntoResponse,
-    Router,
 };
 use deadpool_redis::{
     redis::{self, aio::PubSub},
@@ -22,16 +18,6 @@ use futures_util::StreamExt;
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use tokio::sync::mpsc;
-use webrtc::{
-    api::{
-        interceptor_registry::register_default_interceptors, media_engine::MediaEngine, APIBuilder,
-    },
-    ice_transport::ice_server::RTCIceServer,
-    interceptor::registry::Registry,
-    peer_connection::{configuration::RTCConfiguration, RTCPeerConnection},
-    rtp_transceiver::rtp_codec::RTPCodecType,
-};
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
@@ -156,15 +142,11 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
             InMessageType::Subscribe { target_class_id } => {
                 let handle = tokio::spawn(async move {
                     pubsub
-                        .subscribe(format!("meeting:{}", target_class_id.to_string()))
+                        .subscribe(format!("meeting:{}", target_class_id))
                         .await
                         .expect("is is possible to subscribe");
                     pubsub
-                        .subscribe(format!(
-                            "meeting:{}.{}",
-                            target_class_id.to_string(),
-                            user_id
-                        ))
+                        .subscribe(format!("meeting:{}.{}", target_class_id, user_id))
                         .await
                         .expect("is is possible to subscribe");
 

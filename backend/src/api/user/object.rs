@@ -94,7 +94,7 @@ impl UserObject {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 
         let user_id = Uuid::parse_str(&self.id)?;
-        let assignments = AssignmentRepo::find_by_user_id(data_loader, user_id).await?;
+        let _assignments = AssignmentRepo::find_by_user_id(data_loader, user_id).await?;
 
         todo!()
     }

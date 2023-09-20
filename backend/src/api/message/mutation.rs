@@ -4,7 +4,7 @@ use crate::core::{auth, AppError};
 use async_graphql::{dataloader::DataLoader, Context, Object};
 use auth::Claims;
 use deadpool_redis::{redis, Pool};
-use redis::{AsyncCommands, Client};
+use redis::AsyncCommands;
 use sea_orm::DatabaseConnection;
 use tracing::instrument;
 use uuid::Uuid;

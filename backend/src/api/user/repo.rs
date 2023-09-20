@@ -24,7 +24,7 @@ impl Loader<UsersByClassId> for DatabaseConnection {
         keys: &[UsersByClassId],
     ) -> Result<HashMap<UsersByClassId, Self::Value>, Self::Error> {
         let memberships = Membership::find()
-            .filter(membership::Column::ClassId.is_in(keys.iter().map(|k| k.0).into_iter()))
+            .filter(membership::Column::ClassId.is_in(keys.iter().map(|k| k.0)))
             .all(self)
             .await?;
 
@@ -59,7 +59,7 @@ impl Loader<UserByAuthorId> for DatabaseConnection {
         keys: &[UserByAuthorId],
     ) -> Result<HashMap<UserByAuthorId, Self::Value>, Self::Error> {
         let users = User::find()
-            .filter(user::Column::Id.is_in(keys.iter().map(|k| k.0).into_iter()))
+            .filter(user::Column::Id.is_in(keys.iter().map(|k| k.0)))
             .all(self)
             .await?;
 

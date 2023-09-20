@@ -1,8 +1,8 @@
 use crate::api::assignment::AssignmentObject;
-use crate::api::channel::{self, ChannelObject};
+use crate::api::channel::ChannelObject;
 use crate::api::class::ClassObject;
 use crate::api::file::FileObject;
-use crate::api::message::MessageObject;
+
 use crate::api::user::UserObject;
 use crate::core::AppError;
 use async_graphql::futures_util::StreamExt;
@@ -14,9 +14,9 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-pub const CLASS_RESOURCE_CREATED: &'static str = "class_resource_created";
-pub const CLASS_RESOURCE_UPDATED: &'static str = "class_resource_updated";
-pub const CLASS_RESOURCE_DELETED: &'static str = "class_resource_deleted";
+pub const CLASS_RESOURCE_CREATED: &str = "class_resource_created";
+pub const CLASS_RESOURCE_UPDATED: &str = "class_resource_updated";
+pub const CLASS_RESOURCE_DELETED: &str = "class_resource_deleted";
 
 #[derive(Default)]
 pub struct ClassSubscription;

@@ -400,14 +400,12 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
                     let assignment_submission = model.update(txn).await?;
 
                     AssignmentSubmissionFile::delete_many()
-                        .filter(
-                            assignment_file::Column::FileId.is_in(old_files.iter().map(|id| *id)),
-                        )
+                        .filter(assignment_file::Column::FileId.is_in(old_files.iter().copied()))
                         .exec(txn)
                         .await?;
 
                     File::delete_many()
-                        .filter(file::Column::Id.is_in(old_files.iter().map(|id| *id)))
+                        .filter(file::Column::Id.is_in(old_files.iter().copied()))
                         .exec(txn)
                         .await?;
 
@@ -526,7 +524,7 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
         &self,
         model: assignment_submission_feedback::ActiveModel,
     ) -> Result<(), TransactionError<AppError>> {
-        let feedback = model.save(self.loader()).await?;
+        let _feedback = model.save(self.loader()).await?;
         Ok(())
     }
 
@@ -574,14 +572,12 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
                     let assignment = model.update(txn).await?;
 
                     AssignmentFile::delete_many()
-                        .filter(
-                            assignment_file::Column::FileId.is_in(old_files.iter().map(|id| *id)),
-                        )
+                        .filter(assignment_file::Column::FileId.is_in(old_files.iter().copied()))
                         .exec(txn)
                         .await?;
 
                     File::delete_many()
-                        .filter(file::Column::Id.is_in(old_files.iter().map(|id| *id)))
+                        .filter(file::Column::Id.is_in(old_files.iter().copied()))
                         .exec(txn)
                         .await?;
 
@@ -637,7 +633,7 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
         Ok((assignment, files))
     }
 
-    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<assignment::Model>, DbErr> {
+    async fn find_by_user_id(&self, _user_id: Uuid) -> Result<Vec<assignment::Model>, DbErr> {
         todo!()
     }
 }

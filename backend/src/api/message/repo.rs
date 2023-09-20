@@ -2,7 +2,7 @@ use ::entity::{message, message::Entity as Message};
 use async_graphql::dataloader::DataLoader;
 use async_trait::async_trait;
 
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::NaiveDateTime;
 
 use sea_orm::DatabaseConnection;
 use sea_orm::*;

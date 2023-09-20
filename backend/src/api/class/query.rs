@@ -1,6 +1,6 @@
 use crate::core::ClassOwnerGuard;
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
-use entity::class;
+
 use sea_orm::DatabaseConnection;
 use tracing::instrument;
 use uuid::Uuid;

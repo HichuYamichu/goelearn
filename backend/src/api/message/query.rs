@@ -4,10 +4,7 @@ use sea_orm::DatabaseConnection;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::api::{
-    channel::{self, make_messages_connection},
-    class,
-};
+use crate::api::channel::make_messages_connection;
 
 use super::MessageObject;
 

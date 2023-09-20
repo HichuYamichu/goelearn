@@ -16,8 +16,6 @@ use std::sync::Arc;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::core::{AppError, UserError};
-
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 struct ClassById(Uuid);
 

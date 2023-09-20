@@ -12,7 +12,7 @@ use std::{
     sync::Arc,
 };
 
-const INTERNAL_ERROR_MSG: &'static str = "Something went wrong when processing your request.";
+const INTERNAL_ERROR_MSG: &str = "Something went wrong when processing your request.";
 
 #[derive(Debug)]
 pub struct AppError {
@@ -93,7 +93,7 @@ impl ErrorExtensions for AppError {
     fn extend(&self) -> async_graphql::Error {
         let AppError { message, kind } = self;
 
-        async_graphql::Error::new(message).extend_with(|err, e| match kind {
+        async_graphql::Error::new(message).extend_with(|_err, e| match kind {
             ErrorKind::Auth => {}
             ErrorKind::NotFound {
                 resource,

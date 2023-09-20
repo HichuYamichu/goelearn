@@ -1,5 +1,5 @@
-use crate::core::{AppError, Claims, LoggedInGuard};
-use async_graphql::ErrorExtensions;
+use crate::core::{Claims, LoggedInGuard};
+
 use async_graphql::{dataloader::DataLoader, Context, Object};
 use sea_orm::DatabaseConnection;
 use tracing::instrument;

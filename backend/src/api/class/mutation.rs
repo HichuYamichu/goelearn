@@ -3,7 +3,7 @@ use crate::core::{auth, AppError, UserError};
 use crate::core::{ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 use auth::Claims;
-use chrono::{DateTime, NaiveDate, NaiveDateTime};
+
 use deadpool_redis::redis::AsyncCommands;
 use deadpool_redis::Pool;
 use sea_orm::DatabaseConnection;
@@ -148,7 +148,7 @@ impl ClassMutation {
 
         let update_data = ClassResourceCreate::Member(user.into());
         conn.publish(
-            format!("{}:{}", CLASS_RESOURCE_CREATED, class_id.to_string()),
+            format!("{}:{}", CLASS_RESOURCE_CREATED, class_id),
             serde_json::to_string(&update_data).expect("User should serialize"),
         )
         .await?;
@@ -171,7 +171,7 @@ impl ClassMutation {
 
         let update_data = ClassResourceDelete::Member(super::MemberDeleteInfo { id: original_id });
         conn.publish(
-            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id.to_string()),
+            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id),
             serde_json::to_string(&update_data).expect("Class should serialize"),
         )
         .await?;
@@ -198,7 +198,7 @@ impl ClassMutation {
 
         let update_data = ClassResourceDelete::Member(super::MemberDeleteInfo { id: original_id });
         conn.publish(
-            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id.to_string()),
+            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id),
             serde_json::to_string(&update_data).expect("Class should serialize"),
         )
         .await?;
@@ -232,7 +232,7 @@ impl ClassMutation {
         let class_id = Uuid::parse_str(class_id.as_str())?;
         ClassRepo::delete_class(data_loader, class_id).await?;
         conn.publish(
-            format!("class_deleted:{}", class_id.to_string()),
+            format!("class_deleted:{}", class_id),
             serde_json::to_string(&class_id).expect("ClassID should serialize"),
         )
         .await?;
@@ -257,9 +257,9 @@ impl ClassMutation {
         let updated = ClassRepo::update_class(data_loader, class_id, update_data).await?;
         let updated = ClassObject::from(updated);
 
-        let update_data = ClassResourceUpdate::Class(updated.clone().into());
+        let update_data = ClassResourceUpdate::Class(updated.clone());
         conn.publish(
-            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id.to_string()),
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id),
             serde_json::to_string(&update_data).expect("Class should serialize"),
         )
         .await?;

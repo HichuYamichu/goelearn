@@ -10,7 +10,7 @@ use axum::{
     http::request::Parts,
     TypedHeader,
 };
-use entity::class;
+
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
@@ -131,7 +131,7 @@ pub struct ResourceOwnerGuard;
 
 #[async_trait]
 impl Guard for ResourceOwnerGuard {
-    async fn check(&self, ctx: &Context<'_>) -> Result<(), async_graphql::Error> {
+    async fn check(&self, _ctx: &Context<'_>) -> Result<(), async_graphql::Error> {
         todo!()
     }
 }

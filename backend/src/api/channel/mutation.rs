@@ -1,7 +1,5 @@
 use crate::api::class::{ChannelDeleteInfo, CLASS_RESOURCE_DELETED};
-use crate::api::class::{
-    ClassResourceCreate, ClassResourceDelete, CLASS_RESOURCE_CREATED, CLASS_RESOURCE_UPDATED,
-};
+use crate::api::class::{ClassResourceCreate, ClassResourceDelete, CLASS_RESOURCE_CREATED};
 use crate::core::AppError;
 use crate::core::LoggedInGuard;
 use async_graphql::ID;
@@ -55,9 +53,9 @@ impl ChannelMutation {
     ) -> Result<ChannelObject, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
-        let mut conn = redis_pool.get().await?;
+        let _conn = redis_pool.get().await?;
 
-        let class_id = input.class_id.to_string();
+        let _class_id = input.class_id.to_string();
         let model = input.try_into_active_model()?;
         let channel = ChannelRepo::update_channel(data_loader, model).await?;
         let channel = ChannelObject::from(channel);

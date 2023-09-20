@@ -69,7 +69,7 @@ impl FileMutation {
         for model in file_models.iter() {
             let update_data = ClassResourceCreate::File(model.clone().into());
             conn.publish(
-                format!("{}:{}", CLASS_RESOURCE_CREATED, class_id.to_string()),
+                format!("{}:{}", CLASS_RESOURCE_CREATED, class_id),
                 serde_json::to_string(&update_data).expect("Class should serialize"),
             )
             .await?;
@@ -112,11 +112,7 @@ impl FileMutation {
         let file_model = FileRepo::save_file(data_loader, input.try_into_active_model()?).await?;
         let update_data = ClassResourceCreate::File(file_model.clone().into());
         conn.publish(
-            format!(
-                "{}:{}",
-                CLASS_RESOURCE_CREATED,
-                file_model.class_id.to_string()
-            ),
+            format!("{}:{}", CLASS_RESOURCE_CREATED, file_model.class_id),
             serde_json::to_string(&update_data).expect("Class should serialize"),
         )
         .await?;
@@ -153,7 +149,7 @@ impl FileMutation {
 
             let update_data = ClassResourceDelete::File(file.clone().into());
             conn.publish(
-                format!("{}:{}", CLASS_RESOURCE_DELETED, file.class_id.to_string()),
+                format!("{}:{}", CLASS_RESOURCE_DELETED, file.class_id),
                 serde_json::to_string(&update_data).expect("Class should serialize"),
             )
             .await?;

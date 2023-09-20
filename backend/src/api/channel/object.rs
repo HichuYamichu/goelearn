@@ -1,22 +1,19 @@
-use std::str::FromStr;
-
 use crate::api::message::MessageObject;
 use crate::api::message::MessageRepo;
 use crate::core::option_to_active_value;
 use crate::core::AppError;
 use crate::core::LoggedInGuard;
 use async_graphql::connection::Connection;
-use async_graphql::Enum;
+
 use async_graphql::InputObject;
-use async_graphql::Union;
+
 use async_graphql::{dataloader::DataLoader, ComplexObject, Context, SimpleObject, ID};
 
-use async_graphql::connection::{self, Edge, EmptyFields};
-use base64::{decode, encode};
-use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine};
+use async_graphql::connection::{self, Edge};
+
 use chrono::DateTime;
+use chrono::NaiveDateTime;
 use chrono::Utc;
-use chrono::{NaiveDateTime, Timelike};
 use deadpool_redis::redis;
 use deadpool_redis::redis::FromRedisValue;
 use deadpool_redis::redis::RedisResult;
@@ -130,12 +127,12 @@ pub async fn make_messages_connection(
             let messages = MessageRepo::load_messages(data_loader, channel_id, start, end).await?;
 
             if let Some(first) = first {
-                edges.extend(messages.iter().take(first as usize).map(|item| {
+                edges.extend(messages.iter().take(first).map(|item| {
                     let cursor = create_cursor(&item.created_at);
                     Edge::new(cursor, MessageObject::from(item.clone()))
                 }));
             } else if let Some(last) = last {
-                edges.extend(messages.iter().rev().take(last as usize).rev().map(|item| {
+                edges.extend(messages.iter().rev().take(last).rev().map(|item| {
                     let cursor = create_cursor(&item.created_at);
                     Edge::new(cursor, MessageObject::from(item.clone()))
                 }));
@@ -162,8 +159,8 @@ fn parse_cursor(cursor: &str) -> Option<NaiveDateTime> {
 fn create_cursor(timestamp: &NaiveDateTime) -> String {
     // Create a cursor based on the given timestamp
     let timestamp_str = timestamp.format("%Y-%m-%d %H:%M:%S").to_string();
-    let encoded_bytes = base64::encode(timestamp_str);
-    encoded_bytes
+
+    base64::encode(timestamp_str)
 }
 
 #[derive(Clone, Debug, InputObject)]

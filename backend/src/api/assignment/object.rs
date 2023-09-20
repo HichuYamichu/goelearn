@@ -8,7 +8,7 @@ use async_graphql::{
 use chrono::{NaiveDateTime, Utc};
 use deadpool_redis::redis::{self, FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
 use partialdebug::placeholder::PartialDebug;
-use sea_orm::ActiveValue::NotSet;
+
 use sea_orm::{DatabaseConnection, Set};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;

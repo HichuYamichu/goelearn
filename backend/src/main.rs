@@ -17,11 +17,8 @@ use axum::{
     routing::get,
     Router,
 };
-use deadpool_redis::{
-    redis::{cmd, FromRedisValue},
-    Config, Runtime,
-};
-use deadpool_redis::{Connection, Manager, Pool};
+use deadpool_redis::Pool;
+use deadpool_redis::{Config, Runtime};
 use migration::{Migrator, MigratorTrait};
 use s3::creds::Credentials;
 // use redis::aio::ConnectionManager;
@@ -81,7 +78,7 @@ pub async fn main() {
     argon2_async::set_config(config).await;
 
     // TODO: create long lived pubsubs
-    let mut cfg = Config::from_url(REDIS_URL.to_string());
+    let cfg = Config::from_url(REDIS_URL.to_string());
     let redis_pool = cfg.create_pool(Some(Runtime::Tokio1)).unwrap();
 
     let conn: DatabaseConnection = Database::connect(ConnectOptions::new(DATABASE_URL.to_string()))

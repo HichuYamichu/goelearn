@@ -13,7 +13,7 @@ use async_graphql::Upload;
 use async_graphql::{
     dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, ID,
 };
-use chrono::NaiveDate;
+
 use chrono::NaiveDateTime;
 use deadpool_redis::redis;
 use partialdebug::placeholder::PartialDebug;
@@ -115,7 +115,7 @@ impl From<::entity::class::Model> for ClassObject {
             description: c.description,
             owner_id: ID::from(c.owner_id),
             public: c.public,
-            tags: c.tags.split(" ").map(|s| s.to_string()).collect(),
+            tags: c.tags.split(' ').map(|s| s.to_string()).collect(),
             has_image: c.has_image,
         }
     }
@@ -148,7 +148,7 @@ impl FromRedisValue for ClassObject {
             description: vec[2].clone(),
             owner_id: ID::from(vec[3].clone()),
             public: vec[4].parse::<bool>().unwrap(),
-            tags: vec[5].split(" ").map(|s| s.to_string()).collect(),
+            tags: vec[5].split(' ').map(|s| s.to_string()).collect(),
             has_image: vec[6].parse::<bool>().unwrap(),
         })
     }

@@ -1,5 +1,5 @@
 use ::entity::channel;
-use ::entity::channel::Entity as Channel;
+
 use chrono::Utc;
 
 use async_graphql::dataloader::{DataLoader, Loader};
