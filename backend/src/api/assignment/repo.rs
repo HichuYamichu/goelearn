@@ -537,7 +537,14 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
         &self,
         model: assignment_submission_feedback::ActiveModel,
     ) -> Result<(), TransactionError<AppError>> {
-        let _feedback = model.save(self.loader()).await?;
+        AssignmentSubmissionFeedback::insert(model.clone())
+            .on_conflict(
+                sea_query::OnConflict::column(assignment_submission_feedback::Column::Id)
+                    .update_column(assignment_submission_feedback::Column::Feedback)
+                    .to_owned(),
+            )
+            .exec(self.loader())
+            .await?;
         Ok(())
     }
 

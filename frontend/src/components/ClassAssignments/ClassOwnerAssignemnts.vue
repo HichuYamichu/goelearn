@@ -9,17 +9,17 @@
       ></v-text-field>
       <div class="pb-4">
         <v-btn
-          class="ml-2"
+          class="mr-2"
           @click="createAssignmentDialog = true"
           icon="mdi-plus"
         ></v-btn>
         <v-btn
-          class="ml-2"
+          class="mr-2"
           @click="deleteSelectedAssignment"
           icon="mdi-delete"
         ></v-btn>
         <v-btn
-          class="ml-2"
+          class="mr-2"
           @click="updateAssignmentDialog = true"
           icon="mdi-file-edit"
         ></v-btn>
@@ -58,9 +58,10 @@
               <v-textarea
                 variant="outlined"
                 label="Give your feedback"
+                v-model="feedback"
               ></v-textarea>
-              <v-btn @click="saveFeedback">Save</v-btn>
-              <v-btn>Delete</v-btn>
+              <v-btn class="bg-success mr-4" @click="saveFeedback">Save</v-btn>
+              <v-btn class="bg-error" @click="deleteFeedback">Delete</v-btn>
             </div>
             <div v-else>
               <h3>No submission yet</h3>
@@ -153,6 +154,12 @@ const OwnerAssignmentsFragment = graphql(/* GraphQL */ `
           id
           name
         }
+        feedback {
+          id
+          content
+          createdAt
+          updatedAt
+        }
       }
     }
   }
@@ -210,9 +217,11 @@ const selectedUserSubmission = computed(() => {
   if (!user) {
     return null;
   }
-  return (
-    submissions.value.find((s: Submission) => s.user.id === user.id) ?? null
-  );
+
+  let found =
+    submissions.value.find((s: Submission) => s.user.id === user.id) ?? null;
+  feedback.value = found?.feedback?.content ?? "";
+  return found;
 });
 
 const createAssignmentDialog = ref(false);
@@ -225,6 +234,7 @@ const closeDialog = () => {
 const router = useRouter();
 const classId = router.currentRoute.value.params.classId as string;
 
+let feedback = ref("");
 let SaveFeedbackMutation = graphql(/* GraphQL */ `
   mutation CreateAssignmentSubmissionFeedback(
     $input: CreateAssignmanetSubmissionFeedbackInput!
@@ -236,11 +246,39 @@ let SaveFeedbackMutation = graphql(/* GraphQL */ `
 let { mutate: saveFeedbackMutation } = useMutation(SaveFeedbackMutation);
 
 const saveFeedback = () => {
+  if (selectedUserSubmission.value === null) {
+    return;
+  }
+
   saveFeedbackMutation({
     input: {
+      id: selectedUserSubmission.value!.feedback?.id,
       assignmentSubmissionId: selectedUserSubmission.value!.id,
-      feedback: "dupksa",
+      assignmentId: selectedAssignment.value!.id,
+      feedback: feedback.value,
     },
+  });
+};
+
+let DeleteFeedbackMutation = graphql(/* GraphQL */ `
+  mutation DeleteAssignmentSubmissionFeedback($assignmentId: ID!, $id: ID!) {
+    deleteAssignmentSubmissionFeedback(
+      assignmentId: $assignmentId
+      assignmentSubmissionFeedbackId: $id
+    )
+  }
+`);
+
+let { mutate: deleteFeedbackMutation } = useMutation(DeleteFeedbackMutation);
+
+const deleteFeedback = () => {
+  if (selectedUserSubmission.value === null) {
+    return;
+  }
+
+  deleteFeedbackMutation({
+    assignmentId: selectedAssignment.value!.id,
+    id: selectedUserSubmission.value!.feedback!.id,
   });
 };
 

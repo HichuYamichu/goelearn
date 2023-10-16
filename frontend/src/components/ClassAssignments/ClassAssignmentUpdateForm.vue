@@ -85,7 +85,6 @@ const assignmentInput = reactive({
 } as AssignmentInput);
 
 const emit = defineEmits(["close"]);
-console.log(props.assignment);
 
 const router = useRouter();
 const classId = router.currentRoute.value.params.classId;

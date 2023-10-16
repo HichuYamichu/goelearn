@@ -29,6 +29,7 @@
       <v-file-input
         v-model="filesToUpload"
         multiple
+        variant="outlined"
         label="File input"
       ></v-file-input>
       <v-btn @click="submit">Submit</v-btn>

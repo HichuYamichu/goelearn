@@ -15,7 +15,7 @@
     </div>
     <div class="d-flex w-100 gap mt-5 flex-wrap justify-space-between">
       <div
-        class="d-flex w-45 full-mobile flex-wrap"
+        class="d-flex w-15 full-mobile flex-wrap"
         v-for="c in classes"
         :key="c.id"
       >
@@ -29,7 +29,7 @@
           ></v-img>
           <v-img
             v-else
-            :src="`https://ui-avatars.com/api/?size=200&name=szydelkowanie`"
+            :src="`https://ui-avatars.com/api/?size=200&name=${c.name}}`"
             height="200px"
           ></v-img>
           <v-card-title> {{ c.name }} </v-card-title>

@@ -8,11 +8,13 @@
             v-model="username"
             required
             focused
+            variant="outlined"
           ></v-text-field>
           <v-text-field
             label="Password"
             v-model="password"
             required
+            variant="outlined"
           ></v-text-field>
           <v-btn @click="login" class="me-4 bg-primary"> submit </v-btn>
           <v-btn @click="clear"> clear </v-btn>

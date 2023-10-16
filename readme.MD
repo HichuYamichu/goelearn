@@ -1,7 +1,6 @@
 # TODAY
 
-- assignment CRUD frontend
-
+- student assignment CRUD frontend
 - class settings UI
 - invites frontend
 
@@ -10,13 +9,12 @@
 - user settings
 - frontend hide restricted data
 - my assignmensts forntend
-- assignmend date should be optional frontend
 - indicate submissio was late
 
+- finish up meeting
 - validation (limits)
 - auth
 - file visibility
-- finish up meeting
 
 - admin functionality
 - user first/last name display

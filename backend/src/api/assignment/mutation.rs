@@ -12,6 +12,7 @@ use crate::core::LoggedInGuard;
 use async_graphql::ID;
 use async_graphql::{dataloader::DataLoader, Context, Object};
 use deadpool_redis::redis::AsyncCommands;
+use entity::assignment;
 use sea_orm::DatabaseConnection;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tracing::instrument;
@@ -213,10 +214,6 @@ impl AssignmentMutation {
             .await?
             .expect("Assignment must exist");
         let update_data = ClassResourceUpdate::Assignment(updated_assignment.into());
-        tracing::debug!(
-            "Publishing to {}",
-            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id)
-        );
         conn.publish(
             format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id),
             serde_json::to_string(&update_data).expect("Class should serialize"),
@@ -235,8 +232,11 @@ impl AssignmentMutation {
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let (model, new_files, old_files) = input.try_into_active_model()?;
+        let assignment_id = model.assignment_id.clone().unwrap();
         let new_files = new_files
             .iter()
             .map(|file| file.value(ctx))
@@ -272,6 +272,16 @@ impl AssignmentMutation {
                 .await?;
         }
 
+        let updated_assignment = AssignmentRepo::find_by_id(data_loader, assignment_id)
+            .await?
+            .expect("Assignment must exist");
+        let update_data = ClassResourceUpdate::Assignment(updated_assignment.into());
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
+
         Ok(true)
     }
 
@@ -281,17 +291,21 @@ impl AssignmentMutation {
         &self,
         ctx: &Context<'_>,
         class_id: ID,
+        assignment_id: ID,
         assignment_submission_id: ID,
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let class_id = class_id.parse::<Uuid>()?;
         let assignment_submission_id = assignment_submission_id.parse::<Uuid>()?;
+
         let res =
             AssignmentRepo::delete_assignment_submission(data_loader, assignment_submission_id)
                 .await?;
-        match res {
+        let res = match res {
             DeleteSubmissionResult::NotDeleted => return Ok(false),
             DeleteSubmissionResult::Deleted(file_ids) => {
                 for file_id in file_ids {
@@ -300,7 +314,20 @@ impl AssignmentMutation {
                 }
                 Ok(true)
             }
-        }
+        };
+
+        let assignment_id = Uuid::parse_str(assignment_id.as_str())?;
+        let updated_assignment = AssignmentRepo::find_by_id(data_loader, assignment_id)
+            .await?
+            .expect("Assignment must exist");
+        let class_id = updated_assignment.class_id;
+        let update_data = ClassResourceUpdate::Assignment(updated_assignment.into());
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
+        res
     }
 
     #[instrument(skip(self, ctx), err(Debug))]
@@ -311,9 +338,24 @@ impl AssignmentMutation {
         input: CreateAssignmanetSubmissionFeedbackInput,
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
+
+        let assignment_id = Uuid::parse_str(input.assignment_id.clone().as_str())?;
         let model = input.try_into_active_model()?;
 
         AssignmentRepo::create_assignment_submission_feedback(data_loader, model).await?;
+
+        let updated_assignment = AssignmentRepo::find_by_id(data_loader, assignment_id)
+            .await?
+            .expect("Assignment must exist");
+        let class_id = updated_assignment.class_id;
+        let update_data = ClassResourceUpdate::Assignment(updated_assignment.into());
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
 
         Ok(true)
     }
@@ -323,13 +365,30 @@ impl AssignmentMutation {
     pub async fn delete_assignment_submission_feedback(
         &self,
         ctx: &Context<'_>,
+        assignment_id: ID,
         assignment_submission_feedback_id: ID,
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
+
         let assignment_submission_feedback_id =
             assignment_submission_feedback_id.parse::<Uuid>()?;
         AssignmentRepo::delete_assignment_feedback(data_loader, assignment_submission_feedback_id)
             .await?;
+
+        let assignment_id = Uuid::parse_str(assignment_id.as_str())?;
+        let updated_assignment = AssignmentRepo::find_by_id(data_loader, assignment_id)
+            .await?
+            .expect("Assignment must exist");
+        let class_id = updated_assignment.class_id;
+        let update_data = ClassResourceUpdate::Assignment(updated_assignment.into());
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
+
         Ok(true)
     }
 
@@ -341,11 +400,28 @@ impl AssignmentMutation {
         input: UpdateAssignmanetSubmissionFeedbackInput,
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
+
+        let assignment_id = Uuid::parse_str(input.assignment_id.clone().as_str())?;
+
         AssignmentRepo::update_assignment_submission_feedback(
             data_loader,
             input.try_into_active_model()?,
         )
         .await?;
+
+        let updated_assignment = AssignmentRepo::find_by_id(data_loader, assignment_id)
+            .await?
+            .expect("Assignment must exist");
+        let class_id = updated_assignment.class_id;
+        let update_data = ClassResourceUpdate::Assignment(updated_assignment.into());
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
+
         Ok(true)
     }
 }

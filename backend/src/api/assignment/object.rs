@@ -251,6 +251,7 @@ impl SubmitAssignmentInput {
 #[derive(InputObject, Debug)]
 pub struct CreateAssignmanetSubmissionFeedbackInput {
     pub id: Option<ID>,
+    pub assignment_id: ID,
     pub assignment_submission_id: ID,
     pub feedback: String,
 }
@@ -275,6 +276,7 @@ impl CreateAssignmanetSubmissionFeedbackInput {
 #[derive(InputObject, Debug)]
 pub struct UpdateAssignmanetSubmissionFeedbackInput {
     pub id: ID,
+    pub assignment_id: ID,
     pub feedback: String,
 }
 

@@ -118,6 +118,12 @@ const AssignmentFragment = graphql(/* GraphQL */ `
         id
         name
       }
+      feedback {
+        id
+        content
+        createdAt
+        updatedAt
+      }
     }
   }
 `);
@@ -162,6 +168,7 @@ subscribeToMore(() => ({
       return {
         classById: {
           ...prev.classById!,
+          // @ts-ignore
           channels: [...prev.classById!.channels, updatedClass],
         },
       };
@@ -171,6 +178,7 @@ subscribeToMore(() => ({
       return {
         classById: {
           ...prev.classById!,
+          // @ts-ignore
           assignments: [...prev.classById!.assignments, updatedClass],
         },
       };
@@ -180,6 +188,7 @@ subscribeToMore(() => ({
       return {
         classById: {
           ...prev.classById!,
+          // @ts-ignore
           files: [...prev.classById!.files, updatedClass],
         },
       };
@@ -189,6 +198,7 @@ subscribeToMore(() => ({
       return {
         classById: {
           ...prev.classById!,
+          // @ts-ignore
           members: [...prev.classById!.members, updatedClass],
         },
       };
@@ -230,6 +240,7 @@ subscribeToMore(() => ({
       return {
         ...prev,
         channels: {
+          // @ts-ignore
           ...prev.channels,
           ...updatedClass,
         },
@@ -244,12 +255,12 @@ subscribeToMore(() => ({
     }
 
     if (updatedClass.__typename == "Assignment") {
-      console.log("assignment updated");
       console.log(updatedClass);
 
       return {
         ...prev,
         assignments: {
+          // @ts-ignore
           ...prev.assignments,
           ...updatedClass,
         },

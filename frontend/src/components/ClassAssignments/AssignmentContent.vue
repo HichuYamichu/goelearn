@@ -57,7 +57,7 @@ const classId = router.currentRoute.value.params.classId as string;
 
 <style scoped>
 .big-text {
-  height: 400px;
+  height: 370px;
   overflow-y: auto;
   word-wrap: break-all;
 }

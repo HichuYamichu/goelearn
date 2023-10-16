@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid>
+  <v-container fluid class="mt-4">
     <v-row>
       <v-col xl="4" sm="12" class="mx-auto">
         <form>
@@ -8,29 +8,42 @@
             label="Username"
             required
             focused
+            variant="outlined"
           ></v-text-field>
           <v-text-field
             v-model="state.firstName"
             label="Firstname"
             required
+            variant="outlined"
           ></v-text-field>
           <v-text-field
             v-model="state.lastName"
             label="Lastname"
             required
+            variant="outlined"
           ></v-text-field>
           <v-text-field
             v-model="state.email"
             label="Email"
             required
+            variant="outlined"
           ></v-text-field>
           <v-text-field
             v-model="state.password"
             label="Password"
             required
+            variant="outlined"
           ></v-text-field>
-          <v-text-field label="Confirm Password" required></v-text-field>
-          <v-file-input v-model="state.avatar" label="Avatar"></v-file-input>
+          <v-text-field
+            label="Confirm Password"
+            required
+            variant="outlined"
+          ></v-text-field>
+          <v-file-input
+            v-model="state.avatar"
+            label="Avatar"
+            variant="outlined"
+          ></v-file-input>
 
           <v-btn class="me-4 bg-primary" @click="submit"> submit </v-btn>
           <v-btn @click="clear"> clear </v-btn>
