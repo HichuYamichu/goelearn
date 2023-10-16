@@ -102,6 +102,10 @@ const FileFragment = graphql(/* GraphQL */ `
 
 const AssignmentFragment = graphql(/* GraphQL */ `
   fragment AssignmentFragment on Assignment {
+    id
+    name
+    content
+    dueAt
     submissions {
       id
       createdAt
@@ -206,6 +210,9 @@ const ClassResourceUpdateSubscription = graphql(/* GraphQL */ `
       ... on Class {
         ...ClassDataFragment
       }
+      ... on Assignment {
+        ...AssignmentFragment
+      }
     }
   }
 `);
@@ -220,13 +227,32 @@ subscribeToMore(() => ({
     const updatedClass = subscriptionData.data.classResourceUpdated;
 
     if (updatedClass.__typename == "Channel") {
-      console.log(updatedClass);
+      return {
+        ...prev,
+        channels: {
+          ...prev.channels,
+          ...updatedClass,
+        },
+      };
     }
 
     if (updatedClass.__typename == "Class") {
       return {
         ...prev,
         ...updatedClass,
+      };
+    }
+
+    if (updatedClass.__typename == "Assignment") {
+      console.log("assignment updated");
+      console.log(updatedClass);
+
+      return {
+        ...prev,
+        assignments: {
+          ...prev.assignments,
+          ...updatedClass,
+        },
       };
     }
 
@@ -265,7 +291,6 @@ const { result: onDelete } = useSubscription(
   })
 );
 watch(onDelete, () => {
-  console.log(onDelete.value);
   if (!onDelete.value) return;
   const data = onDelete.value.classResourceDeleted;
 
@@ -276,8 +301,6 @@ watch(onDelete, () => {
     cache.evict({ id: `File:${data.id}` });
   }
   if (data.__typename == "AssignmentDeleteInfo") {
-    console.log(data.id);
-
     cache.evict({ id: `Assignment:${data.id}` });
   }
 
@@ -286,9 +309,6 @@ watch(onDelete, () => {
       id: `Class:${classId}`,
       fields: {
         members(cachedMembers) {
-          console.log(
-            cachedMembers.filter((m: any) => m.__ref != `User:${data.id}`)
-          );
           return cachedMembers.filter((m: any) => m.__ref != `User:${data.id}`);
         },
       },

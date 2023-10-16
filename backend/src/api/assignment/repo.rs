@@ -9,7 +9,8 @@ use ::entity::{
     assignment_submission::Entity as AssignmentSubmission,
     assignment_submission_feedback::Entity as AssignmentSubmissionFeedback,
     assignment_submission_file, assignment_submission_file::Entity as AssignmentSubmissionFile,
-    file, file::Entity as File,
+    class, class::Entity as Class, file, file::Entity as File, membership,
+    membership::Entity as Membership,
 };
 use sea_orm::DatabaseConnection;
 use sea_orm::*;
@@ -18,6 +19,7 @@ use std::sync::Arc;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::api::ClassRepo;
 use crate::core::AppError;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -107,6 +109,11 @@ pub trait AssignmentRepo {
         model: assignment_submission_feedback::ActiveModel,
     ) -> Result<(), TransactionError<AppError>>;
 
+    async fn update_assignment_submission_feedback(
+        &self,
+        model: assignment_submission_feedback::ActiveModel,
+    ) -> Result<(), AppError>;
+
     async fn update_assignment_submission(
         &self,
         model: assignment_submission::ActiveModel,
@@ -141,7 +148,13 @@ pub trait AssignmentRepo {
         old_files: Vec<Uuid>,
     ) -> Result<(assignment::Model, Vec<Uuid>), TransactionError<DbErr>>;
 
-    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<assignment::Model>, DbErr>;
+    async fn delete_assignment_submission(
+        &self,
+        assignment_submission_id: Uuid,
+    ) -> Result<DeleteSubmissionResult, DbErr>;
+
+    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<assignment::Model>, Arc<DbErr>>;
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<assignment::Model>, Arc<DbErr>>;
 }
 
 #[async_trait]
@@ -559,6 +572,7 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
         Ok(())
     }
 
+    #[instrument(skip(self), err(Debug))]
     async fn update_assignment(
         &self,
         model: assignment::ActiveModel,
@@ -633,7 +647,79 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
         Ok((assignment, files))
     }
 
-    async fn find_by_user_id(&self, _user_id: Uuid) -> Result<Vec<assignment::Model>, DbErr> {
-        todo!()
+    #[instrument(skip(self), err(Debug))]
+    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<assignment::Model>, Arc<DbErr>> {
+        let classes = ClassRepo::find_by_user_id(self, user_id)
+            .await?
+            .expect("user_id is valid");
+
+        let assigmnents = Assignment::find()
+            .filter(assignment::Column::ClassId.is_in(classes.into_iter().map(|c| c.id)))
+            .all(self.loader())
+            .await?;
+
+        Ok(assigmnents)
     }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn update_assignment_submission_feedback(
+        &self,
+        model: assignment_submission_feedback::ActiveModel,
+    ) -> Result<(), AppError> {
+        let _feedback = model.update(self.loader()).await?;
+        Ok(())
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn delete_assignment_submission(
+        &self,
+        assignment_submission_id: Uuid,
+    ) -> Result<DeleteSubmissionResult, DbErr> {
+        let is_graded = AssignmentSubmissionFeedback::find()
+            .filter(
+                assignment_submission_feedback::Column::AssignmentSubmissionId
+                    .eq(assignment_submission_id),
+            )
+            .one(self.loader())
+            .await?
+            .is_some();
+
+        if is_graded {
+            return Ok(DeleteSubmissionResult::NotDeleted);
+        }
+
+        let files = AssignmentSubmissionFile::find()
+            .filter(
+                assignment_submission_file::Column::AssignmentSubmissionId
+                    .eq(assignment_submission_id),
+            )
+            .all(self.loader())
+            .await?;
+
+        AssignmentSubmissionFile::delete_many()
+            .filter(
+                assignment_submission_file::Column::AssignmentSubmissionId
+                    .eq(assignment_submission_id),
+            )
+            .exec(self.loader())
+            .await?;
+
+        AssignmentSubmission::delete_many()
+            .filter(assignment_submission::Column::Id.eq(assignment_submission_id))
+            .exec(self.loader())
+            .await?;
+
+        let ids = files.into_iter().map(|m| m.file_id).collect::<Vec<_>>();
+        Ok(DeleteSubmissionResult::Deleted(ids))
+    }
+
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<assignment::Model>, Arc<DbErr>> {
+        let assignment = Assignment::find_by_id(id).one(self.loader()).await?;
+        Ok(assignment)
+    }
+}
+
+pub enum DeleteSubmissionResult {
+    Deleted(Vec<Uuid>),
+    NotDeleted,
 }

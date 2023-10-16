@@ -472,12 +472,20 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
     async fn is_valid_invite(&self, invite_id: Uuid, class_id: Uuid) -> Result<bool, DbErr> {
         let invite = Invite::find_by_id(invite_id).one(self.loader()).await?;
 
-        // TODO: invite cleanup
-        if let Some(invite) = invite {
-            if invite.class_id != class_id {
-                return Ok(false);
-            }
-        } else {
+        let Some(invite) = invite else {
+            return Ok(false);
+        };
+
+        let is_expired = invite
+            .expires_at
+            .map(|e| e < Utc::now().naive_utc())
+            .unwrap_or(false);
+        if is_expired {
+            Invite::delete_by_id(invite_id).exec(self.loader()).await?;
+            return Ok(false);
+        }
+
+        if invite.class_id != class_id {
             return Ok(false);
         }
 

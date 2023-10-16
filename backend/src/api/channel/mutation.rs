@@ -1,4 +1,6 @@
-use crate::api::class::{ChannelDeleteInfo, CLASS_RESOURCE_DELETED};
+use crate::api::class::{
+    ChannelDeleteInfo, ClassResourceUpdate, CLASS_RESOURCE_DELETED, CLASS_RESOURCE_UPDATED,
+};
 use crate::api::class::{ClassResourceCreate, ClassResourceDelete, CLASS_RESOURCE_CREATED};
 use crate::core::AppError;
 use crate::core::LoggedInGuard;
@@ -53,12 +55,19 @@ impl ChannelMutation {
     ) -> Result<ChannelObject, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
-        let _conn = redis_pool.get().await?;
+        let mut conn = redis_pool.get().await?;
 
-        let _class_id = input.class_id.to_string();
+        let class_id = input.class_id.to_string();
         let model = input.try_into_active_model()?;
         let channel = ChannelRepo::update_channel(data_loader, model).await?;
         let channel = ChannelObject::from(channel);
+
+        let update_data = ClassResourceUpdate::Channel(channel.clone());
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id.as_str()),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
 
         Ok(channel)
     }

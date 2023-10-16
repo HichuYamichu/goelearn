@@ -1,8 +1,11 @@
+use crate::api::class;
 use crate::api::class::AssignmentDeleteInfo;
 use crate::api::class::ClassResourceCreate;
 use crate::api::class::ClassResourceDelete;
+use crate::api::class::ClassResourceUpdate;
 use crate::api::class::CLASS_RESOURCE_CREATED;
 use crate::api::class::CLASS_RESOURCE_DELETED;
+use crate::api::class::CLASS_RESOURCE_UPDATED;
 use crate::core::AppError;
 use crate::core::Claims;
 use crate::core::LoggedInGuard;
@@ -15,8 +18,10 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use super::object::CreateAssignmanetSubmissionFeedbackInput;
+use super::object::UpdateAssignmanetSubmissionFeedbackInput;
 use super::object::UpdateAssignmentSubmissionInput;
 use super::object::{CreateAssignmentInput, SubmitAssignmentInput, UpdateAssignmentInput};
+use super::repo::DeleteSubmissionResult;
 use super::{AssignmentObject, AssignmentRepo};
 
 #[derive(Default)]
@@ -81,6 +86,8 @@ impl AssignmentMutation {
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
 
         let (model, new_files, old_files) = input.try_into_active_model()?;
 
@@ -94,14 +101,14 @@ impl AssignmentMutation {
             .map(|file| file.filename.clone())
             .collect::<Vec<_>>();
 
-        let (class, file_ids) = AssignmentRepo::update_assignment(
+        let (updated_assignment, file_ids) = AssignmentRepo::update_assignment(
             data_loader,
             model,
             new_file_names,
             old_files.clone(),
         )
         .await?;
-        let class_id = class.id;
+        let class_id = updated_assignment.class_id;
 
         for file_id in old_files {
             let s3_path = format!("class-files/{class_id}/{file_id}");
@@ -119,6 +126,13 @@ impl AssignmentMutation {
                 .put_object_stream_with_content_type(&mut reader, s3_path, ct)
                 .await?;
         }
+
+        let update_data = ClassResourceUpdate::Assignment(updated_assignment.into());
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
 
         Ok(true)
     }
@@ -146,10 +160,6 @@ impl AssignmentMutation {
         }
 
         let update_data = ClassResourceDelete::Assignment(AssignmentDeleteInfo { id: original_id });
-        tracing::debug!(
-            "Publishing to {}",
-            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id.to_string())
-        );
         conn.publish(
             format!("{}:{}", CLASS_RESOURCE_DELETED, class_id),
             serde_json::to_string(&update_data).expect("Class should serialize"),
@@ -168,10 +178,13 @@ impl AssignmentMutation {
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
+        let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
+        let mut conn = redis_pool.get().await?;
         let claims = ctx.data_unchecked::<Option<Claims>>();
 
         let user_id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
         let (model, files) = input.try_into_active_model(user_id)?;
+        let assignment_id = model.assignment_id.clone().unwrap();
         let files = files
             .iter()
             .map(|file| file.value(ctx))
@@ -195,6 +208,21 @@ impl AssignmentMutation {
                 .put_object_stream_with_content_type(&mut reader, s3_path, ct)
                 .await?;
         }
+
+        let updated_assignment = AssignmentRepo::find_by_id(data_loader, assignment_id)
+            .await?
+            .expect("Assignment must exist");
+        let update_data = ClassResourceUpdate::Assignment(updated_assignment.into());
+        tracing::debug!(
+            "Publishing to {}",
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id)
+        );
+        conn.publish(
+            format!("{}:{}", CLASS_RESOURCE_UPDATED, class_id),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
+
         Ok(true)
     }
 
@@ -249,6 +277,34 @@ impl AssignmentMutation {
 
     #[instrument(skip(self, ctx), err(Debug))]
     #[graphql(guard = "LoggedInGuard")]
+    pub async fn delete_assignment_submission(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+        assignment_submission_id: ID,
+    ) -> Result<bool, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
+
+        let class_id = class_id.parse::<Uuid>()?;
+        let assignment_submission_id = assignment_submission_id.parse::<Uuid>()?;
+        let res =
+            AssignmentRepo::delete_assignment_submission(data_loader, assignment_submission_id)
+                .await?;
+        match res {
+            DeleteSubmissionResult::NotDeleted => return Ok(false),
+            DeleteSubmissionResult::Deleted(file_ids) => {
+                for file_id in file_ids {
+                    let s3_path = format!("class-files/{class_id}/{file_id}");
+                    s3_bucket.delete_object(s3_path).await?;
+                }
+                Ok(true)
+            }
+        }
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard")]
     pub async fn create_assignment_submission_feedback(
         &self,
         ctx: &Context<'_>,
@@ -274,6 +330,22 @@ impl AssignmentMutation {
             assignment_submission_feedback_id.parse::<Uuid>()?;
         AssignmentRepo::delete_assignment_feedback(data_loader, assignment_submission_feedback_id)
             .await?;
+        Ok(true)
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard")]
+    pub async fn update_assignment_submission_feedback(
+        &self,
+        ctx: &Context<'_>,
+        input: UpdateAssignmanetSubmissionFeedbackInput,
+    ) -> Result<bool, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        AssignmentRepo::update_assignment_submission_feedback(
+            data_loader,
+            input.try_into_active_model()?,
+        )
+        .await?;
         Ok(true)
     }
 }

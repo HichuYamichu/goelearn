@@ -17,8 +17,11 @@ const documents = {
     "\n  fragment AssignmentsFragment on Class {\n    ownerId\n    ...OwnerAssignmentsFragment\n    ...StudentAssignmentsFragment\n  }\n": types.AssignmentsFragmentFragmentDoc,
     "\n  fragment AssignmentContentFragment on Assignment {\n    id\n    name\n    content\n    dueAt\n    createdAt\n    files {\n      id\n      name\n    }\n  }\n": types.AssignmentContentFragmentFragmentDoc,
     "\n  mutation CreateAssignmentMutation($input: CreateAssignmentInput!) {\n    createAssignment(input: $input) {\n      id\n    }\n  }\n": types.CreateAssignmentMutationDocument,
-    "\n  fragment OwnerAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n      submissions {\n        id\n        createdAt\n        updatedAt\n        user {\n          id\n          username\n        }\n        files {\n          id\n          name\n        }\n      }\n    }\n  }\n": types.OwnerAssignmentsFragmentFragmentDoc,
+    "\n  mutation UpdateAssignmentMutation($input: UpdateAssignmentInput!) {\n    updateAssignment(input: $input)\n  }\n": types.UpdateAssignmentMutationDocument,
+    "\n  fragment OwnerAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      dueAt\n      content\n      files {\n        id\n        name\n      }\n      ...AssignmentContentFragment\n      submissions {\n        id\n        createdAt\n        updatedAt\n        user {\n          id\n          username\n        }\n        files {\n          id\n          name\n        }\n      }\n    }\n  }\n": types.OwnerAssignmentsFragmentFragmentDoc,
     "\n  mutation CreateAssignmentSubmissionFeedback(\n    $input: CreateAssignmanetSubmissionFeedbackInput!\n  ) {\n    createAssignmentSubmissionFeedback(input: $input)\n  }\n": types.CreateAssignmentSubmissionFeedbackDocument,
+    "\n  mutation DeleteAssignment($classId: ID!, $assignmentId: ID!) {\n    deleteAssignment(classId: $classId, assignmentId: $assignmentId)\n  }\n": types.DeleteAssignmentDocument,
+    "\n  query AssignmentSubmissionsQuery($id: ID!) {\n    assignmentSubmissions(assignmentId: $id) {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n    }\n  }\n": types.AssignmentSubmissionsQueryDocument,
     "\n  fragment StudentAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n    }\n  }\n": types.StudentAssignmentsFragmentFragmentDoc,
     "\n  mutation CreateAssignmentSubmission($assignmentId: ID!, $files: [Upload!]!) {\n    createAssignmentSubmission(\n      input: { assignmentId: $assignmentId, files: $files }\n    )\n  }\n": types.CreateAssignmentSubmissionDocument,
     "\n  fragment ChannelsFragment on Channel {\n    id\n    name\n  }\n": types.ChannelsFragmentFragmentDoc,
@@ -48,10 +51,10 @@ const documents = {
     "\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n": types.MyIdQueryDocument,
     "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      id\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n      ...ClassDataFragment\n    }\n  }\n": types.ClassClassByIdQueryDocument,
     "\n  fragment FileFragment on File {\n    id\n    name\n    fileType\n    parent\n  }\n": types.FileFragmentFragmentDoc,
-    "\n  fragment AssignmentFragment on Assignment {\n    submissions {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n    }\n  }\n": types.AssignmentFragmentFragmentDoc,
+    "\n  fragment AssignmentFragment on Assignment {\n    id\n    name\n    content\n    dueAt\n    submissions {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n    }\n  }\n": types.AssignmentFragmentFragmentDoc,
     "\n  fragment UserFragment on User {\n    id\n    username\n  }\n": types.UserFragmentFragmentDoc,
     "\n  subscription ClassResourceCreateSubscription($classId: ID!) {\n    classResourceCreated(classId: $classId) {\n      __typename\n      ... on Channel {\n        ...ChannelsFragment\n      }\n      ... on File {\n        ...FileFragment\n      }\n      ... on Assignment {\n        ...AssignmentFragment\n      }\n      ... on User {\n        ...UserFragment\n      }\n    }\n  }\n": types.ClassResourceCreateSubscriptionDocument,
-    "\n  subscription ClassResourceUpdateSubscription($classId: ID!) {\n    classResourceUpdated(classId: $classId) {\n      __typename\n      ... on Channel {\n        ...ChannelsFragment\n      }\n      ... on Class {\n        ...ClassDataFragment\n      }\n    }\n  }\n": types.ClassResourceUpdateSubscriptionDocument,
+    "\n  subscription ClassResourceUpdateSubscription($classId: ID!) {\n    classResourceUpdated(classId: $classId) {\n      __typename\n      ... on Channel {\n        ...ChannelsFragment\n      }\n      ... on Class {\n        ...ClassDataFragment\n      }\n      ... on Assignment {\n        ...AssignmentFragment\n      }\n    }\n  }\n": types.ClassResourceUpdateSubscriptionDocument,
     "\n  subscription ClassResourceDeletedSubscription($classId: ID!) {\n    classResourceDeleted(classId: $classId) {\n      __typename\n      ... on ChannelDeleteInfo {\n        id\n      }\n      ... on AssignmentDeleteInfo {\n        id\n      }\n      ... on FileDeleteInfo {\n        id\n      }\n      ... on MemberDeleteInfo {\n        id\n      }\n    }\n  }\n": types.ClassResourceDeletedSubscriptionDocument,
     "\n  query classesBySearch($query: String!) {\n    classesBySearch(query: $query) {\n      id\n      name\n      description\n      hasImage\n    }\n  }\n": types.ClassesBySearchDocument,
     "\n  mutation JoinClass($classId: ID!) {\n    joinClass(classId: $classId)\n  }\n": types.JoinClassDocument,
@@ -93,11 +96,23 @@ export function graphql(source: "\n  mutation CreateAssignmentMutation($input: C
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  fragment OwnerAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n      submissions {\n        id\n        createdAt\n        updatedAt\n        user {\n          id\n          username\n        }\n        files {\n          id\n          name\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  fragment OwnerAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n      submissions {\n        id\n        createdAt\n        updatedAt\n        user {\n          id\n          username\n        }\n        files {\n          id\n          name\n        }\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  mutation UpdateAssignmentMutation($input: UpdateAssignmentInput!) {\n    updateAssignment(input: $input)\n  }\n"): (typeof documents)["\n  mutation UpdateAssignmentMutation($input: UpdateAssignmentInput!) {\n    updateAssignment(input: $input)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment OwnerAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      dueAt\n      content\n      files {\n        id\n        name\n      }\n      ...AssignmentContentFragment\n      submissions {\n        id\n        createdAt\n        updatedAt\n        user {\n          id\n          username\n        }\n        files {\n          id\n          name\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  fragment OwnerAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      dueAt\n      content\n      files {\n        id\n        name\n      }\n      ...AssignmentContentFragment\n      submissions {\n        id\n        createdAt\n        updatedAt\n        user {\n          id\n          username\n        }\n        files {\n          id\n          name\n        }\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation CreateAssignmentSubmissionFeedback(\n    $input: CreateAssignmanetSubmissionFeedbackInput!\n  ) {\n    createAssignmentSubmissionFeedback(input: $input)\n  }\n"): (typeof documents)["\n  mutation CreateAssignmentSubmissionFeedback(\n    $input: CreateAssignmanetSubmissionFeedbackInput!\n  ) {\n    createAssignmentSubmissionFeedback(input: $input)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteAssignment($classId: ID!, $assignmentId: ID!) {\n    deleteAssignment(classId: $classId, assignmentId: $assignmentId)\n  }\n"): (typeof documents)["\n  mutation DeleteAssignment($classId: ID!, $assignmentId: ID!) {\n    deleteAssignment(classId: $classId, assignmentId: $assignmentId)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query AssignmentSubmissionsQuery($id: ID!) {\n    assignmentSubmissions(assignmentId: $id) {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n    }\n  }\n"): (typeof documents)["\n  query AssignmentSubmissionsQuery($id: ID!) {\n    assignmentSubmissions(assignmentId: $id) {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -217,7 +232,7 @@ export function graphql(source: "\n  fragment FileFragment on File {\n    id\n  
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  fragment AssignmentFragment on Assignment {\n    submissions {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n    }\n  }\n"): (typeof documents)["\n  fragment AssignmentFragment on Assignment {\n    submissions {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  fragment AssignmentFragment on Assignment {\n    id\n    name\n    content\n    dueAt\n    submissions {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n    }\n  }\n"): (typeof documents)["\n  fragment AssignmentFragment on Assignment {\n    id\n    name\n    content\n    dueAt\n    submissions {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -229,7 +244,7 @@ export function graphql(source: "\n  subscription ClassResourceCreateSubscriptio
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  subscription ClassResourceUpdateSubscription($classId: ID!) {\n    classResourceUpdated(classId: $classId) {\n      __typename\n      ... on Channel {\n        ...ChannelsFragment\n      }\n      ... on Class {\n        ...ClassDataFragment\n      }\n    }\n  }\n"): (typeof documents)["\n  subscription ClassResourceUpdateSubscription($classId: ID!) {\n    classResourceUpdated(classId: $classId) {\n      __typename\n      ... on Channel {\n        ...ChannelsFragment\n      }\n      ... on Class {\n        ...ClassDataFragment\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  subscription ClassResourceUpdateSubscription($classId: ID!) {\n    classResourceUpdated(classId: $classId) {\n      __typename\n      ... on Channel {\n        ...ChannelsFragment\n      }\n      ... on Class {\n        ...ClassDataFragment\n      }\n      ... on Assignment {\n        ...AssignmentFragment\n      }\n    }\n  }\n"): (typeof documents)["\n  subscription ClassResourceUpdateSubscription($classId: ID!) {\n    classResourceUpdated(classId: $classId) {\n      __typename\n      ... on Channel {\n        ...ChannelsFragment\n      }\n      ... on Class {\n        ...ClassDataFragment\n      }\n      ... on Assignment {\n        ...AssignmentFragment\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

@@ -7,6 +7,7 @@ use async_graphql::{
 };
 use chrono::{NaiveDateTime, Utc};
 use deadpool_redis::redis::{self, FromRedisValue, RedisResult, RedisWrite, ToRedisArgs};
+use entity::assignment;
 use partialdebug::placeholder::PartialDebug;
 
 use sea_orm::{DatabaseConnection, Set};
@@ -267,6 +268,25 @@ impl CreateAssignmanetSubmissionFeedbackInput {
             feedback: Set(self.feedback),
             created_at: Set(Utc::now().naive_utc()),
             updated_at: Set(None),
+        })
+    }
+}
+
+#[derive(InputObject, Debug)]
+pub struct UpdateAssignmanetSubmissionFeedbackInput {
+    pub id: ID,
+    pub feedback: String,
+}
+
+impl UpdateAssignmanetSubmissionFeedbackInput {
+    pub fn try_into_active_model(
+        self,
+    ) -> Result<::entity::assignment_submission_feedback::ActiveModel, AppError> {
+        Ok(::entity::assignment_submission_feedback::ActiveModel {
+            id: Set(Uuid::parse_str(self.id.as_str())?),
+            feedback: Set(self.feedback),
+            updated_at: Set(Some(Utc::now().naive_utc())),
+            ..Default::default()
         })
     }
 }

@@ -18,13 +18,14 @@ pub use file::FileHandler;
 pub use user::UserRepo;
 pub use user::UserRest;
 
+use self::assignment::AssignmentQuery;
 use self::{
     class::ClassSubscription,
     message::{MessageQuery, MessageSubscription},
 };
 
 #[derive(async_graphql::MergedObject, Default)]
-pub struct Query(ClassQuery, UserQuery, MessageQuery);
+pub struct Query(ClassQuery, UserQuery, MessageQuery, AssignmentQuery);
 
 #[derive(async_graphql::MergedObject, Default)]
 pub struct Mutation(
