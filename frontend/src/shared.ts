@@ -9,13 +9,6 @@ export const MyIdQuery = graphql(/* GraphQL */ `
     }
   }
 `);
-// export const isClassOwner = async (classOnwerId: string) => {
-
-//   const { result } = useQuery(MeQuery);
-//   await until(result).toBeTruthy();
-
-//   return result!.value!.me.id === classOnwerId;
-// };
 
 export const download = async (classId: string, item: any) => {
   downloadFile(
@@ -34,3 +27,12 @@ export const downloadFile = async (url: string, filename: string) => {
   link.style.display = "none";
   link.click();
 };
+
+export async function validate(inputs: any[]) {
+  const res = await Promise.all(
+    inputs.map((input) => {
+      return input.value!.validate();
+    })
+  );
+  return res.every((r) => r.length === 0);
+}

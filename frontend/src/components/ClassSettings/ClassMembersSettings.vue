@@ -6,12 +6,13 @@
     v-model="memberSearch"
   ></v-text-field>
   <v-list class="pa-0">
-    <v-list-item
-      v-for="(member, idx) in filteredMembers!"
-      :key="member.id"
-      :title="member.username"
-    >
-      <v-btn @click="ban(member)">Ban</v-btn>
+    <v-list-item v-for="(member, idx) in filteredMembers!" :key="member.id">
+      <div class="d-flex">
+        <h3 class="mr-8">
+          {{ member.username }}
+        </h3>
+        <v-btn class="bg-error" @click="ban(member)">Ban</v-btn>
+      </div>
     </v-list-item>
   </v-list>
   <h5 class="text-h5 text-center pa-3">Unban members</h5>
@@ -21,12 +22,13 @@
     v-model="bannedMemberSearch"
   ></v-text-field>
   <v-list class="pa-0">
-    <v-list-item
-      v-for="(member, idx) in bannedMembers!"
-      :key="member.id"
-      :title="member.username"
-    >
-      <v-btn @click="unban(member)">Unban</v-btn>
+    <v-list-item v-for="(member, idx) in bannedMembers!" :key="member.id">
+      <div class="d-flex">
+        <h3 class="mr-8">
+          {{ member.username }}
+        </h3>
+        <v-btn class="bg-success" @click="unban(member)">Unban</v-btn>
+      </div>
     </v-list-item>
   </v-list>
 </template>

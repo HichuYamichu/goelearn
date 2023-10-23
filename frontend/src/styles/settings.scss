@@ -20,7 +20,7 @@
 
   @media only screen and (max-width: 600px) {
     .w-xs-#{$i} {
-      width: #{$i * 1%};
+      width: #{$i * 1%} !important;
     }
 
     .h-xs-#{$i} {

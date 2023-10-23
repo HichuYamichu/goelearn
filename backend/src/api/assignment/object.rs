@@ -107,7 +107,9 @@ impl From<::entity::assignment::Model> for AssignmentObject {
 
 #[derive(InputObject, PartialDebug)]
 pub struct CreateAssignmentInput {
+    #[graphql(validator(min_length = 1, max_length = 35))]
     pub name: String,
+    #[graphql(validator(max_length = 2000))]
     pub content: String,
     pub due_at: Option<NaiveDateTime>,
     pub class_id: ID,
@@ -136,7 +138,9 @@ impl CreateAssignmentInput {
 #[derive(InputObject, PartialDebug)]
 pub struct UpdateAssignmentInput {
     pub id: ID,
+    #[graphql(validator(min_length = 5, max_length = 35))]
     pub name: Option<String>,
+    #[graphql(validator(max_length = 2000))]
     pub content: Option<String>,
     pub due_at: Option<NaiveDateTime>,
     pub new_files: Vec<Upload>,
@@ -253,6 +257,7 @@ pub struct CreateAssignmanetSubmissionFeedbackInput {
     pub id: Option<ID>,
     pub assignment_id: ID,
     pub assignment_submission_id: ID,
+    #[graphql(validator(min_length = 1, max_length = 2000))]
     pub feedback: String,
 }
 
@@ -277,6 +282,7 @@ impl CreateAssignmanetSubmissionFeedbackInput {
 pub struct UpdateAssignmanetSubmissionFeedbackInput {
     pub id: ID,
     pub assignment_id: ID,
+    #[graphql(validator(min_length = 1, max_length = 2000))]
     pub feedback: String,
 }
 

@@ -6,9 +6,11 @@ use crate::api::class::ClassResourceUpdate;
 use crate::api::class::CLASS_RESOURCE_CREATED;
 use crate::api::class::CLASS_RESOURCE_DELETED;
 use crate::api::class::CLASS_RESOURCE_UPDATED;
+use crate::api::MAX_FILE_SIZE;
 use crate::core::AppError;
 use crate::core::Claims;
 use crate::core::LoggedInGuard;
+use crate::core::UserError;
 use async_graphql::ID;
 use async_graphql::{dataloader::DataLoader, Context, Object};
 use deadpool_redis::redis::AsyncCommands;
@@ -36,7 +38,7 @@ impl AssignmentMutation {
         &self,
         ctx: &Context<'_>,
         input: CreateAssignmentInput,
-    ) -> Result<AssignmentObject, async_graphql::Error> {
+    ) -> Result<AssignmentObject, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
         let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
@@ -47,6 +49,14 @@ impl AssignmentMutation {
             .iter()
             .map(|file| file.value(ctx))
             .collect::<Result<Vec<_>, _>>()?;
+
+        let any_exeeds_limit = files
+            .iter()
+            .filter_map(|f| f.size().ok())
+            .any(|f| f > MAX_FILE_SIZE);
+        if any_exeeds_limit {
+            return Err(AppError::user("file too large", UserError::FileTooLarge));
+        }
 
         let file_names = files
             .iter()
@@ -190,6 +200,14 @@ impl AssignmentMutation {
             .iter()
             .map(|file| file.value(ctx))
             .collect::<Result<Vec<_>, _>>()?;
+
+        let any_exeeds_limit = files
+            .iter()
+            .filter_map(|f| f.size().ok())
+            .any(|f| f > MAX_FILE_SIZE);
+        if any_exeeds_limit {
+            return Err(AppError::user("file too large", UserError::FileTooLarge));
+        }
 
         let file_names = files
             .iter()

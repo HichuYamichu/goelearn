@@ -1,6 +1,6 @@
 <template>
-  <v-card flat class="pa-10">
-    <div class="d-flex flex-row">
+  <v-card flat class="pa-0 ma-xl-10">
+    <div class="d-flex flex-lg-row flex-column">
       <v-tabs v-model="tab" direction="vertical" color="primary">
         <v-tab value="option-1">
           <v-icon start> mdi-account </v-icon>
@@ -21,26 +21,26 @@
       </v-tabs>
       <v-window v-model="tab" class="w-100">
         <v-window-item value="option-1">
-          <v-card flat class="w-50 pl-8">
+          <v-card flat class="w-xs-100 w-50 px-8 pl-lg-8">
             <ClassCreate :class_="(class_ as any)"></ClassCreate>
           </v-card>
         </v-window-item>
         <v-window-item value="option-2">
-          <v-card flat class="w-50 pl-8">
+          <v-card flat class="w-100 px-8 pl-lg-8">
             <ClassChannelsSettings
               :channels="(class_?.channels as any)"
             ></ClassChannelsSettings>
           </v-card>
         </v-window-item>
         <v-window-item value="option-3">
-          <v-card flat>
+          <v-card flat class="w-xs-100 w-50 px-8 pl-lg-8">
             <ClassMembersSettings
               :members="(class_?.members as any)"
             ></ClassMembersSettings>
           </v-card>
         </v-window-item>
         <v-window-item value="option-4">
-          <v-card flat>
+          <v-card flat class="w-xs-100 w-50 px-8 pl-lg-8">
             <ClassInvitesSettings></ClassInvitesSettings>
           </v-card>
         </v-window-item>

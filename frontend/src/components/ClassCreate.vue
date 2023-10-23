@@ -6,11 +6,13 @@
       v-model="classInput.name"
       label="Name"
       variant="outlined"
+      :rules="classNameRules"
     ></v-text-field>
     <v-textarea
       v-model="classInput.description"
       label="Description"
       variant="outlined"
+      :rules="classDescRules"
     ></v-textarea>
     <div class="d-flex align-center">
       <v-text-field v-model="tag" label="Tag" variant="outlined"></v-text-field>
@@ -128,4 +130,15 @@ const submit = () => {
     router.push("/classes");
   }
 };
+
+const classNameRules = [
+  (v: string) => !!v || "Name is required",
+  (v: string) => v.length <= 35 || "Name must be less than 20 characters",
+];
+
+const classDescRules = [
+  (v: string) => !!v || "Description is required",
+  (v: string) =>
+    v.length <= 200 || "Description must be less than 100 characters",
+];
 </script>

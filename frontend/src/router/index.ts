@@ -1,5 +1,56 @@
-// Composables
-import { createRouter, createWebHistory } from "vue-router";
+import { createRouter, createWebHistory, RouteLocation } from "vue-router";
+import { graphql } from "@/gql";
+import { useLazyQuery } from "@vue/apollo-composable";
+import { provideApolloClient } from "@vue/apollo-composable";
+import { client } from "../client";
+
+const IsLoggedIn = graphql(/* GraphQL */ `
+  query IsLoggedIn {
+    isLoggedIn @client
+  }
+`);
+
+const isLoggedIn = async (to: RouteLocation, from: RouteLocation) => {
+  const res = client.readQuery({
+    query: IsLoggedIn,
+  });
+  return res?.isLoggedIn;
+};
+
+const ClassOwner = graphql(/* GraphQL */ `
+  query routerClassById($id: ID!) {
+    classById(id: $id) {
+      id
+      owner {
+        id
+      }
+    }
+  }
+`);
+
+const Me = graphql(/* GraphQL */ `
+  query routerMe($id: ID!) {
+    me {
+      id
+    }
+  }
+`);
+
+const isClassOwner = async (to: RouteLocation, from: RouteLocation) => {
+  const classId = to.params.classId as string;
+  const ownerResult = client.readQuery({
+    query: ClassOwner,
+    variables: {
+      id: classId,
+    },
+  });
+
+  const meResult = client.readQuery({
+    query: Me,
+  });
+
+  return ownerResult?.classById?.owner?.id === meResult?.me?.id;
+};
 
 const routes = [
   {
@@ -9,27 +60,27 @@ const routes = [
       {
         path: "",
         name: "Home",
-        // route level code-splitting
-        // this generates a separate chunk (about.[hash].js) for this route
-        // which is lazy-loaded when the route is visited.
         component: () =>
           import(/* webpackChunkName: "home" */ "@/views/Home.vue"),
       },
       {
         path: "/class/:classId",
         name: "Class",
+        beforeEnter: isLoggedIn,
         component: () =>
           import(/* webpackChunkName: "class" */ "@/views/Class.vue"),
       },
       {
         path: "/classes",
         name: "My Classes",
+        beforeEnter: isLoggedIn,
         component: () =>
           import(/* webpackChunkName: "classes" */ "@/views/UserClasses.vue"),
       },
       {
         path: "/explore",
         name: "Explore classes",
+        beforeEnter: isLoggedIn,
         component: () =>
           import(
             /* webpackChunkName: "explore" */ "@/views/ExploreClasses.vue"
@@ -48,20 +99,16 @@ const routes = [
           import(/* webpackChunkName: "register" */ "@/views/Register.vue"),
       },
       {
-        path: "/calendar",
-        name: "Calendar",
-        component: () =>
-          import(/* webpackChunkName: "calendar" */ "@/views/Register.vue"),
-      },
-      {
         path: "/assignments",
         name: "Assignments",
+        beforeEnter: isLoggedIn,
         component: () =>
           import(/* webpackChunkName: "assignments" */ "@/views/Register.vue"),
       },
       {
         path: "/class-create",
         name: "Create Class",
+        beforeEnter: isLoggedIn,
         component: () =>
           import(
             /* webpackChunkName: "class-create" */ "@/views/ClassCreate.vue"
@@ -70,14 +117,9 @@ const routes = [
       {
         path: "/settings",
         name: "Settings",
+        beforeEnter: isLoggedIn,
         component: () =>
           import(/* webpackChunkName: "settings" */ "@/views/UserSettings.vue"),
-      },
-      {
-        path: "/test",
-        name: "Test",
-        component: () =>
-          import(/* webpackChunkName: "test" */ "@/views/Test.vue"),
       },
     ],
   },

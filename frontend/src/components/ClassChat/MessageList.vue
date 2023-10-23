@@ -63,6 +63,11 @@
 import { graphql } from "@/gql";
 import { useMutation, useQuery } from "@vue/apollo-composable";
 import { Ref, computed, nextTick, ref, toRef, watch } from "vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
+
+const classId = route.params.classId as string;
 
 const emit = defineEmits(["toggleChannelDrawer", "toggleMemberDrawer"]);
 
@@ -162,7 +167,7 @@ const { result, onResult, subscribeToMore, refetch, fetchMore } = useQuery(
   MessagesQuery,
   () => ({
     channelId: selectedChannelId.value!,
-    classId: "",
+    classId: classId,
     last: 15,
   }),
   () => ({
@@ -220,7 +225,7 @@ const scrollDown = () => {
 };
 
 const scrollMiddle = () => {
-  messageBox.value?.scrollToIndex(13);
+  messageBox.value?.scrollToIndex(1);
 };
 
 const MessageCreatedSubscription = graphql(/* GraphQL */ `

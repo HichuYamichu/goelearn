@@ -145,6 +145,7 @@ impl UploadFileInput {
 
 #[derive(InputObject, Debug)]
 pub struct CreateDirectoryInput {
+    #[graphql(validator(min_length = 1, max_length = 35))]
     pub name: String,
     pub parent_id: Option<ID>,
     pub class_id: ID,
@@ -172,6 +173,7 @@ impl CreateDirectoryInput {
 #[derive(InputObject, Debug)]
 pub struct UpdateFileInput {
     pub id: ID,
+    #[graphql(validator(min_length = 1, max_length = 35))]
     pub name: Option<String>,
     pub public: Option<bool>,
 }

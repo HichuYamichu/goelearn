@@ -31,11 +31,9 @@ const props = defineProps<{
 
 const class_ = computed(() => useFragment(AssignmentsFragment, props.class_));
 
-const isOwner = ref(false);
-const { onResult } = useQuery(MyIdQuery);
-onResult((result) => {
-  if (result.data?.me?.id === class_.value?.ownerId) {
-    isOwner.value = true;
-  }
+const { result: myIdResult } = useQuery(MyIdQuery);
+const isOwner = computed(() => {
+  if (!myIdResult.value?.me?.id) return false;
+  return myIdResult.value?.me?.id === class_.value?.ownerId;
 });
 </script>

@@ -13,7 +13,7 @@
         autofocus
       ></v-text-field>
     </div>
-    <div class="d-flex w-100 gap mt-5 flex-wrap justify-space-between">
+    <div class="d-flex w-100 gap mt-5 flex-wrap v">
       <div
         class="d-flex w-15 full-mobile flex-wrap"
         v-for="c in classes"
@@ -41,16 +41,6 @@
       </div>
     </div>
   </div>
-  <v-dialog v-model="errDialog" width="auto">
-    <v-card>
-      <v-card-text>
-        <span class="text-weight-bold">Error:</span> {{ errMessage }}
-      </v-card-text>
-      <v-card-actions>
-        <v-btn color="primary" block @click="errDialog = false">Ok</v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
 </template>
 
 <script lang="ts" setup>
@@ -60,8 +50,6 @@ import { useMutation, useQuery } from "@vue/apollo-composable";
 import { computed, ref } from "vue";
 
 const dialog = ref(false);
-const errDialog = ref(false);
-const errMessage = ref("");
 const query = ref("");
 
 const ClassesSearchQuery = graphql(/* GraphQL */ `
@@ -97,11 +85,7 @@ const JoinClassMutation = graphql(/* GraphQL */ `
   }
 `);
 
-const {
-  mutate: joinClass,
-  onError,
-  onDone,
-} = useMutation(JoinClassMutation, {
+const { mutate: joinClass, onDone } = useMutation(JoinClassMutation, {
   refetchQueries: ["UserClassesMeQuery"],
 });
 
@@ -109,11 +93,6 @@ const join = (id: string) => {
   joinClass({ classId: id });
   dialog.value = false;
 };
-
-onError((e) => {
-  errMessage.value = e.message;
-  errDialog.value = true;
-});
 
 onDone((e) => {
   if (e.data?.joinClass) {
@@ -131,5 +110,9 @@ onDone((e) => {
   .full-mobile {
     width: 100% !important;
   }
+}
+
+.gap {
+  gap: 1rem;
 }
 </style>

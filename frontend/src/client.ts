@@ -1,4 +1,9 @@
-import { ApolloLink, ApolloClient, InMemoryCache } from "@apollo/client/core";
+import {
+  ApolloLink,
+  ApolloClient,
+  InMemoryCache,
+  from,
+} from "@apollo/client/core";
 import { concat, split } from "@apollo/client/link/core";
 import { getOperationAST } from "graphql";
 import { createUploadLink } from "apollo-upload-client";
@@ -6,6 +11,8 @@ import { createClient } from "graphql-ws";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
 import jwt_decode from "jwt-decode";
 import gql from "graphql-tag";
+import { onError } from "@apollo/client/link/error";
+import { Ref, computed, ref } from "vue";
 
 const token = localStorage.getItem("token");
 if (token) {
@@ -54,6 +61,18 @@ const link = split(
   httpLink
 );
 
+export const error: Ref<any> = ref(null);
+const errorLink = onError(({ graphQLErrors, networkError }) => {
+  error.value = graphQLErrors;
+
+  if (graphQLErrors)
+    graphQLErrors.map(({ message, locations, path }) =>
+      console.log(
+        `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
+      )
+    );
+});
+
 export const cache = new InMemoryCache();
 
 const IS_LOGGED_IN = gql`
@@ -70,6 +89,6 @@ cache.writeQuery({
 });
 
 export const client = new ApolloClient({
-  link: concat(authMiddleware, link),
+  link: authMiddleware.concat(errorLink).concat(link),
   cache,
 });

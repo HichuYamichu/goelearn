@@ -165,7 +165,9 @@ fn create_cursor(timestamp: &NaiveDateTime) -> String {
 
 #[derive(Clone, Debug, InputObject)]
 pub struct CreateChannelInput {
+    #[graphql(validator(min_length = 4, max_length = 15))]
     pub name: String,
+    #[graphql(validator(max_length = 100))]
     pub description: Option<String>,
     pub class_id: ID,
     pub allow_members_to_post: bool,
@@ -187,7 +189,9 @@ impl CreateChannelInput {
 #[derive(Clone, Debug, InputObject)]
 pub struct UpdateChannelInput {
     pub id: ID,
+    #[graphql(validator(min_length = 1, max_length = 15))]
     pub name: Option<String>,
+    #[graphql(validator(max_length = 100))]
     pub description: Option<String>,
     pub class_id: ID,
     pub allow_members_to_post: Option<bool>,

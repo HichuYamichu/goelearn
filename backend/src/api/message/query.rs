@@ -14,7 +14,7 @@ pub struct MessageQuery;
 #[Object]
 impl MessageQuery {
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
+    #[graphql(guard = "LoggedInGuard")]
     async fn messages(
         &self,
         ctx: &Context<'_>,

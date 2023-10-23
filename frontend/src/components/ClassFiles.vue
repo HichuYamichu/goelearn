@@ -6,6 +6,7 @@
         label="Folder name"
         variant="outlined"
         hide-details="auto"
+        :rules="classNameRules"
       ></v-text-field>
       <v-btn @click="createDir" class="bg-primary" size="large" block
         >Create</v-btn
@@ -286,6 +287,13 @@ const deleteAll = () => {
     fileIds: selectedFiles.value,
   });
 };
+
+const classNameRules = computed(() => {
+  return [
+    (v: string) => !!v || "Name is required",
+    (v: string) => v.length <= 35 || "Name must be less than 20 characters",
+  ];
+});
 </script>
 
 <style scoped>

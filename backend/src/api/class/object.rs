@@ -156,7 +156,9 @@ impl FromRedisValue for ClassObject {
 
 #[derive(InputObject, PartialDebug)]
 pub struct CreateClassInput {
+    #[graphql(validator(min_length = 1, max_length = 35))]
     pub name: String,
+    #[graphql(validator(max_length = 200))]
     pub description: String,
     pub public: bool,
     pub tags: String,
@@ -184,7 +186,9 @@ impl CreateClassInput {
 
 #[derive(PartialDebug, InputObject)]
 pub struct UpdateClassInput {
+    #[graphql(validator(min_length = 5, max_length = 35))]
     pub name: Option<String>,
+    #[graphql(validator(max_length = 200))]
     pub description: Option<String>,
     pub public: Option<bool>,
     pub tags: Option<String>,
@@ -236,6 +240,7 @@ pub struct CreateInviteInput {
 impl CreateInviteInput {
     pub fn try_into_active_model(self) -> Result<::entity::invite::ActiveModel, AppError> {
         Ok(::entity::invite::ActiveModel {
+            id: Set(Uuid::new_v4()),
             class_id: Set(Uuid::parse_str(&self.class_id)?),
             multiuse: Set(self.multiuse),
             expires_at: Set(self.expires_at),

@@ -10,7 +10,7 @@
       <v-tab value="Files">Files</v-tab>
       <v-tab value="Assignments">Assignments</v-tab>
       <v-tab value="Meeting">Meeting</v-tab>
-      <v-tab value="Settings">Settings</v-tab>
+      <v-tab value="Settings" v-if="isOwner">Settings</v-tab>
     </v-tabs>
   </v-app-bar>
 
@@ -47,6 +47,7 @@ import { useRoute, useRouter } from "vue-router";
 import { ChannelsFragmentFragment, ChatFragmentFragment } from "@/gql/graphql";
 import { FragmentType } from "@/gql";
 import { cache } from "@/client";
+import { MyIdQuery } from "@/shared";
 
 const MeQuery = graphql(/* GraphQL */ `
   query MeetingMeQuery {
@@ -69,6 +70,7 @@ const ClassQuery = graphql(/* GraphQL */ `
     classById(id: $id) {
       id
       name
+      ownerId
       ...ChatFragment
       ...FilesFragment
       ...AssignmentsFragment
@@ -330,5 +332,11 @@ watch(onDelete, () => {
       cache.evict({ id: `Class:${classId}` });
     }
   }
+});
+
+const { result: myIdResult } = useQuery(MyIdQuery);
+const isOwner = computed(() => {
+  if (!myIdResult.value?.me?.id) return false;
+  return myIdResult.value?.me?.id === class_.value?.ownerId;
 });
 </script>

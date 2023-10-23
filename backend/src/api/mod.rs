@@ -24,6 +24,8 @@ use self::{
     message::{MessageQuery, MessageSubscription},
 };
 
+pub const MAX_FILE_SIZE: u64 = 1 * 1024 * 1024;
+
 #[derive(async_graphql::MergedObject, Default)]
 pub struct Query(ClassQuery, UserQuery, MessageQuery, AssignmentQuery);
 

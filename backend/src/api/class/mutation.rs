@@ -1,4 +1,5 @@
 use crate::api::user::UserRepo;
+use crate::api::MAX_FILE_SIZE;
 use crate::core::{auth, AppError, UserError};
 use crate::core::{ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
@@ -35,11 +36,17 @@ impl ClassMutation {
 
         let id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
         let image = input.image.take();
+
         let model = input.into_active_model(id, image.is_some());
         let class_id = model.id.clone().into_value().expect("id was just set");
 
         if let Some(image) = image {
             let image = image.value(ctx)?;
+            let exeeds_limit = image.size()? > MAX_FILE_SIZE;
+            if exeeds_limit {
+                return Err(AppError::user("file too large", UserError::FileTooLarge));
+            }
+
             if image.content_type.is_none() || image.content_type.as_ref().unwrap() != "image/jpeg"
             {
                 return Err(AppError::user(

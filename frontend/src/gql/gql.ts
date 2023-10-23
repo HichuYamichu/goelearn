@@ -44,12 +44,17 @@ const documents = {
     "\n  mutation UpdateChannelMutation($input: UpdateChannelInput!) {\n    updateChannel(input: $input) {\n      id\n    }\n  }\n": types.UpdateChannelMutationDocument,
     "\n  mutation CreateChannelMutation($input: CreateChannelInput!) {\n    createChannel(input: $input) {\n      id\n    }\n  }\n": types.CreateChannelMutationDocument,
     "\n  mutation DeleteChannelMutation($classId: ID!, $channelId: ID!) {\n    deleteChannel(classId: $classId, channelId: $channelId)\n  }\n": types.DeleteChannelMutationDocument,
+    "\n  query InvitesQuery($id: ID!) {\n    invites(classId: $id) {\n      id\n      multiuse\n      expiresAt\n    }\n  }\n": types.InvitesQueryDocument,
+    "\n  mutation CreateInviteMutation(\n    $classId: ID!\n    $multiuse: Boolean!\n    $expiresAt: NaiveDateTime\n  ) {\n    createInvite(\n      input: { classId: $classId, multiuse: $multiuse, expiresAt: $expiresAt }\n    ) {\n      id\n      multiuse\n      expiresAt\n    }\n  }\n": types.CreateInviteMutationDocument,
+    "\n  mutation DeleteInviteMutation($classId: ID!, $inviteId: ID!) {\n    deleteInvite(classId: $classId, inviteId: $inviteId)\n  }\n": types.DeleteInviteMutationDocument,
     "\n  query BannedMemberQuery($classId: ID!) {\n    bannedMembers(classId: $classId) {\n      id\n      username\n    }\n  }\n": types.BannedMemberQueryDocument,
     "\n  mutation BanMemberMutation($classId: ID!, $userId: ID!) {\n    banMember(classId: $classId, userId: $userId)\n  }\n": types.BanMemberMutationDocument,
     "\n  mutation UnbanMemberMutation($classId: ID!, $userId: ID!) {\n    unbanMember(classId: $classId, userId: $userId)\n  }\n": types.UnbanMemberMutationDocument,
     "\n  query AppBarMeQuery {\n    me {\n      id\n      username\n      hasAvatar\n    }\n  }\n": types.AppBarMeQueryDocument,
+    "\n  query routerClassById($id: ID!) {\n    classById(id: $id) {\n      id\n      owner {\n        id\n      }\n    }\n  }\n": types.RouterClassByIdDocument,
+    "\n  query routerMe($id: ID!) {\n    me {\n      id\n    }\n  }\n": types.RouterMeDocument,
     "\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n": types.MyIdQueryDocument,
-    "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      id\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n      ...ClassDataFragment\n    }\n  }\n": types.ClassClassByIdQueryDocument,
+    "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      id\n      name\n      ownerId\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n      ...ClassDataFragment\n    }\n  }\n": types.ClassClassByIdQueryDocument,
     "\n  fragment FileFragment on File {\n    id\n    name\n    fileType\n    parent\n  }\n": types.FileFragmentFragmentDoc,
     "\n  fragment AssignmentFragment on Assignment {\n    id\n    name\n    content\n    dueAt\n    submissions {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n      feedback {\n        id\n        content\n        createdAt\n        updatedAt\n      }\n    }\n  }\n": types.AssignmentFragmentFragmentDoc,
     "\n  fragment UserFragment on User {\n    id\n    username\n  }\n": types.UserFragmentFragmentDoc,
@@ -204,6 +209,18 @@ export function graphql(source: "\n  mutation DeleteChannelMutation($classId: ID
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "\n  query InvitesQuery($id: ID!) {\n    invites(classId: $id) {\n      id\n      multiuse\n      expiresAt\n    }\n  }\n"): (typeof documents)["\n  query InvitesQuery($id: ID!) {\n    invites(classId: $id) {\n      id\n      multiuse\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateInviteMutation(\n    $classId: ID!\n    $multiuse: Boolean!\n    $expiresAt: NaiveDateTime\n  ) {\n    createInvite(\n      input: { classId: $classId, multiuse: $multiuse, expiresAt: $expiresAt }\n    ) {\n      id\n      multiuse\n      expiresAt\n    }\n  }\n"): (typeof documents)["\n  mutation CreateInviteMutation(\n    $classId: ID!\n    $multiuse: Boolean!\n    $expiresAt: NaiveDateTime\n  ) {\n    createInvite(\n      input: { classId: $classId, multiuse: $multiuse, expiresAt: $expiresAt }\n    ) {\n      id\n      multiuse\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteInviteMutation($classId: ID!, $inviteId: ID!) {\n    deleteInvite(classId: $classId, inviteId: $inviteId)\n  }\n"): (typeof documents)["\n  mutation DeleteInviteMutation($classId: ID!, $inviteId: ID!) {\n    deleteInvite(classId: $classId, inviteId: $inviteId)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "\n  query BannedMemberQuery($classId: ID!) {\n    bannedMembers(classId: $classId) {\n      id\n      username\n    }\n  }\n"): (typeof documents)["\n  query BannedMemberQuery($classId: ID!) {\n    bannedMembers(classId: $classId) {\n      id\n      username\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -220,11 +237,19 @@ export function graphql(source: "\n  query AppBarMeQuery {\n    me {\n      id\n
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "\n  query routerClassById($id: ID!) {\n    classById(id: $id) {\n      id\n      owner {\n        id\n      }\n    }\n  }\n"): (typeof documents)["\n  query routerClassById($id: ID!) {\n    classById(id: $id) {\n      id\n      owner {\n        id\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query routerMe($id: ID!) {\n    me {\n      id\n    }\n  }\n"): (typeof documents)["\n  query routerMe($id: ID!) {\n    me {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n"): (typeof documents)["\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      id\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n      ...ClassDataFragment\n    }\n  }\n"): (typeof documents)["\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      id\n      name\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n      ...ClassDataFragment\n    }\n  }\n"];
+export function graphql(source: "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      id\n      name\n      ownerId\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n      ...ClassDataFragment\n    }\n  }\n"): (typeof documents)["\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      id\n      name\n      ownerId\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n      ...ClassDataFragment\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

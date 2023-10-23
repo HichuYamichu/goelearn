@@ -81,6 +81,7 @@ impl FromRedisValue for MessageObject {
 
 #[derive(InputObject, Debug)]
 pub struct CreateMessageInput {
+    #[graphql(validator(min_length = 1, max_length = 2000))]
     pub content: String,
     pub channel_id: ID,
 }

@@ -1,6 +1,10 @@
 use crate::{
-    api::class::{
-        ClassResourceCreate, ClassResourceDelete, CLASS_RESOURCE_CREATED, CLASS_RESOURCE_DELETED,
+    api::{
+        class::{
+            ClassResourceCreate, ClassResourceDelete, CLASS_RESOURCE_CREATED,
+            CLASS_RESOURCE_DELETED,
+        },
+        MAX_FILE_SIZE,
     },
     core::AppError,
 };
@@ -8,6 +12,7 @@ use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 use deadpool_redis::redis::AsyncCommands;
 use tracing::instrument;
 
+use crate::core::UserError;
 use entity::sea_orm_active_enums;
 use sea_orm::{DatabaseConnection, Set};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
@@ -44,6 +49,14 @@ impl FileMutation {
             .iter()
             .map(|f| f.value(ctx))
             .collect::<Result<Vec<_>, _>>()?;
+
+        let any_exeeds_limit = files
+            .iter()
+            .filter_map(|f| f.size().ok())
+            .any(|f| f > MAX_FILE_SIZE);
+        if any_exeeds_limit {
+            return Err(AppError::user("file too large", UserError::FileTooLarge));
+        }
 
         if files.is_empty() {
             // TODO: return error

@@ -32,7 +32,9 @@
         ></v-img>
       </v-avatar>
       <v-avatar v-else> <v-icon icon="mdi-account-circle"></v-icon></v-avatar>
-      {{ username }}
+      <p class="ml-4">
+        {{ username }}
+      </p>
       <v-btn to="/settings">Settings</v-btn>
       <v-btn @click="logout">Logout</v-btn>
     </div>
@@ -45,24 +47,22 @@
       }}</v-list-item>
     </v-list>
   </v-navigation-drawer>
+
+  <v-dialog v-model="showErrorDialog" width="100%">
+    <ErrorPopup v-if="error" :error="error" @close="showErrorDialog = false" />
+  </v-dialog>
 </template>
 
 <script lang="ts" setup>
 import { graphql } from "@/gql";
 import { useQuery } from "@vue/apollo-composable";
-import { ref } from "vue";
-import { client } from "@/client";
+import { ref, watch } from "vue";
+import { client, error } from "@/client";
 import { computed } from "vue";
 import { useRouter } from "vue-router";
+import ErrorPopup from "@/components/ErrorPopup.vue";
 
 const router = useRouter();
-
-const links = [
-  { text: "Home", target: "/" },
-  { text: "My Classes", target: "/classes" },
-  { text: "My Assignments", target: "/assignments" },
-  { text: "Explore", target: "/explore" },
-];
 
 const drawer = ref(false);
 
@@ -75,6 +75,19 @@ const IsLoggedIn = graphql(/* GraphQL */ `
 const { result } = useQuery(IsLoggedIn);
 
 const isLoggedIn = computed(() => result.value?.isLoggedIn ?? false);
+
+const links = computed(() => {
+  if (isLoggedIn.value) {
+    return [
+      { text: "Home", target: "/" },
+      { text: "My Classes", target: "/classes" },
+      { text: "My Assignments", target: "/assignments" },
+      { text: "Explore", target: "/explore" },
+    ];
+  } else {
+    return [{ text: "Home", target: "/" }];
+  }
+});
 
 const MeQuery = graphql(/* GraphQL */ `
   query AppBarMeQuery {
@@ -104,4 +117,9 @@ const logout = () => {
   });
   router.push({ name: "Home" });
 };
+
+const showErrorDialog = ref(false);
+watch(error, (err: any) => {
+  showErrorDialog.value = true;
+});
 </script>

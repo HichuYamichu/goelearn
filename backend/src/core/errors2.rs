@@ -111,6 +111,7 @@ impl ErrorExtensions for AppError {
                 e.set("parameter", *parameter);
                 e.set("given_value", given_value.clone());
             }
+            ErrorKind::User(UserError::FileTooLarge) => {}
             ErrorKind::Internal(_) => {}
         })
     }
@@ -159,6 +160,7 @@ pub enum UserError {
         parameter: &'static str,
         given_value: String,
     },
+    FileTooLarge,
 }
 
 impl std::fmt::Display for UserError {
@@ -172,6 +174,7 @@ impl std::fmt::Display for UserError {
                 "Bad input for parameter `{}` with value `{}`",
                 parameter, given_value
             ),
+            UserError::FileTooLarge => write!(f, "File too large"),
         }
     }
 }

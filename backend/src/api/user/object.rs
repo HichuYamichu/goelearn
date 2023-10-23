@@ -115,10 +115,15 @@ impl From<::entity::user::Model> for UserObject {
 
 #[derive(InputObject, PartialDebug)]
 pub struct SignupInput {
+    #[graphql(validator(min_length = 5, max_length = 20))]
     pub username: String,
+    #[graphql(validator(min_length = 2, max_length = 40))]
     pub first_name: String,
+    #[graphql(validator(min_length = 2, max_length = 60))]
     pub last_name: String,
+    #[graphql(validator(email))]
     pub email: String,
+    #[graphql(validator(min_length = 8, max_length = 100))]
     pub password: String,
     pub avatar: Option<Upload>,
 }

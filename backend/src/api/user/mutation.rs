@@ -1,3 +1,4 @@
+use crate::api::MAX_FILE_SIZE;
 use crate::core::auth::Claims;
 use crate::core::AppError;
 use crate::core::UserError;
@@ -32,6 +33,11 @@ impl UserMutation {
 
         if let Some(avatar) = avatar {
             let avatar = avatar.value(ctx)?;
+            let exeeds_limit = avatar.size()? > MAX_FILE_SIZE;
+            if exeeds_limit {
+                return Err(AppError::user("file too large", UserError::FileTooLarge));
+            }
+
             if avatar.content_type.is_none()
                 || avatar.content_type.as_ref().unwrap() != "image/jpeg"
             {

@@ -14,7 +14,7 @@
         autofocus
       ></v-text-field>
     </div>
-    <div class="d-flex w-100 gap mt-5 flex-wrap justify-space-between">
+    <div class="d-flex w-100 mt-5 flex-wrap justify-start">
       <div
         class="d-flex w-15 full-mobile flex-wrap"
         v-for="c in classes"
@@ -84,5 +84,9 @@ const classes = computed(() => {
   .full-mobile {
     width: 100% !important;
   }
+}
+
+.gap {
+  gap: 1rem;
 }
 </style>
