@@ -94,6 +94,7 @@ pub trait FileRepo {
     async fn find_by_class_id(
         &self,
         class_id: Uuid,
+        with_private: bool,
     ) -> Result<Option<Vec<file::Model>>, Arc<DbErr>>;
 
     async fn find_by_assignment_id(
@@ -205,8 +206,21 @@ impl FileRepo for DataLoader<DatabaseConnection> {
     async fn find_by_class_id(
         &self,
         class_id: Uuid,
+        with_private: bool,
     ) -> Result<Option<Vec<file::Model>>, Arc<DbErr>> {
-        let files = self.load_one(FilesByClassId(class_id)).await?;
+        let files = if with_private {
+            self.load_one(FilesByClassId(class_id)).await?
+        } else {
+            let filter = Condition::all()
+                .add(file::Column::ClassId.eq(class_id))
+                .add(file::Column::Public.eq(true));
+            Some(
+                file::Entity::find()
+                    .filter(filter)
+                    .all(self.loader())
+                    .await?,
+            )
+        };
         Ok(files)
     }
 

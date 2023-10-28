@@ -42,12 +42,14 @@
             required
             variant="outlined"
             :rules="passwordRules"
+            type="password"
             ref="passwordRulesState"
           ></v-text-field>
           <v-text-field
             label="Confirm Password"
             required
             variant="outlined"
+            type="password"
             :rules="passwordRules"
           ></v-text-field>
           <v-file-input

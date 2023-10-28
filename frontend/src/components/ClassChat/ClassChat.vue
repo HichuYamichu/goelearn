@@ -74,16 +74,26 @@ const channelDrawer = ref(!mobile.value);
 const toggleChannelDrawer = () => {
   channelDrawer.value = !channelDrawer.value;
 };
-const shouldShowChannelDrawer = computed(() => {
-  return channelDrawer && props.isActive;
+const shouldShowChannelDrawer = computed({
+  get: () => {
+    return channelDrawer.value && props.isActive;
+  },
+  set: (value) => {
+    channelDrawer.value = value;
+  },
 });
 
 const memberDrawer = ref(!mobile.value);
 const toggleMemberDrawer = () => {
   memberDrawer.value = !memberDrawer.value;
 };
-const shouldShowMemberDrawer = computed(() => {
-  return memberDrawer && props.isActive;
+const shouldShowMemberDrawer = computed({
+  get: () => {
+    return memberDrawer.value && props.isActive;
+  },
+  set: (value) => {
+    memberDrawer.value = value;
+  },
 });
 </script>
 

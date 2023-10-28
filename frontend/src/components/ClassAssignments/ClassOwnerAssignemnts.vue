@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex flex-wrap">
-    <div class="pa-4 w-20 w-xs-50">
+    <div class="pa-4 w-20 w-xs-100">
       <h1>Assignments</h1>
       <v-text-field
         variant="outlined"
@@ -24,7 +24,7 @@
           icon="mdi-file-edit"
         ></v-btn>
       </div>
-      <v-list lines="one" style="height: 80%" class="overflow-y-auto">
+      <v-list lines="one" class="overflow-y-auto">
         <v-list-item
           v-for="item in assignments"
           :key="item.id"
@@ -45,7 +45,12 @@
           <div v-if="selectedMember">
             <h1>Feedback</h1>
             <div v-if="selectedUserSubmission">
-              <v-list class="d-flex">
+              <p>
+                Submitted at:
+                {{ toLocaleString(selectedUserSubmission.createdAt) }} Updated
+                at: {{ toLocaleString(selectedUserSubmission.updatedAt) }}
+              </p>
+              <v-list class="d-flex pt-0">
                 <v-list-item
                   class="pa-1"
                   v-for="(file, i) in selectedUserSubmission.files"
@@ -112,7 +117,7 @@ import { FragmentType, graphql, useFragment } from "@/gql";
 import { useLazyQuery, useMutation, useQuery } from "@vue/apollo-composable";
 import { computed } from "vue";
 import { ref, watch } from "vue";
-import { MyIdQuery } from "@/shared";
+import { MyIdQuery, toLocaleString } from "@/shared";
 import ClassAssignmentCreateForm from "@/components/ClassAssignments/ClassAssignmentCreateForm.vue";
 import ClassAssignmentUpdateForm from "@/components/ClassAssignments/ClassAssignmentUpdateForm.vue";
 import MemberList from "@/components/ClassChat/MemberList.vue";
@@ -125,6 +130,9 @@ import { set } from "@vueuse/core";
 import { cache } from "@/client";
 
 const { mobile } = useDisplay();
+
+const { result: myIdResult } = useQuery(MyIdQuery);
+const myId = computed(() => myIdResult.value?.me.id ?? "");
 
 const OwnerAssignmentsFragment = graphql(/* GraphQL */ `
   fragment OwnerAssignmentsFragment on Class {
@@ -185,10 +193,10 @@ const assignments = computed(() => {
 const membersFilter = ref("");
 const members = computed(() => {
   if (membersFilter.value === "") {
-    return class_.value?.members ?? [];
+    return class_.value?.members.filter((c) => c.id !== myId.value) ?? [];
   }
-  return (class_.value?.members ?? []).filter((c) =>
-    c.username.includes(membersFilter.value)
+  return (class_.value?.members ?? []).filter(
+    (c) => c.username.includes(membersFilter.value) && c.id !== myId.value
   );
 });
 
@@ -315,4 +323,12 @@ const toUpdateAssignmentProp = (assignment: Assignment): any => {
     oldFiles: assignment.files.map((f) => ({ id: f.id, name: f.name })),
   };
 };
+
+watch(submissions, () => {
+  console.log("submissions changed");
+});
+
+watch(selectedUserSubmission, () => {
+  console.log("selectedUserSubmission changed");
+});
 </script>

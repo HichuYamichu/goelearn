@@ -11,6 +11,7 @@
       <v-tab value="Assignments">Assignments</v-tab>
       <v-tab value="Meeting">Meeting</v-tab>
       <v-tab value="Settings" v-if="isOwner">Settings</v-tab>
+      <v-tab value="UserSettings" v-else>Settings</v-tab>
     </v-tabs>
   </v-app-bar>
 
@@ -30,6 +31,9 @@
     <v-window-item value="Settings">
       <ClassSettings :class_="class_"></ClassSettings>
     </v-window-item>
+    <v-window-item value="UserSettings">
+      <UserClassSettings :class_="class_"></UserClassSettings>
+    </v-window-item>
   </v-window>
 </template>
 
@@ -48,6 +52,7 @@ import { ChannelsFragmentFragment, ChatFragmentFragment } from "@/gql/graphql";
 import { FragmentType } from "@/gql";
 import { cache } from "@/client";
 import { MyIdQuery } from "@/shared";
+import UserClassSettings from "@/components/UserClassSettings.vue";
 
 const MeQuery = graphql(/* GraphQL */ `
   query MeetingMeQuery {

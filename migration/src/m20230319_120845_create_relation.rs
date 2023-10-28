@@ -162,8 +162,8 @@ impl MigrationTrait for Migration {
                     .name("FK_file_parent_id")
                     .from(File::Table, File::ParentId)
                     .to(File::Table, File::Id)
-                    .on_delete(ForeignKeyAction::Restrict)
-                    .on_update(ForeignKeyAction::Restrict)
+                    .on_delete(ForeignKeyAction::Cascade)
+                    .on_update(ForeignKeyAction::Cascade)
                     .to_owned(),
             )
             .await?;

@@ -6,6 +6,7 @@ use crate::api::class::ClassResourceUpdate;
 use crate::api::class::CLASS_RESOURCE_CREATED;
 use crate::api::class::CLASS_RESOURCE_DELETED;
 use crate::api::class::CLASS_RESOURCE_UPDATED;
+use crate::api::file::FileRepo;
 use crate::api::MAX_FILE_SIZE;
 use crate::core::AppError;
 use crate::core::Claims;
@@ -253,7 +254,16 @@ impl AssignmentMutation {
         let redis_pool = ctx.data_unchecked::<deadpool_redis::Pool>();
         let mut conn = redis_pool.get().await?;
 
-        let (model, new_files, old_files) = input.try_into_active_model()?;
+        let (model, new_files) = input.try_into_active_model()?;
+        tracing::debug!("model: {:?}", model);
+        let old_files =
+            FileRepo::find_by_assignment_submission_id(data_loader, model.id.to_owned().unwrap())
+                .await?;
+        let old_files = old_files
+            .into_iter()
+            .map(|file| file.id)
+            .collect::<Vec<_>>();
+
         let assignment_id = model.assignment_id.clone().unwrap();
         let new_files = new_files
             .iter()

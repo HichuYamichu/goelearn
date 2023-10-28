@@ -226,7 +226,7 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
                         name: Set("Assignment submission files".to_string()),
                         class_id: Set(class.id),
                         file_type: Set(sea_orm_active_enums::FileType::Directory),
-                        public: Set(true),
+                        public: Set(false),
                         ..Default::default()
                     };
                     submission_files.insert(txn).await?;

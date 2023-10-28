@@ -3,15 +3,14 @@
     <h1>{{ assignment.name }}</h1>
     <h5>
       Published at:
-      {{ new Date(assignment.createdAt).toLocaleString() }}
+      {{ toLocaleString(assignment.createdAt) }}
     </h5>
   </div>
   <div class="overflow-y-visible big-text d-flex">
-    <!-- <p class="big-text"></p> -->
     {{ assignment.content }}
   </div>
-  <v-list class="d-flex">
-    <v-list-item class="pa-1" v-for="(file, i) in assignment.files">
+  <v-list class="d-flex chip-gap pb-0">
+    <v-list-item class="pa-0 ma-0" v-for="(file, i) in assignment.files">
       <v-chip @click="download(classId, file)"> {{ file.name }} </v-chip>
     </v-list-item>
   </v-list>
@@ -27,7 +26,7 @@ import ClassAssignmentForm from "@/components/ClassAssignments/ClassAssignmentFo
 import MemberList from "@/components/ClassChat/MemberList.vue";
 import { useDisplay } from "vuetify";
 import { useRouter } from "vue-router";
-import { download } from "../../shared";
+import { download, toLocaleString } from "../../shared";
 
 const AssignmentContentFragment = graphql(/* GraphQL */ `
   fragment AssignmentContentFragment on Assignment {
@@ -57,8 +56,12 @@ const classId = router.currentRoute.value.params.classId as string;
 
 <style scoped>
 .big-text {
-  height: 370px;
+  height: 350px;
   overflow-y: auto;
   word-wrap: break-all;
+}
+
+.chip-gap {
+  gap: 10px;
 }
 </style>

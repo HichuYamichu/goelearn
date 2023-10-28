@@ -36,3 +36,8 @@ export async function validate(inputs: any[]) {
   );
   return res.every((r) => r.length === 0);
 }
+
+export const toLocaleString = (date?: string | null) => {
+  if (!date) return "";
+  return new Date(date).toLocaleString();
+};

@@ -14,7 +14,7 @@
         autofocus
       ></v-text-field>
     </div>
-    <div class="d-flex w-100 mt-5 flex-wrap justify-start">
+    <div class="d-flex w-100 mt-5 flex-wrap justify-start gap">
       <div
         class="d-flex w-15 full-mobile flex-wrap"
         v-for="c in classes"

@@ -1,6 +1,6 @@
 <template>
-  <div class="d-flex flex-wrap mt-4 px-16">
-    <div class="pa-4 full-mobile w-25">
+  <div class="d-flex flex-wrap mt-4 px-0 px-lg-16">
+    <div v-if="isOwner" class="pa-4 full-mobile w-25">
       <v-text-field
         v-model="newDirName"
         label="Folder name"
@@ -12,7 +12,7 @@
         >Create</v-btn
       >
     </div>
-    <div class="pa-4 full-mobile w-25">
+    <div v-if="isOwner" class="pa-4 full-mobile w-25">
       <v-file-input
         v-model="filesToUpload"
         label="Your file"
@@ -31,12 +31,13 @@
         Download selected
       </v-btn>
     </div>
-    <div class="pa-4 full-mobile w-25">
+    <div v-if="isOwner" class="pa-4 full-mobile w-25">
       <v-text-field
         :style="!mobile ? 'visibility: hidden' : 'display: none'"
         variant="outlined"
         hide-details="auto"
       ></v-text-field>
+
       <v-btn class="bg-error" block size="large" @click="deleteAll">
         Delete selected
       </v-btn>
@@ -57,11 +58,7 @@
           <th class="text-left font-weight-black" style="width: 10%">
             <v-checkbox-btn @click="checkAll"></v-checkbox-btn>
           </th>
-          <th class="text-left font-weight-black" style="width: 50%">Name</th>
-          <th class="text-left font-weight-black" style="width: 10%">Size</th>
-          <th class="text-left font-weight-black" style="width: 30%">
-            Date modified
-          </th>
+          <th class="text-left font-weight-black" style="width: 90%">Name</th>
         </tr>
       </thead>
       <tbody>
@@ -91,8 +88,6 @@
               {{ file.name }}
             </p>
           </td>
-          <td></td>
-          <td></td>
         </tr>
       </tbody>
     </v-table>
@@ -101,7 +96,8 @@
 
 <script setup lang="ts">
 import { FragmentType, graphql, useFragment } from "@/gql";
-import { useMutation } from "@vue/apollo-composable";
+import { MyIdQuery } from "@/shared";
+import { useMutation, useQuery } from "@vue/apollo-composable";
 import { computed } from "vue";
 import { ref, watch } from "vue";
 import { useDisplay } from "vuetify";
@@ -160,6 +156,14 @@ const open = (item: any) => {
     selectedDirectoryTree.value = [
       { id: null, name: "root", fileType: "DIRECTORY" },
     ];
+    selectedFiles.value = [];
+    return;
+  }
+  const stackIndex = selectedDirectoryTree.value.findIndex(
+    (i) => i.id === item.id
+  );
+  if (stackIndex !== -1) {
+    selectedDirectoryTree.value.splice(stackIndex + 1);
     selectedFiles.value = [];
     return;
   }
@@ -252,7 +256,6 @@ const checkAll = () => {
 };
 
 const downloadAll = async () => {
-  console.log(selectedFiles.value);
   let res = await fetch(
     `http://localhost:3000/files/class-files/${class_.value?.id}/zip`,
     {
@@ -293,6 +296,12 @@ const classNameRules = computed(() => {
     (v: string) => !!v || "Name is required",
     (v: string) => v.length <= 35 || "Name must be less than 20 characters",
   ];
+});
+
+const { result: myIdResult } = useQuery(MyIdQuery);
+const isOwner = computed(() => {
+  if (!myIdResult.value?.me?.id) return false;
+  return myIdResult.value?.me?.id === class_.value?.ownerId;
 });
 </script>
 

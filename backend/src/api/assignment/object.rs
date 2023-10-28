@@ -138,7 +138,7 @@ impl CreateAssignmentInput {
 #[derive(InputObject, PartialDebug)]
 pub struct UpdateAssignmentInput {
     pub id: ID,
-    #[graphql(validator(min_length = 5, max_length = 35))]
+    #[graphql(validator(min_length = 1, max_length = 35))]
     pub name: Option<String>,
     #[graphql(validator(max_length = 2000))]
     pub content: Option<String>,
@@ -321,32 +321,23 @@ impl From<::entity::assignment_submission_feedback::Model> for AssignmentSubmiss
 #[derive(InputObject, PartialDebug)]
 pub struct UpdateAssignmentSubmissionInput {
     pub id: ID,
+    pub assignment_id: ID,
     pub files: Vec<Upload>,
-    pub delete_files: Vec<ID>,
 }
 
 impl UpdateAssignmentSubmissionInput {
     pub fn try_into_active_model(
         self,
-    ) -> Result<
-        (
-            ::entity::assignment_submission::ActiveModel,
-            Vec<Upload>,
-            Vec<Uuid>,
-        ),
-        AppError,
-    > {
+    ) -> Result<(::entity::assignment_submission::ActiveModel, Vec<Upload>), AppError> {
         let id = Uuid::parse_str(self.id.as_str())?;
         Ok((
             ::entity::assignment_submission::ActiveModel {
                 id: Set(id),
+                assignment_id: Set(Uuid::parse_str(self.assignment_id.as_str())?),
+                updated_at: Set(Some(Utc::now().naive_utc())),
                 ..Default::default()
             },
             self.files,
-            self.delete_files
-                .into_iter()
-                .map(|id| Uuid::parse_str(id.as_str()))
-                .collect::<Result<Vec<_>, _>>()?,
         ))
     }
 }

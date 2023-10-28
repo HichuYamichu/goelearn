@@ -47,7 +47,7 @@
 import { graphql } from "@/gql";
 import router from "@/router";
 import { useMutation, useQuery } from "@vue/apollo-composable";
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 const dialog = ref(false);
 const query = ref("");
@@ -98,6 +98,10 @@ onDone((e) => {
   if (e.data?.joinClass) {
     router.push(`/class/${e.data.joinClass}`);
   }
+});
+
+onMounted(() => {
+  forceRefetch();
 });
 </script>
 

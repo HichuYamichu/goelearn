@@ -22,8 +22,10 @@ const documents = {
     "\n  mutation CreateAssignmentSubmissionFeedback(\n    $input: CreateAssignmanetSubmissionFeedbackInput!\n  ) {\n    createAssignmentSubmissionFeedback(input: $input)\n  }\n": types.CreateAssignmentSubmissionFeedbackDocument,
     "\n  mutation DeleteAssignmentSubmissionFeedback($assignmentId: ID!, $id: ID!) {\n    deleteAssignmentSubmissionFeedback(\n      assignmentId: $assignmentId\n      assignmentSubmissionFeedbackId: $id\n    )\n  }\n": types.DeleteAssignmentSubmissionFeedbackDocument,
     "\n  mutation DeleteAssignment($classId: ID!, $assignmentId: ID!) {\n    deleteAssignment(classId: $classId, assignmentId: $assignmentId)\n  }\n": types.DeleteAssignmentDocument,
-    "\n  fragment StudentAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n    }\n  }\n": types.StudentAssignmentsFragmentFragmentDoc,
+    "\n  fragment StudentAssignmentsFragment on Class {\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n      submissions {\n        id\n        createdAt\n        updatedAt\n        files {\n          id\n          name\n        }\n        feedback {\n          id\n          content\n          createdAt\n          updatedAt\n        }\n      }\n    }\n  }\n": types.StudentAssignmentsFragmentFragmentDoc,
     "\n  mutation CreateAssignmentSubmission($assignmentId: ID!, $files: [Upload!]!) {\n    createAssignmentSubmission(\n      input: { assignmentId: $assignmentId, files: $files }\n    )\n  }\n": types.CreateAssignmentSubmissionDocument,
+    "\n  mutation UpdateAssignmentSubmission(\n    $assignmentSubmissionId: ID!\n    $assignmentId: ID!\n    $files: [Upload!]!\n  ) {\n    updateAssignmentSubmission(\n      input: {\n        id: $assignmentSubmissionId\n        assignmentId: $assignmentId\n        files: $files\n      }\n    )\n  }\n": types.UpdateAssignmentSubmissionDocument,
+    "\n  mutation DeleteAssignmentSubmission(\n    $classId: ID!\n    $assignmentId: ID!\n    $assignmentSubmissionId: ID!\n  ) {\n    deleteAssignmentSubmission(\n      classId: $classId\n      assignmentId: $assignmentId\n      assignmentSubmissionId: $assignmentSubmissionId\n    )\n  }\n": types.DeleteAssignmentSubmissionDocument,
     "\n  fragment ChannelsFragment on Channel {\n    id\n    name\n  }\n": types.ChannelsFragmentFragmentDoc,
     "\n  fragment ChatFragment on Class {\n    description\n    channels {\n      id\n      ...ChannelsFragment\n    }\n    members {\n      ...MembersFragment\n    }\n  }\n": types.ChatFragmentFragmentDoc,
     "\n  fragment MembersFragment on User {\n    id\n    username\n  }\n": types.MembersFragmentFragmentDoc,
@@ -50,6 +52,7 @@ const documents = {
     "\n  query BannedMemberQuery($classId: ID!) {\n    bannedMembers(classId: $classId) {\n      id\n      username\n    }\n  }\n": types.BannedMemberQueryDocument,
     "\n  mutation BanMemberMutation($classId: ID!, $userId: ID!) {\n    banMember(classId: $classId, userId: $userId)\n  }\n": types.BanMemberMutationDocument,
     "\n  mutation UnbanMemberMutation($classId: ID!, $userId: ID!) {\n    unbanMember(classId: $classId, userId: $userId)\n  }\n": types.UnbanMemberMutationDocument,
+    "\n  mutation LeaveClassMutation($classId: ID!) {\n    leaveClass(classId: $classId)\n  }\n": types.LeaveClassMutationDocument,
     "\n  query AppBarMeQuery {\n    me {\n      id\n      username\n      hasAvatar\n    }\n  }\n": types.AppBarMeQueryDocument,
     "\n  query routerClassById($id: ID!) {\n    classById(id: $id) {\n      id\n      owner {\n        id\n      }\n    }\n  }\n": types.RouterClassByIdDocument,
     "\n  query routerMe($id: ID!) {\n    me {\n      id\n    }\n  }\n": types.RouterMeDocument,
@@ -121,11 +124,19 @@ export function graphql(source: "\n  mutation DeleteAssignment($classId: ID!, $a
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  fragment StudentAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n    }\n  }\n"): (typeof documents)["\n  fragment StudentAssignmentsFragment on Class {\n    members {\n      id\n      username\n    }\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n    }\n  }\n"];
+export function graphql(source: "\n  fragment StudentAssignmentsFragment on Class {\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n      submissions {\n        id\n        createdAt\n        updatedAt\n        files {\n          id\n          name\n        }\n        feedback {\n          id\n          content\n          createdAt\n          updatedAt\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  fragment StudentAssignmentsFragment on Class {\n    assignments {\n      id\n      name\n      ...AssignmentContentFragment\n      submissions {\n        id\n        createdAt\n        updatedAt\n        files {\n          id\n          name\n        }\n        feedback {\n          id\n          content\n          createdAt\n          updatedAt\n        }\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation CreateAssignmentSubmission($assignmentId: ID!, $files: [Upload!]!) {\n    createAssignmentSubmission(\n      input: { assignmentId: $assignmentId, files: $files }\n    )\n  }\n"): (typeof documents)["\n  mutation CreateAssignmentSubmission($assignmentId: ID!, $files: [Upload!]!) {\n    createAssignmentSubmission(\n      input: { assignmentId: $assignmentId, files: $files }\n    )\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation UpdateAssignmentSubmission(\n    $assignmentSubmissionId: ID!\n    $assignmentId: ID!\n    $files: [Upload!]!\n  ) {\n    updateAssignmentSubmission(\n      input: {\n        id: $assignmentSubmissionId\n        assignmentId: $assignmentId\n        files: $files\n      }\n    )\n  }\n"): (typeof documents)["\n  mutation UpdateAssignmentSubmission(\n    $assignmentSubmissionId: ID!\n    $assignmentId: ID!\n    $files: [Upload!]!\n  ) {\n    updateAssignmentSubmission(\n      input: {\n        id: $assignmentSubmissionId\n        assignmentId: $assignmentId\n        files: $files\n      }\n    )\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteAssignmentSubmission(\n    $classId: ID!\n    $assignmentId: ID!\n    $assignmentSubmissionId: ID!\n  ) {\n    deleteAssignmentSubmission(\n      classId: $classId\n      assignmentId: $assignmentId\n      assignmentSubmissionId: $assignmentSubmissionId\n    )\n  }\n"): (typeof documents)["\n  mutation DeleteAssignmentSubmission(\n    $classId: ID!\n    $assignmentId: ID!\n    $assignmentSubmissionId: ID!\n  ) {\n    deleteAssignmentSubmission(\n      classId: $classId\n      assignmentId: $assignmentId\n      assignmentSubmissionId: $assignmentSubmissionId\n    )\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -230,6 +241,10 @@ export function graphql(source: "\n  mutation BanMemberMutation($classId: ID!, $
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation UnbanMemberMutation($classId: ID!, $userId: ID!) {\n    unbanMember(classId: $classId, userId: $userId)\n  }\n"): (typeof documents)["\n  mutation UnbanMemberMutation($classId: ID!, $userId: ID!) {\n    unbanMember(classId: $classId, userId: $userId)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation LeaveClassMutation($classId: ID!) {\n    leaveClass(classId: $classId)\n  }\n"): (typeof documents)["\n  mutation LeaveClassMutation($classId: ID!) {\n    leaveClass(classId: $classId)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

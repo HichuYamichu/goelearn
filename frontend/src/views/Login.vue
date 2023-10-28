@@ -15,6 +15,7 @@
             v-model="password"
             required
             variant="outlined"
+            type="password"
           ></v-text-field>
           <v-btn @click="login" class="me-4 bg-primary"> submit </v-btn>
           <v-btn @click="clear"> clear </v-btn>

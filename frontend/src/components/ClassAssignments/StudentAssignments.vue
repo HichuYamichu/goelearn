@@ -5,11 +5,11 @@
       <v-text-field variant="outlined" label="Search"></v-text-field>
       <v-list lines="one" style="height: 80%" class="overflow-y-auto">
         <v-list-item
-          v-for="item in assignments"
+          v-for="(item, idx) in assignments"
           :key="item.id"
           :title="item.name"
           :active="selectedAssignment?.id === item.id"
-          @click="selectedAssignment = item"
+          @click="selectedAssignmentIdx = idx"
         ></v-list-item>
       </v-list>
     </div>
@@ -22,6 +22,22 @@
       </div>
       <div>
         <h1>Feedback</h1>
+        <div v-if="mySubmission?.feedback">
+          <p>
+            First graded at:
+            {{ toLocaleString(mySubmission?.feedback!.createdAt) }}
+          </p>
+          <p>
+            Last updated at:
+            {{ toLocaleString(mySubmission?.feedback!.updatedAt) }}
+          </p>
+          <p>
+            {{ mySubmission!.feedback!.content }}
+          </p>
+        </div>
+        <div v-else>
+          <p>Your submission was not graded yet.</p>
+        </div>
       </div>
     </div>
     <div class="pa-4 w-20 w-xs-100">
@@ -32,7 +48,30 @@
         variant="outlined"
         label="File input"
       ></v-file-input>
-      <v-btn @click="submit">Submit</v-btn>
+      <div v-if="mySubmission">
+        <h3>Your submission</h3>
+        <v-list class="d-flex">
+          <v-list-item class="pa-1" v-for="(file, i) in mySubmission.files">
+            <v-chip @click="download(classId, file)"> {{ file.name }} </v-chip>
+          </v-list-item>
+        </v-list>
+        <p>
+          First submitted at:
+          {{ toLocaleString(mySubmission.createdAt) }}
+        </p>
+        <p>
+          Last updated at:
+          {{ toLocaleString(mySubmission.updatedAt) }}
+        </p>
+        <div class="d-flex button-gap mt-4">
+          <v-btn @click="update">Update</v-btn>
+          <v-btn class="bg-error" @click="delete_">Delete</v-btn>
+        </div>
+      </div>
+      <div v-else>
+        <h3>You haven't submitted yet</h3>
+        <v-btn class="mt-4" @click="submit">Submit</v-btn>
+      </div>
     </div>
   </div>
 </template>
@@ -42,21 +81,35 @@ import { FragmentType, graphql, useFragment } from "@/gql";
 import { useMutation, useQuery } from "@vue/apollo-composable";
 import { computed } from "vue";
 import { ref, watch } from "vue";
-import { useDisplay } from "vuetify";
 import AssignmentContent from "@/components/ClassAssignments/AssignmentContent.vue";
+import { download, toLocaleString } from "../../shared";
+import { useRoute } from "vue-router";
 
-const { mobile } = useDisplay();
+const route = useRoute();
+
+const classId = route.params.classId as string;
 
 const StudentAssignmentsFragment = graphql(/* GraphQL */ `
   fragment StudentAssignmentsFragment on Class {
-    members {
-      id
-      username
-    }
     assignments {
       id
       name
       ...AssignmentContentFragment
+      submissions {
+        id
+        createdAt
+        updatedAt
+        files {
+          id
+          name
+        }
+        feedback {
+          id
+          content
+          createdAt
+          updatedAt
+        }
+      }
     }
   }
 `);
@@ -71,7 +124,12 @@ const class_ = computed(() =>
 const assignments = computed(() => class_.value?.assignments ?? []);
 
 type Assignment = (typeof assignments.value)[0];
-const selectedAssignment = ref<null | Assignment>(null);
+const selectedAssignmentIdx = ref<null | number>(null);
+
+const selectedAssignment = computed(() => {
+  if (selectedAssignmentIdx.value === null) return null;
+  return assignments.value[selectedAssignmentIdx.value];
+});
 
 const CreateAssignmentSubmissionMutation = graphql(/* GraphQL */ `
   mutation CreateAssignmentSubmission($assignmentId: ID!, $files: [Upload!]!) {
@@ -95,84 +153,72 @@ const submit = async () => {
   });
 };
 
-// const AssignmentsFragment = graphql(/* GraphQL */ `
-//   fragment AssignmentsFragment on Class {
-//     id
-//     ownerId
-//     members {
-//       id
-//       username
-//     }
-//     assignments {
-//       id
-//       name
-//       content
-//       dueAt
-//       createdAt
-//       files {
-//         id
-//         name
-//       }
-//     }
-//   }
-// `);
+const mySubmission = computed(() => {
+  if (!selectedAssignment.value) return null;
+  return selectedAssignment.value.submissions[0] ?? null;
+});
 
-// const props = defineProps<{
-//   class_?: FragmentType<typeof AssignmentsFragment> | null;
-// }>();
+const UpdateAssignmentSubmissionMutation = graphql(/* GraphQL */ `
+  mutation UpdateAssignmentSubmission(
+    $assignmentSubmissionId: ID!
+    $assignmentId: ID!
+    $files: [Upload!]!
+  ) {
+    updateAssignmentSubmission(
+      input: {
+        id: $assignmentSubmissionId
+        assignmentId: $assignmentId
+        files: $files
+      }
+    )
+  }
+`);
 
-// const class_ = computed(() => useFragment(AssignmentsFragment, props.class_));
-// const assignments = computed(() => class_.value?.assignments ?? []);
-// const users = computed(() => class_.value?.members ?? []);
+const { mutate: updateAssignment } = useMutation(
+  UpdateAssignmentSubmissionMutation
+);
 
-// type Assignment = (typeof assignments.value)[0];
-// const selectedAssignment = ref<null | Assignment>(null);
+const update = async () => {
+  if (!selectedAssignment.value) return;
+  await updateAssignment({
+    files: filesToUpload.value,
+    assignmentSubmissionId: mySubmission.value?.id ?? "",
+    assignmentId: selectedAssignment.value.id,
+  });
 
-// const SubmitAssignmentMutation = graphql(/* GraphQL */ `
-//   mutation SubmitAssignment($files: [Upload!]!, $assignmentId: ID!) {
-//     submitAssignment(input: { files: $files, assignmentId: $assignmentId })
-//   }
-// `);
+  filesToUpload.value = [];
+};
 
-// const { mutate: submitAssignment } = useMutation(SubmitAssignmentMutation);
-// const filesToUpload = ref<File[]>([]);
+const DeleteAssignmentSubmissionMutation = graphql(/* GraphQL */ `
+  mutation DeleteAssignmentSubmission(
+    $classId: ID!
+    $assignmentId: ID!
+    $assignmentSubmissionId: ID!
+  ) {
+    deleteAssignmentSubmission(
+      classId: $classId
+      assignmentId: $assignmentId
+      assignmentSubmissionId: $assignmentSubmissionId
+    )
+  }
+`);
 
-// const submit = async () => {
-//   if (!selectedAssignment.value) return;
-//   await submitAssignment({
-//     files: filesToUpload.value,
-//     assignmentId: selectedAssignment.value.id,
-//   });
-// };
+const { mutate: deleteAssignment } = useMutation(
+  DeleteAssignmentSubmissionMutation
+);
 
-// const createAssignmentDialog = ref(false);
-// const closeDialog = () => {
-//   createAssignmentDialog.value = false;
-// };
-
-// const isOwner = ref(false);
-// const { onResult } = useQuery(MyIdQuery);
-// onResult((result) => {
-//   if (result.data?.me?.id === class_.value?.ownerId) {
-//     isOwner.value = true;
-//   }
-// });
-
-// const download = async (item: any) => {
-//   downloadFile(
-//     `http://localhost:3000/files/class-files/${class_.value?.id}/${item.id}`,
-//     item.name
-//   );
-// };
-
-// const downloadFile = async (url: string, filename: string) => {
-//   const data = await fetch(url);
-//   const blob = await data.blob();
-//   const objectUrl = URL.createObjectURL(blob);
-//   const link = document.createElement("a");
-//   link.setAttribute("href", objectUrl);
-//   link.setAttribute("download", filename);
-//   link.style.display = "none";
-//   link.click();
-// };
+const delete_ = async () => {
+  if (!selectedAssignment.value) return;
+  await deleteAssignment({
+    classId,
+    assignmentId: selectedAssignment.value.id,
+    assignmentSubmissionId: mySubmission.value?.id ?? "",
+  });
+};
 </script>
+
+<style scoped>
+.button-gap {
+  gap: 1rem;
+}
+</style>

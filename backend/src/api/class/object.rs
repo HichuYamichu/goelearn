@@ -8,6 +8,7 @@ use crate::api::user::UserObject;
 use crate::api::user::UserRepo;
 use crate::core::option_to_active_value;
 use crate::core::AppError;
+use crate::core::Claims;
 use crate::core::LoggedInGuard;
 use async_graphql::Upload;
 use async_graphql::{
@@ -69,11 +70,15 @@ impl ClassObject {
     #[graphql(guard = "LoggedInGuard")]
     async fn files(&self, ctx: &Context<'_>) -> Result<Vec<FileObject>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
+        let user_id = Uuid::parse_str(&claims.as_ref().expect("Guard ensures claims exist").sub)?;
 
+        let is_owner = user_id == Uuid::parse_str(&self.owner_id)?;
         let class_id = Uuid::parse_str(&self.id)?;
-        let files = FileRepo::find_by_class_id(data_loader, class_id)
+        let files = FileRepo::find_by_class_id(data_loader, class_id, is_owner)
             .await?
             .expect("Id should be valid");
+
         Ok(files.into_iter().map(FileObject::from).collect())
     }
 

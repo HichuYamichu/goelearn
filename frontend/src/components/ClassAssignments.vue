@@ -2,7 +2,7 @@
   <div class="px-0 px-lg-16" v-if="isOwner">
     <ClassOwnerAssignments :class_="class_" />
   </div>
-  <div class="px-16" v-else>
+  <div class="px-0 px-lg-16" v-else>
     <StudentAssignments :class_="class_" />
   </div>
 </template>

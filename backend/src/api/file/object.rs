@@ -161,7 +161,7 @@ impl CreateDirectoryInput {
         Ok(::entity::file::ActiveModel {
             id: Set(Uuid::new_v4()),
             name: Set(self.name),
-            public: Set(false),
+            public: Set(true),
             file_type: Set(sea_orm_active_enums::FileType::Directory),
             parent_id: Set(id),
             class_id: Set(Uuid::parse_str(self.class_id.as_str())?),
