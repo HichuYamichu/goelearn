@@ -26,10 +26,7 @@
     </div>
     <div class="fill-height d-flex align-center mr-3" v-else>
       <v-avatar v-if="hasAvatar">
-        <v-img
-          :src="`http://localhost:3000/files/user-avatar/${id}`"
-          alt="avatar"
-        ></v-img>
+        <v-img :src="`${baseURL}/files/user-avatar/${id}`" alt="avatar"></v-img>
       </v-avatar>
       <v-avatar v-else> <v-icon icon="mdi-account-circle"></v-icon></v-avatar>
       <p class="ml-4">
@@ -61,6 +58,7 @@ import { client, error } from "@/client";
 import { computed } from "vue";
 import { useRouter } from "vue-router";
 import ErrorPopup from "@/components/ErrorPopup.vue";
+const baseURL = import.meta.env.VITE_BASE_ENDPOINT;
 
 const router = useRouter();
 

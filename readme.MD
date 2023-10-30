@@ -1,17 +1,16 @@
 # TODAY
 
-- fix update assignment (change folder name if assignment name was changed)
-- fix dynamic data (files and submissions)
+- fix update assignment (change folder name if assignment name was changed + dynamic update)
+- fix dynamic data submissions
 
 - fix user facing errors
-- auth all queries/mutations
-
 - build and serve + deploy config
+- zip not working again
 
 # TODO
 
 - user settings
-- delete class
+- delete class clean cache and move to /classes
 - finish up meeting
 - my assignmensts forntend
 
@@ -23,6 +22,7 @@
 # SHOULD IMPROVE
 
 - class search
+- remove user folder when submission is deleted
 
 # BUGS
 

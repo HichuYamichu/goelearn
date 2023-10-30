@@ -17,9 +17,13 @@ use axum::{
     response::IntoResponse,
 };
 use futures_util::future::BoxFuture;
+use serde::Deserialize;
 use tower_service::Service;
 
-use crate::AppState;
+use crate::{
+    core::{validate_token, Claims},
+    AppState,
+};
 
 /// A GraphQL subscription service.
 pub struct GraphQLSubscription<E> {
@@ -84,11 +88,30 @@ where
                 .protocols(ALL_WEBSOCKET_PROTOCOLS)
                 .on_upgrade(move |stream| {
                     GraphQLWebSocket::new(stream, executor, protocol)
-                        .on_connection_init(|_value| {
+                        .on_connection_init(|value| {
+                            let payload = match serde_json::from_value::<ConnestionInitPayload>(value) {
+                                Ok(payload) => payload,
+                                Err(err) => {
+                                    tracing::debug!(err = ?err, "Failed to parse connection init payload");
+                                    return futures_util::future::ready(Err(err.into()));
+                                }
+                            };
+
+                            tracing::debug!(token = ?payload.token, "Validating token");
+                            
+                            let claims = match validate_token(&payload.token) {
+                                Ok(claims) => claims,
+                                Err(err) => {
+                                    tracing::debug!(err = ?err, "Failed to validate token");
+                                    return futures_util::future::ready(Err(err.into()));
+                                }
+                            };
+
                             let conn_dataloader = DataLoader::new(app_data.conn, tokio::spawn);
 
                             let mut data = Data::default();
                             data.insert(conn_dataloader);
+                            data.insert(Some(claims));
 
                             futures_util::future::ready(Ok(data))
                         })
@@ -97,4 +120,9 @@ where
             Ok(resp.into_response().map(boxed))
         })
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct ConnestionInitPayload {
+    token: String,
 }

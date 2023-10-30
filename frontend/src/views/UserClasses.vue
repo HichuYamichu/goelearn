@@ -23,7 +23,7 @@
         <v-card class="w-100" height="300" :to="`/class/${c.id}`">
           <v-img
             v-if="c.hasImage"
-            :src="`http://localhost:3000/files/class-image/${c.id}`"
+            :src="`${baseURL}/files/class-image/${c.id}`"
             alt="avatar"
             height="200px"
             cover
@@ -48,6 +48,7 @@
 import { graphql } from "@/gql";
 import { useQuery } from "@vue/apollo-composable";
 import { computed, ref } from "vue";
+const baseURL = import.meta.env.VITE_BASE_ENDPOINT;
 
 const filter = ref("");
 

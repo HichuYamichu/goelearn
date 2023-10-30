@@ -5,6 +5,7 @@ use crate::api::file::FileObject;
 
 use crate::api::user::UserObject;
 use crate::core::AppError;
+use crate::core::{ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
 use async_graphql::futures_util::StreamExt;
 use async_graphql::{futures_util::Stream, Context, Subscription};
 use async_graphql::{SimpleObject, Union, ID};
@@ -24,6 +25,7 @@ pub struct ClassSubscription;
 #[Subscription]
 impl ClassSubscription {
     #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassMemberGuard::new(class_id.clone()))")]
     async fn class_resource_created(
         &self,
         ctx: &Context<'_>,
@@ -36,6 +38,8 @@ impl ClassSubscription {
         .await
     }
 
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassMemberGuard::new(class_id.clone()))")]
     async fn class_resource_updated(
         &self,
         ctx: &Context<'_>,
@@ -48,6 +52,8 @@ impl ClassSubscription {
         .await
     }
 
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassMemberGuard::new(class_id.clone()))")]
     async fn class_resource_deleted(
         &self,
         ctx: &Context<'_>,
@@ -82,7 +88,13 @@ pub enum ClassResourceCreate {
     Channel(ChannelObject),
     Member(UserObject),
     File(FileObject),
+    FileBatch(FileBatch),
     Assignment(AssignmentObject),
+}
+
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+pub struct FileBatch {
+    pub files: Vec<FileObject>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Union)]

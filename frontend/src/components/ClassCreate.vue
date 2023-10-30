@@ -34,7 +34,7 @@
       variant="outlined"
     ></v-file-input>
     <v-btn class="me-4 bg-success" type="submit"> submit </v-btn>
-    <v-btn> clear </v-btn>
+    <v-btn class="bg-error" @click="deleteClass" v-if="class_"> Delete </v-btn>
   </form>
 </template>
 
@@ -141,4 +141,19 @@ const classDescRules = [
   (v: string) =>
     v.length <= 200 || "Description must be less than 100 characters",
 ];
+
+const DeleteClassMutation = graphql(/* GraphQL */ `
+  mutation DeleteClass($classId: ID!) {
+    deleteClass(classId: $classId)
+  }
+`);
+
+const { mutate: deleteMutation } = useMutation(DeleteClassMutation);
+
+const deleteClass = () => {
+  deleteMutation({
+    classId: props.class_?.id ?? "",
+  });
+  router.push("/classes");
+};
 </script>

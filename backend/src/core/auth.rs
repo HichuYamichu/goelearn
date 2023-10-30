@@ -85,16 +85,30 @@ impl Guard for ClassMemberGuard {
         let user_id = Uuid::parse_str(claims.as_ref().expect("claims exist").sub.as_str())?;
         let class_id = self.class_id.parse::<Uuid>()?;
 
-        let members = UserRepo::find_by_class_id(data_loader, class_id).await?;
-
-        if let Some(members) = members {
-            if members.iter().any(|m| m.id == user_id) {
-                return Ok(());
-            }
+        if is_class_member(data_loader, user_id, class_id).await {
+            return Ok(());
         }
 
         return Err(AppError::auth("User is not a member of this class").into());
     }
+}
+
+pub async fn is_class_member(
+    data_loader: &DataLoader<DatabaseConnection>,
+    user_id: Uuid,
+    class_id: Uuid,
+) -> bool {
+    let members = match UserRepo::find_by_class_id(data_loader, class_id).await {
+        Ok(members) => members,
+        Err(_) => return false,
+    };
+
+    if let Some(members) = members {
+        if members.iter().any(|m| m.id == user_id) {
+            return true;
+        }
+    }
+    return false;
 }
 
 pub struct ClassOwnerGuard {

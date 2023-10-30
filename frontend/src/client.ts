@@ -38,7 +38,7 @@ const wsLink = new GraphQLWsLink(
     connectionParams: () => {
       const token = localStorage.getItem("token");
       return {
-        token: `Bearer ${token}`,
+        token: token,
       };
     },
   })

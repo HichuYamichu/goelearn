@@ -3,7 +3,6 @@ use crate::api::class::{
 };
 use crate::api::class::{ClassResourceCreate, ClassResourceDelete, CLASS_RESOURCE_CREATED};
 use crate::core::AppError;
-use crate::core::LoggedInGuard;
 use async_graphql::ID;
 use async_graphql::{dataloader::DataLoader, Context, Object};
 use deadpool_redis::redis::AsyncCommands;
@@ -14,6 +13,7 @@ use uuid::Uuid;
 use super::object::{CreateChannelInput, UpdateChannelInput};
 use super::ChannelObject;
 use crate::api::channel::repo::ChannelRepo;
+use crate::core::{ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
 
 #[derive(Default)]
 pub struct ChannelMutation;
@@ -21,7 +21,7 @@ pub struct ChannelMutation;
 #[Object]
 impl ChannelMutation {
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(input.class_id.clone()))")]
     pub async fn create_channel(
         &self,
         ctx: &Context<'_>,
@@ -47,7 +47,7 @@ impl ChannelMutation {
     }
 
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(input.class_id.clone()))")]
     pub async fn update_channel(
         &self,
         ctx: &Context<'_>,
@@ -72,6 +72,8 @@ impl ChannelMutation {
         Ok(channel)
     }
 
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
     pub async fn delete_channel(
         &self,
         ctx: &Context<'_>,
@@ -87,10 +89,6 @@ impl ChannelMutation {
         ChannelRepo::delete_channel(data_loader, channel_id).await?;
 
         let update_data = ClassResourceDelete::Channel(ChannelDeleteInfo { id: original_id });
-        tracing::debug!(
-            "Publishing to {}",
-            format!("{}:{}", CLASS_RESOURCE_DELETED, class_id.to_string())
-        );
         conn.publish(
             format!("{}:{}", CLASS_RESOURCE_DELETED, class_id.to_string()),
             serde_json::to_string(&update_data).expect("Class should serialize"),

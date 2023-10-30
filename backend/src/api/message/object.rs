@@ -1,3 +1,4 @@
+use crate::core::LoggedInGuard;
 use async_graphql::{
     dataloader::DataLoader, ComplexObject, Context, InputObject, SimpleObject, ID,
 };
@@ -25,8 +26,7 @@ pub struct MessageObject {
 
 #[ComplexObject]
 impl MessageObject {
-    // TODO: Websocket authentication needed
-    // #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard")]
     #[instrument(skip(self, ctx), err(Debug))]
     async fn author(&self, ctx: &Context<'_>) -> Result<UserObject, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
@@ -84,6 +84,7 @@ pub struct CreateMessageInput {
     #[graphql(validator(min_length = 1, max_length = 2000))]
     pub content: String,
     pub channel_id: ID,
+    pub class_id: ID,
 }
 
 impl CreateMessageInput {

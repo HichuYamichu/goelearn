@@ -102,7 +102,10 @@ pub trait AssignmentRepo {
         &self,
         model: assignment_submission::ActiveModel,
         file_names: Vec<String>,
-    ) -> Result<(uuid::Uuid, Vec<Uuid>), TransactionError<AppError>>;
+    ) -> Result<
+        (uuid::Uuid, Vec<file::ActiveModel>, Vec<file::ActiveModel>),
+        TransactionError<AppError>,
+    >;
 
     async fn create_assignment_submission_feedback(
         &self,
@@ -130,6 +133,11 @@ pub trait AssignmentRepo {
         &self,
         assignment_id: Uuid,
     ) -> Result<Option<Vec<assignment_submission::Model>>, Arc<DbErr>>;
+
+    async fn find_submission_by_id(
+        &self,
+        assignment_submission_id: Uuid,
+    ) -> Result<Option<assignment_submission::Model>, DbErr>;
 
     async fn find_feedback_by_assignment_submission_id(
         &self,
@@ -329,120 +337,129 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
         &self,
         model: assignment_submission::ActiveModel,
         file_names: Vec<String>,
-    ) -> Result<(uuid::Uuid, Vec<Uuid>), TransactionError<AppError>> {
-        let (class_id, file_ids) = self
+    ) -> Result<
+        (uuid::Uuid, Vec<file::ActiveModel>, Vec<file::ActiveModel>),
+        TransactionError<AppError>,
+    > {
+        let (class_id, files, this_assignment_dir) = self
             .loader()
-            .transaction::<_, (uuid::Uuid, Vec<Uuid>), AppError>(|txn| {
-                Box::pin(async move {
-                    let assignment_submission = model.insert(txn).await?;
+            .transaction::<_, (uuid::Uuid, Vec<file::ActiveModel>, Vec<file::ActiveModel>), AppError>(
+                |txn| {
+                    Box::pin(async move {
+                        let assignment_submission = model.insert(txn).await?;
 
-                    let assignment_id = assignment_submission.assignment_id;
-                    let assignment = Assignment::find_by_id(assignment_id)
-                        .one(txn)
-                        .await?
-                        .ok_or(AppError::not_found(
-                            "assignment not found",
-                            "assignment",
-                            "id",
-                            assignment_id.to_string().as_str(),
-                        ))?;
+                        let assignment_id = assignment_submission.assignment_id;
+                        let assignment = Assignment::find_by_id(assignment_id)
+                            .one(txn)
+                            .await?
+                            .ok_or(AppError::not_found(
+                                "assignment not found",
+                                "assignment",
+                                "id",
+                                assignment_id.to_string().as_str(),
+                            ))?;
 
-                    let condition = Condition::all()
-                        .add(file::Column::Name.eq("Assignment submission files"))
-                        .add(file::Column::ClassId.eq(assignment.class_id));
+                        let condition = Condition::all()
+                            .add(file::Column::Name.eq("Assignment submission files"))
+                            .add(file::Column::ClassId.eq(assignment.class_id));
 
-                    let assignment_dir = File::find().filter(condition).one(txn).await?.expect(
-                        "Assignment submission files is always created when a class is created",
-                    );
+                        let assignment_dir = File::find().filter(condition).one(txn).await?.expect(
+                            "Assignment submission files is always created when a class is created",
+                        );
 
-                    let condition = Condition::all()
-                        .add(file::Column::Name.eq(assignment.name.clone()))
-                        .add(file::Column::ClassId.eq(assignment.class_id))
-                        .add(file::Column::ParentId.eq(assignment_dir.id));
+                        let condition = Condition::all()
+                            .add(file::Column::Name.eq(assignment.name.clone()))
+                            .add(file::Column::ClassId.eq(assignment.class_id))
+                            .add(file::Column::ParentId.eq(assignment_dir.id));
 
-                    let this_assignment_dir = File::find().filter(condition).one(txn).await?;
-                    let this_assignment_dir_id = match this_assignment_dir {
-                        Some(dir) => dir.id,
-                        None => {
-                            let res = File::insert(file::ActiveModel {
+                        let this_assignment_dir = File::find().filter(condition).one(txn).await?;
+                        let this_assignment_dir = match this_assignment_dir {
+                            Some(dir) => dir,
+                            None => {
+                                File::insert(file::ActiveModel {
+                                    id: Set(Uuid::new_v4()),
+                                    name: Set(assignment.name),
+                                    class_id: Set(assignment.class_id),
+                                    parent_id: Set(Some(assignment_dir.id)),
+                                    public: Set(false),
+                                    file_type: Set(FileType::Directory),
+                                    message_id: Set(None),
+                                })
+                                .exec_with_returning(txn)
+                                .await?
+                            }
+                        };
+
+                        let this_assignment_dir_id = this_assignment_dir.id;
+
+                        let submitting_user = User::find_by_id(assignment_submission.user_id)
+                            .one(txn)
+                            .await?
+                            .expect("user_id is valid");
+
+                        let submission_folder_name = format!(
+                            "{} {}",
+                            submitting_user.first_name, submitting_user.last_name
+                        );
+
+                        let folder_model = file::ActiveModel {
+                            id: Set(Uuid::new_v4()),
+                            name: Set(submission_folder_name),
+                            class_id: Set(assignment.class_id),
+                            parent_id: Set(Some(this_assignment_dir_id)),
+                            public: Set(false),
+                            file_type: Set(FileType::Directory),
+                            message_id: Set(None),
+                        };
+
+                        let folder_id = File::insert(folder_model.clone())
+                            .exec(txn)
+                            .await?
+                            .last_insert_id;
+
+                        let files = file_names
+                            .into_iter()
+                            .map(|name| file::ActiveModel {
                                 id: Set(Uuid::new_v4()),
-                                name: Set(assignment.name),
+                                name: Set(name),
                                 class_id: Set(assignment.class_id),
-                                parent_id: Set(Some(assignment_dir.id)),
+                                parent_id: Set(Some(folder_id)),
                                 public: Set(false),
-                                file_type: Set(FileType::Directory),
+                                file_type: Set(FileType::File),
                                 message_id: Set(None),
                             })
-                            .exec(txn)
-                            .await?;
-                            res.last_insert_id
+                            .collect::<Vec<_>>();
+                        let file_ids = files
+                            .iter()
+                            .map(|f| f.id.clone().unwrap())
+                            .collect::<Vec<_>>();
+
+                        if !file_ids.is_empty() {
+                            File::insert_many(files.clone()).exec(txn).await?;
                         }
-                    };
 
-                    let submitting_user = User::find_by_id(assignment_submission.user_id)
-                        .one(txn)
-                        .await?
-                        .expect("user_id is valid");
+                        let assignment_submission_files = file_ids
+                            .iter()
+                            .map(|id| assignment_submission_file::ActiveModel {
+                                id: Set(Uuid::new_v4()),
+                                assignment_submission_id: Set(assignment_submission.id),
+                                file_id: Set(*id),
+                            })
+                            .collect::<Vec<_>>();
 
-                    let submission_folder_name = format!(
-                        "{} {}",
-                        submitting_user.first_name, submitting_user.last_name
-                    );
+                        if !assignment_submission_files.is_empty() {
+                            AssignmentSubmissionFile::insert_many(assignment_submission_files)
+                                .exec(txn)
+                                .await?;
+                        }
 
-                    let folder_model = file::ActiveModel {
-                        id: Set(Uuid::new_v4()),
-                        name: Set(submission_folder_name),
-                        class_id: Set(assignment.class_id),
-                        parent_id: Set(Some(this_assignment_dir_id)),
-                        public: Set(false),
-                        file_type: Set(FileType::Directory),
-                        message_id: Set(None),
-                    };
-
-                    let folder_id = File::insert(folder_model).exec(txn).await?.last_insert_id;
-
-                    let files = file_names
-                        .into_iter()
-                        .map(|name| file::ActiveModel {
-                            id: Set(Uuid::new_v4()),
-                            name: Set(name),
-                            class_id: Set(assignment.class_id),
-                            parent_id: Set(Some(folder_id)),
-                            public: Set(false),
-                            file_type: Set(FileType::File),
-                            message_id: Set(None),
-                        })
-                        .collect::<Vec<_>>();
-                    let file_ids = files
-                        .iter()
-                        .map(|f| f.id.clone().unwrap())
-                        .collect::<Vec<_>>();
-
-                    if !file_ids.is_empty() {
-                        File::insert_many(files).exec(txn).await?;
-                    }
-
-                    let assignment_submission_files = file_ids
-                        .iter()
-                        .map(|id| assignment_submission_file::ActiveModel {
-                            id: Set(Uuid::new_v4()),
-                            assignment_submission_id: Set(assignment_submission.id),
-                            file_id: Set(*id),
-                        })
-                        .collect::<Vec<_>>();
-
-                    if !assignment_submission_files.is_empty() {
-                        AssignmentSubmissionFile::insert_many(assignment_submission_files)
-                            .exec(txn)
-                            .await?;
-                    }
-
-                    Ok((assignment.class_id, file_ids))
-                })
-            })
+                        Ok((assignment.class_id, files, vec![folder_model, this_assignment_dir.into()]))
+                    })
+                },
+            )
             .await?;
 
-        Ok((class_id, file_ids))
+        Ok((class_id, files, this_assignment_dir))
     }
 
     #[instrument(skip(self), err(Debug))]
@@ -802,40 +819,22 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
             .exec(self.loader())
             .await?;
 
-        let assignment_submission = AssignmentSubmission::find_by_id(assignment_submission_id)
-            .one(self.loader())
-            .await?
-            .expect("assignment_submission_id is valid");
-
-        AssignmentSubmission::delete_many()
-            .filter(assignment_submission::Column::Id.eq(assignment_submission_id))
+        AssignmentSubmission::delete_by_id(assignment_submission_id)
             .exec(self.loader())
             .await?;
 
-        let submitting_user = User::find_by_id(assignment_submission.user_id)
+        let file = files.iter().nth(0).expect("files is not empty").file_id;
+        let file = File::find_by_id(file)
             .one(self.loader())
             .await?
-            .expect("user_id is valid");
+            .expect("file_id is valid");
+        let submission_folder_id = file.parent_id.unwrap();
 
-        let submission_folder_name = format!(
-            "{} {}",
-            submitting_user.first_name, submitting_user.last_name
-        );
-
-        let submission_folder = File::find()
-            .filter(file::Column::Name.eq(submission_folder_name.clone()))
-            .one(self.loader())
-            .await?
-            .expect("submission folder is always created when a submission is created");
-
-        let condition = Condition::any()
-            .add(file::Column::ParentId.eq(submission_folder.id))
-            .add(file::Column::Name.eq(submission_folder_name));
-
-        File::delete_many()
-            .filter(condition)
+        let res = File::delete_many()
+            .filter(file::Column::Id.eq(submission_folder_id))
             .exec(self.loader())
             .await?;
+        tracing::debug!("res: {:?}", res);
 
         let ids = files.into_iter().map(|m| m.file_id).collect::<Vec<_>>();
         Ok(DeleteSubmissionResult::Deleted(ids))
@@ -844,6 +843,16 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<assignment::Model>, Arc<DbErr>> {
         let assignment = Assignment::find_by_id(id).one(self.loader()).await?;
         Ok(assignment)
+    }
+
+    async fn find_submission_by_id(
+        &self,
+        assignment_submission_id: Uuid,
+    ) -> Result<Option<assignment_submission::Model>, DbErr> {
+        let submission = AssignmentSubmission::find_by_id(assignment_submission_id)
+            .one(self.loader())
+            .await?;
+        Ok(submission)
     }
 }
 

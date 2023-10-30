@@ -1,14 +1,15 @@
 use super::{object::AssignmentSubmission, AssignmentObject, AssignmentRepo};
-use crate::core::ClassOwnerGuard;
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 
 use sea_orm::DatabaseConnection;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::api::class;
+use crate::core::{ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
 use crate::{
     api::user::UserObject,
-    core::{AppError, Claims, ClassMemberGuard, LoggedInGuard},
+    core::{AppError, Claims},
 };
 
 #[derive(Default)]
@@ -17,11 +18,12 @@ pub struct AssignmentQuery;
 #[Object]
 impl AssignmentQuery {
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassMemberGuard::new(class_id.clone()))")]
     async fn assignment_submissions(
         &self,
         ctx: &Context<'_>,
         assignment_id: ID,
+        class_id: ID,
     ) -> Result<Option<Vec<AssignmentSubmission>>, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
 

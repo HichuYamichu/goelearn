@@ -12,7 +12,9 @@ export const MyIdQuery = graphql(/* GraphQL */ `
 
 export const download = async (classId: string, item: any) => {
   downloadFile(
-    `http://localhost:3000/files/class-files/${classId}/${item.id}`,
+    `${import.meta.env.VITE_BASE_ENDPOINT}/files/class-files/${classId}/${
+      item.id
+    }`,
     item.name
   );
 };

@@ -173,6 +173,7 @@ impl CreateDirectoryInput {
 #[derive(InputObject, Debug)]
 pub struct UpdateFileInput {
     pub id: ID,
+    pub class_id: ID,
     #[graphql(validator(min_length = 1, max_length = 35))]
     pub name: Option<String>,
     pub public: Option<bool>,

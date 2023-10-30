@@ -132,9 +132,13 @@ const selectedAssignment = computed(() => {
 });
 
 const CreateAssignmentSubmissionMutation = graphql(/* GraphQL */ `
-  mutation CreateAssignmentSubmission($assignmentId: ID!, $files: [Upload!]!) {
+  mutation CreateAssignmentSubmission(
+    $assignmentId: ID!
+    $files: [Upload!]!
+    $classId: ID!
+  ) {
     createAssignmentSubmission(
-      input: { assignmentId: $assignmentId, files: $files }
+      input: { assignmentId: $assignmentId, files: $files, classId: $classId }
     )
   }
 `);
@@ -150,6 +154,7 @@ const submit = async () => {
   await submitAssignment({
     files: filesToUpload.value,
     assignmentId: selectedAssignment.value.id,
+    classId,
   });
 };
 
@@ -163,12 +168,14 @@ const UpdateAssignmentSubmissionMutation = graphql(/* GraphQL */ `
     $assignmentSubmissionId: ID!
     $assignmentId: ID!
     $files: [Upload!]!
+    $classId: ID!
   ) {
     updateAssignmentSubmission(
       input: {
         id: $assignmentSubmissionId
         assignmentId: $assignmentId
         files: $files
+        classId: $classId
       }
     )
   }
@@ -184,6 +191,7 @@ const update = async () => {
     files: filesToUpload.value,
     assignmentSubmissionId: mySubmission.value?.id ?? "",
     assignmentId: selectedAssignment.value.id,
+    classId,
   });
 
   filesToUpload.value = [];

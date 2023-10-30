@@ -1,6 +1,5 @@
-use crate::core::LoggedInGuard;
-
 use crate::core::{auth, AppError};
+use crate::core::{ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
 use async_graphql::{dataloader::DataLoader, Context, Object};
 use auth::Claims;
 use deadpool_redis::{redis, Pool};
@@ -18,7 +17,7 @@ pub struct MessageMutation;
 #[Object]
 impl MessageMutation {
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassMemberGuard::new(input.class_id.clone()))")]
     pub async fn create_message(
         &self,
         ctx: &Context<'_>,

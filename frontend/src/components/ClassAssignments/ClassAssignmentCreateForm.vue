@@ -117,6 +117,7 @@ const submit = () => {
         dueAt: dateOrNull(assignmentInput.dueDate),
         newFiles: assignmentInput.newFiles,
         deleteFiles: [],
+        classId: classId as string,
       },
     });
   } else {

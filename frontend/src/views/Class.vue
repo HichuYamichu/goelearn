@@ -152,6 +152,11 @@ const ClassResourceCreateSubscription = graphql(/* GraphQL */ `
       ... on File {
         ...FileFragment
       }
+      ... on FileBatch {
+        files {
+          ...FileFragment
+        }
+      }
       ... on Assignment {
         ...AssignmentFragment
       }
@@ -197,6 +202,17 @@ subscribeToMore(() => ({
           ...prev.classById!,
           // @ts-ignore
           files: [...prev.classById!.files, updatedClass],
+        },
+      };
+    }
+
+    if (updatedClass.__typename == "FileBatch") {
+      console.log(updatedClass);
+      return {
+        classById: {
+          ...prev.classById!,
+          // @ts-ignore
+          files: [...prev.classById!.files, ...updatedClass.files],
         },
       };
     }

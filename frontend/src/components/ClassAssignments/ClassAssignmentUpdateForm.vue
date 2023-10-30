@@ -91,7 +91,7 @@ const assignmentInput = reactive({
 const emit = defineEmits(["close"]);
 
 const router = useRouter();
-const classId = router.currentRoute.value.params.classId;
+const classId = router.currentRoute.value.params.classId as string;
 
 const CreateAssignmentMutation = graphql(/* GraphQL */ `
   mutation CreateAssignmentMutation($input: CreateAssignmentInput!) {
@@ -127,6 +127,7 @@ const submit = () => {
       dueAt: dateOrNull(assignmentInput.dueDate),
       newFiles: assignmentInput.newFiles,
       deleteFiles: assignmentInput.deleteFiles,
+      classId,
     },
   });
 

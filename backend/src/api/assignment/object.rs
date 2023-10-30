@@ -142,6 +142,7 @@ pub struct UpdateAssignmentInput {
     pub name: Option<String>,
     #[graphql(validator(max_length = 2000))]
     pub content: Option<String>,
+    pub class_id: ID,
     pub due_at: Option<NaiveDateTime>,
     pub new_files: Vec<Upload>,
     pub delete_files: Vec<ID>,
@@ -230,6 +231,7 @@ impl From<::entity::assignment_submission::Model> for AssignmentSubmission {
 #[derive(InputObject, PartialDebug)]
 pub struct SubmitAssignmentInput {
     pub assignment_id: ID,
+    pub class_id: ID,
     pub files: Vec<Upload>,
 }
 
@@ -256,6 +258,7 @@ impl SubmitAssignmentInput {
 pub struct CreateAssignmanetSubmissionFeedbackInput {
     pub id: Option<ID>,
     pub assignment_id: ID,
+    pub class_id: ID,
     pub assignment_submission_id: ID,
     #[graphql(validator(min_length = 1, max_length = 2000))]
     pub feedback: String,
@@ -282,6 +285,7 @@ impl CreateAssignmanetSubmissionFeedbackInput {
 pub struct UpdateAssignmanetSubmissionFeedbackInput {
     pub id: ID,
     pub assignment_id: ID,
+    pub class_id: ID,
     #[graphql(validator(min_length = 1, max_length = 2000))]
     pub feedback: String,
 }
@@ -321,6 +325,7 @@ impl From<::entity::assignment_submission_feedback::Model> for AssignmentSubmiss
 #[derive(InputObject, PartialDebug)]
 pub struct UpdateAssignmentSubmissionInput {
     pub id: ID,
+    pub class_id: ID,
     pub assignment_id: ID,
     pub files: Vec<Upload>,
 }

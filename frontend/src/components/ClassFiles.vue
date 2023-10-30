@@ -100,7 +100,11 @@ import { MyIdQuery } from "@/shared";
 import { useMutation, useQuery } from "@vue/apollo-composable";
 import { computed } from "vue";
 import { ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useDisplay } from "vuetify";
+
+const route = useRoute();
+const classId = route.params.classId as string;
 
 const { mobile } = useDisplay();
 
@@ -121,22 +125,20 @@ const props = defineProps<{
   class_?: FragmentType<typeof FilesFragment> | null;
 }>();
 
-const class_ = ref(useFragment(FilesFragment, props.class_));
-
-watch(props, () => {
-  class_.value = useFragment(FilesFragment, props.class_);
-});
+const class_ = computed(() => useFragment(FilesFragment, props.class_));
 
 const selectedDirectoryTree = ref([
   { id: null, name: "root", fileType: "DIRECTORY" },
 ]);
+
 const files = computed(() => {
   if (!class_.value) return [];
-  const files = class_.value.files;
+
   if (selectedDirectoryTree.value.length === 0) {
-    return files.filter((f) => !f.parent);
+    return class_.value.files.filter((f) => !f.parent);
   }
-  return files.filter(
+
+  return class_.value.files.filter(
     (f) =>
       f.parent ===
       selectedDirectoryTree.value[selectedDirectoryTree.value.length - 1].id
@@ -146,7 +148,9 @@ const files = computed(() => {
 const open = (item: any) => {
   if (item.fileType === "FILE") {
     downloadFile(
-      `http://localhost:3000/files/class-files/${class_.value?.id}/${item.id}`,
+      `${import.meta.env.VITE_BASE_ENDPOINT}/files/class-files/${
+        class_.value?.id
+      }/${item.id}`,
       item.name
     );
     return;
@@ -257,7 +261,9 @@ const checkAll = () => {
 
 const downloadAll = async () => {
   let res = await fetch(
-    `http://localhost:3000/files/class-files/${class_.value?.id}/zip`,
+    `${import.meta.env.VITE_BASE_ENDPOINT}/files/class-files/${
+      class_.value?.id
+    }/zip`,
     {
       method: "POST",
       headers: {
@@ -278,8 +284,8 @@ const downloadAll = async () => {
 };
 
 const DeleteFilesMutation = graphql(/* GraphQL */ `
-  mutation DeleteFiles($fileIds: [ID!]!) {
-    deleteFiles(fileIds: $fileIds)
+  mutation DeleteFiles($fileIds: [ID!]!, $classId: ID!) {
+    deleteFiles(fileIds: $fileIds, classId: $classId)
   }
 `);
 
@@ -288,6 +294,7 @@ const { mutate: deleteFiles } = useMutation(DeleteFilesMutation);
 const deleteAll = () => {
   deleteFiles({
     fileIds: selectedFiles.value,
+    classId,
   });
 };
 

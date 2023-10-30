@@ -264,15 +264,21 @@ const saveFeedback = () => {
       assignmentSubmissionId: selectedUserSubmission.value!.id,
       assignmentId: selectedAssignment.value!.id,
       feedback: feedback.value,
+      classId,
     },
   });
 };
 
 let DeleteFeedbackMutation = graphql(/* GraphQL */ `
-  mutation DeleteAssignmentSubmissionFeedback($assignmentId: ID!, $id: ID!) {
+  mutation DeleteAssignmentSubmissionFeedback(
+    $assignmentId: ID!
+    $id: ID!
+    $classId: ID!
+  ) {
     deleteAssignmentSubmissionFeedback(
       assignmentId: $assignmentId
       assignmentSubmissionFeedbackId: $id
+      classId: $classId
     )
   }
 `);
@@ -287,6 +293,7 @@ const deleteFeedback = () => {
   deleteFeedbackMutation({
     assignmentId: selectedAssignment.value!.id,
     id: selectedUserSubmission.value!.feedback!.id,
+    classId,
   });
 };
 

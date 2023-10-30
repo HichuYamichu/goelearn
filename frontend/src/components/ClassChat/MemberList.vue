@@ -7,7 +7,7 @@
       :key="user.id"
       :title="user.username"
       link
-      :prependAvatar="`http://localhost:3000/files/user-avatar/${user.id}`"
+      :prependAvatar="`${baseURL}/files/user-avatar/${user.id}`"
     >
     </v-list-item>
   </v-list>
@@ -17,6 +17,8 @@
 <script lang="ts" setup>
 import { FragmentType, graphql, useFragment } from "@/gql";
 import { computed, ref, watch } from "vue";
+
+const baseURL = import.meta.env.VITE_BASE_ENDPOINT;
 
 const MembersFragment = graphql(/* GraphQL */ `
   fragment MembersFragment on User {

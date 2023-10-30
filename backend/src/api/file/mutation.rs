@@ -1,3 +1,5 @@
+use crate::api::class;
+use crate::core::{ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
 use crate::{
     api::{
         class::{
@@ -18,8 +20,6 @@ use sea_orm::{DatabaseConnection, Set};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use uuid::Uuid;
 
-use crate::core::LoggedInGuard;
-
 use super::{
     object::{CreateDirectoryInput, UpdateFileInput, UploadFileInput},
     FileObject, FileRepo,
@@ -31,7 +31,7 @@ pub struct FileMutation;
 #[Object]
 impl FileMutation {
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(input.class_id.clone()))")]
     pub async fn upload_files(
         &self,
         ctx: &Context<'_>,
@@ -59,7 +59,6 @@ impl FileMutation {
         }
 
         if files.is_empty() {
-            // TODO: return error
             return Ok(false);
         }
 
@@ -112,7 +111,7 @@ impl FileMutation {
     }
 
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(input.class_id.clone()))")]
     pub async fn create_direcotry(
         &self,
         ctx: &Context<'_>,
@@ -134,11 +133,12 @@ impl FileMutation {
     }
 
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
     pub async fn delete_files(
         &self,
         ctx: &Context<'_>,
         file_ids: Vec<ID>,
+        class_id: ID,
     ) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
@@ -173,7 +173,7 @@ impl FileMutation {
     }
 
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(input.class_id.clone()))")]
     pub async fn update_file(
         &self,
         ctx: &Context<'_>,

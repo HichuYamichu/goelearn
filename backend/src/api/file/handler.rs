@@ -14,7 +14,10 @@ use uuid::Uuid;
 use zip::write::FileOptions;
 use zip::CompressionMethod;
 
-use crate::{api::file::FileRepo, core::AppError};
+use crate::{
+    api::file::FileRepo,
+    core::{is_class_member, AppError, Claims, ClassMemberGuard},
+};
 
 pub struct FileHandler;
 
@@ -83,12 +86,21 @@ impl FileHandler {
         }
     }
 
-    // TODO: Add authorization
     #[instrument(skip(s3_bucket), err(Debug))]
     pub async fn get_class_file(
         Path((class_id, file_id)): Path<(Uuid, Uuid)>,
         State(s3_bucket): State<s3::Bucket>,
+        State(conn): State<DatabaseConnection>,
+        claims: Claims,
     ) -> Result<impl IntoResponse, AppError> {
+        let data_loader = DataLoader::new(conn, tokio::spawn);
+
+        let user_id = Uuid::parse_str(claims.sub.as_str())?;
+        let is_member = is_class_member(&data_loader, user_id, class_id).await;
+        if !is_member {
+            return Err(AppError::auth("User is not a member of this class").into());
+        }
+
         let s3_path = format!("class-files/{class_id}/{file_id}");
         let object = s3_bucket.get_object(s3_path).await;
         match object {
@@ -119,9 +131,16 @@ impl FileHandler {
         Path(class_id): Path<Uuid>,
         State(s3_bucket): State<s3::Bucket>,
         State(conn): State<DatabaseConnection>,
+        claims: Claims,
         Json(payload): Json<GetClassFilesPayload>,
     ) -> Result<impl IntoResponse, AppError> {
         let data_loader = DataLoader::new(conn, tokio::spawn);
+
+        let user_id = Uuid::parse_str(claims.sub.as_str())?;
+        let is_member = is_class_member(&data_loader, user_id, class_id).await;
+        if !is_member {
+            return Err(AppError::auth("User is not a member of this class").into());
+        }
 
         let files = FileRepo::find_many_with_nested(&data_loader, payload.file_ids).await?;
         let zip_data = create_zip_archive(files, &s3_bucket, &class_id.to_string())
@@ -175,12 +194,6 @@ async fn create_zip_archive(
     }
 
     Ok(zip_buffer)
-}
-
-fn create_zip_directory_structure(
-    _files: Vec<file::Model>,
-    _zip: &mut zip::ZipWriter<std::io::Cursor<&mut [u8]>>,
-) {
 }
 
 fn get_file_path(files: &[file::Model], file: &file::Model) -> String {

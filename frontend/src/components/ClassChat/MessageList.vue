@@ -8,7 +8,7 @@
       <template v-slot:default="{ item }">
         <v-list-item
           class="py-2"
-          :prependAvatar="`http://localhost:3000/files/user-avatar/${item.author.id}`"
+          :prependAvatar="`${baseURL}/files/user-avatar/${item.author.id}`"
         >
           <v-list-item-title
             class="font-weight-bold"
@@ -64,6 +64,8 @@ import { graphql } from "@/gql";
 import { useMutation, useQuery } from "@vue/apollo-composable";
 import { Ref, computed, nextTick, ref, toRef, watch } from "vue";
 import { useRoute } from "vue-router";
+const baseURL = import.meta.env.VITE_BASE_ENDPOINT;
+console.log(import.meta.env);
 
 const route = useRoute();
 
@@ -229,8 +231,8 @@ const scrollMiddle = () => {
 };
 
 const MessageCreatedSubscription = graphql(/* GraphQL */ `
-  subscription MessagesSubscription($channelId: ID!) {
-    messageCreated(channelId: $channelId) {
+  subscription MessagesSubscription($channelId: ID!, $classId: ID!) {
+    messageCreated(channelId: $channelId, classId: $classId) {
       ...MessageFragment
     }
   }
@@ -240,6 +242,7 @@ subscribeToMore(() => ({
   document: MessageCreatedSubscription,
   variables: {
     channelId: selectedChannelId.value!,
+    classId: classId,
   },
   updateQuery: (prev, { subscriptionData }) => {
     if (!subscriptionData.data) return prev;
@@ -255,8 +258,10 @@ subscribeToMore(() => ({
 }));
 
 const SendMessageMutation = graphql(/* GraphQL */ `
-  mutation SendMessage($channelId: ID!, $content: String!) {
-    createMessage(input: { channelId: $channelId, content: $content }) {
+  mutation SendMessage($channelId: ID!, $content: String!, $classId: ID!) {
+    createMessage(
+      input: { channelId: $channelId, content: $content, classId: $classId }
+    ) {
       id
       content
     }
@@ -270,6 +275,7 @@ const sendMsg = () => {
   send({
     channelId: selectedChannelId.value!,
     content: msg.value,
+    classId: classId,
   });
   msg.value = "";
 };
