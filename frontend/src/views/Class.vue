@@ -360,4 +360,23 @@ const isOwner = computed(() => {
   if (!myIdResult.value?.me?.id) return false;
   return myIdResult.value?.me?.id === class_.value?.ownerId;
 });
+
+const ClassDeletedSubscription = graphql(/* GraphQL */ `
+  subscription ClassDeletedSubscription($classId: ID!) {
+    classDeleted(classId: $classId) {
+     id
+    }
+  }
+`);
+
+const { onResult  } = useSubscription(ClassDeletedSubscription);
+
+onResult(result => {
+  const receivedId = result.value.id;
+  if (receivedId === classId) {
+    router.push({ name: "Home" });
+    cache.evict({ id: `Class:${classId}` });
+  }
+})
+
 </script>

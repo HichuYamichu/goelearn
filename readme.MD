@@ -3,20 +3,17 @@
 - fix update assignment (change folder name if assignment name was changed + dynamic update)
 - fix dynamic data submissions
 
-- fix user facing errors
 - build and serve + deploy config
 - zip not working again
 
 # TODO
 
 - user settings
-- delete class clean cache and move to /classes
 - finish up meeting
 - my assignmensts forntend
 
 - home page images
 - admin functionality (create privileged accounts)
-- whole app config (closed community mode)
 - user first/last name display
 
 # SHOULD IMPROVE

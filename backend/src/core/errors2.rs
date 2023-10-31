@@ -69,7 +69,7 @@ impl Display for AppError {
                 value = value
             ),
             ErrorKind::User(user_err) => write!(f, "User error: {user_err}"),
-            ErrorKind::Internal(internal_err) => write!(f, "Internal server error: {internal_err}"),
+            ErrorKind::Internal(_) => write!(f, "Internal server error"),
         }
     }
 }
@@ -90,7 +90,7 @@ pub enum ErrorKind {
 
 // INFO: remove clone when `extend` teakes ownership if ever
 impl ErrorExtensions for AppError {
-    fn extend(&self) -> async_graphql::Error {
+    fn extend(&self) -> std::erorr::Error {
         let AppError { message, kind } = self;
 
         async_graphql::Error::new(message).extend_with(|_err, e| match kind {

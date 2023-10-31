@@ -18,6 +18,7 @@ use tracing::instrument;
 pub const CLASS_RESOURCE_CREATED: &str = "class_resource_created";
 pub const CLASS_RESOURCE_UPDATED: &str = "class_resource_updated";
 pub const CLASS_RESOURCE_DELETED: &str = "class_resource_deleted";
+pub const CLASS_DELETED: &str = "class_deleted";
 
 #[derive(Default)]
 pub struct ClassSubscription;
@@ -65,6 +66,20 @@ impl ClassSubscription {
         )
         .await
     }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(ClassMemberGuard::new(class_id.clone()))")]
+    async fn class_deleted(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+    ) -> Result<impl Stream<Item = ClassDelete>, AppError> {
+        make_subscription(
+            ctx,
+            format!("{}:{}", CLASS_DELETED, class_id.as_str()),
+        )
+        .await
+    }
 }
 
 async fn make_subscription<T: DeserializeOwned>(
@@ -81,6 +96,11 @@ async fn make_subscription<T: DeserializeOwned>(
             .ok()
             .and_then(|s: String| serde_json::from_str(s.as_str()).ok())
     }))
+}
+
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+pub struct ClassDelete {
+    id: ID
 }
 
 #[derive(Debug, Serialize, Deserialize, Union)]

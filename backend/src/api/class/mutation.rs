@@ -15,7 +15,7 @@ use uuid::Uuid;
 use super::object::{CreateClassInput, CreateInviteInput, InviteObject, UpdateClassInput};
 use super::{
     ClassObject, ClassRepo, ClassResourceCreate, ClassResourceDelete, ClassResourceUpdate,
-    CLASS_RESOURCE_CREATED, CLASS_RESOURCE_DELETED, CLASS_RESOURCE_UPDATED,
+    CLASS_RESOURCE_CREATED, CLASS_RESOURCE_DELETED, CLASS_RESOURCE_UPDATED, CLASS_DELETED,
 };
 
 #[derive(Default)]
@@ -236,11 +236,10 @@ impl ClassMutation {
         let redis_pool = ctx.data_unchecked::<Pool>();
         let mut conn = redis_pool.get().await?;
 
-        let class_id = Uuid::parse_str(class_id.as_str())?;
-        ClassRepo::delete_class(data_loader, class_id).await?;
+        let update_data = ClassDelete { id };
         conn.publish(
-            format!("class_deleted:{}", class_id),
-            serde_json::to_string(&class_id).expect("ClassID should serialize"),
+            format!("{}:{}", CLASS_DELETED, class_id),
+            serde_json::to_string(&update_data).expect("Class should serialize"),
         )
         .await?;
 
