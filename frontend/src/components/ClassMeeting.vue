@@ -1,7 +1,9 @@
 <template>
-  <v-container class="fill-height">
+  <v-toolbar dark>
     <v-btn @click="start">Start</v-btn>
-    <v-btn @click="join" :disabled="meetingAvalible">Join</v-btn>
+    <v-btn @click="join" :disabled="!meetingAvalible">Join</v-btn>
+  </v-toolbar>
+  <v-container class="fill-height">
     <div class="videos">
       <video
         v-for="stream in streams.values()"
@@ -15,22 +17,15 @@
 </template>
 
 <script lang="ts" setup>
+import { ClassMeetingWS } from "@/class-meeting";
 import { FragmentType, graphql, useFragment } from "@/gql";
-import { RTCWS } from "@/ws";
+import { MyIdQuery } from "@/shared";
 import { useMutation, useQuery } from "@vue/apollo-composable";
 import { onMounted, reactive } from "vue";
 import { computed } from "vue";
 import { ref, watch } from "vue";
 
-const MeQuery = graphql(/* GraphQL */ `
-  query MeetingMeQuery {
-    me {
-      id
-    }
-  }
-`);
-
-const { result: meResult } = useQuery(MeQuery);
+const { result: meResult } = useQuery(MyIdQuery);
 const myId = computed(() => meResult.value?.me.id ?? "");
 
 const MeetingFragment = graphql(/* GraphQL */ `
@@ -42,29 +37,23 @@ const MeetingFragment = graphql(/* GraphQL */ `
 
 const props = defineProps<{
   class_?: FragmentType<typeof MeetingFragment> | null;
+  meetingRoom: ClassMeetingWS;
 }>();
 
 const class_ = computed(() => useFragment(MeetingFragment, props.class_));
 
 let localstream: MediaStream | null = null;
-// let remoteStream: MediaStream | null = null;
-// let peerConnection: RTCPeerConnection;
-let meetingAvalible = ref(true);
+let meetingAvalible = ref(false);
 
+const meetingRoom = props.meetingRoom;
 const streams = reactive(new Map<string, MediaStream>());
-const connectedPeers = new Map<string, RTCPeerConnection>();
+const connectedPeers = reactive(new Map<string, RTCPeerConnection>());
 
-const token = localStorage.getItem("token");
-const ws = new RTCWS("ws://localhost:3000/rtc-ws");
-
-ws.auth(token!);
-ws.subscribe(class_.value!.id);
-
-ws.meetingStartedHandler = async () => {
-  meetingAvalible.value = false;
+meetingRoom.onMeetingStarted = async () => {
+  meetingAvalible.value = true;
 };
 
-ws.userJoinedHandler = async (data) => {
+meetingRoom.onUserJoined = async (data) => {
   if (data.user_id === myId.value) {
     return;
   }
@@ -72,17 +61,20 @@ ws.userJoinedHandler = async (data) => {
   await createOffer(data.user_id);
 };
 
-ws.offerHandler = async (data) => {
+meetingRoom.onOffer = async (data) => {
   await createAnswer(data.sender_id, data.offer);
 };
 
-ws.answerHandler = async (data) => {
+meetingRoom.onAnswer = async (data) => {
   const peerConnection = connectedPeers.get(data.sender_id)!;
   await peerConnection.setRemoteDescription(data.answer);
 };
 
-ws.iceCandidateHandler = async (data) => {
+meetingRoom.onICECandidate = async (data) => {
   const peerConnection = connectedPeers.get(data.sender_id)!;
+  console.log(connectedPeers);
+  console.log(data);
+  console.log(peerConnection);
   await peerConnection.addIceCandidate(data.candidate);
 };
 
@@ -93,7 +85,7 @@ const start = async () => {
   });
   streams.set(myId.value, localstream);
 
-  ws.startMeeting(class_.value!.id);
+  meetingRoom.startMeeting(class_.value!.id);
 };
 const join = async () => {
   localstream = await navigator.mediaDevices.getUserMedia({
@@ -101,14 +93,14 @@ const join = async () => {
     audio: false,
   });
   streams.set(myId.value, localstream);
-  ws.joinMeeting(class_.value!.id);
+  meetingRoom.joinMeeting(class_.value!.id);
 };
 
 const createOffer = async (targetUserId: string) => {
   const peerConnection = await createPeerConnection(targetUserId);
   let offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
-  ws.sendOffer(targetUserId, class_.value!.id, offer);
+  meetingRoom.sendOffer(targetUserId, class_.value!.id, offer);
   connectedPeers.set(targetUserId, peerConnection);
 };
 
@@ -116,12 +108,15 @@ const createAnswer = async (
   targetUserId: string,
   offer: RTCSessionDescriptionInit
 ) => {
+  console.time("createAnswer");
   const peerConnection = await createPeerConnection(targetUserId);
   await peerConnection.setRemoteDescription(offer);
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
-  ws.sendAnswer(targetUserId, class_.value!.id, answer);
+  meetingRoom.sendAnswer(targetUserId, class_.value!.id, answer);
   connectedPeers.set(targetUserId, peerConnection);
+  console.log(connectedPeers);
+  console.timeEnd("createAnswer");
 };
 
 const createPeerConnection = async (
@@ -135,6 +130,7 @@ const createPeerConnection = async (
     ],
   });
   const remoteStream = new MediaStream();
+  streams.set(targetUserId, remoteStream);
 
   for (let track of localstream!.getTracks()) {
     peerConnection.addTrack(track, localstream!);
@@ -150,7 +146,11 @@ const createPeerConnection = async (
     if (!event.candidate) {
       return;
     }
-    ws.sendIceCandidate(targetUserId, class_.value!.id, event.candidate);
+    meetingRoom.sendIceCandidate(
+      targetUserId,
+      class_.value!.id,
+      event.candidate
+    );
   };
 
   return peerConnection;

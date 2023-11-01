@@ -1,6 +1,9 @@
 import { useQuery } from "@vue/apollo-composable";
 import { graphql } from "./gql";
 import { until } from "@vueuse/core";
+import { useSubscription } from "@vue/apollo-composable";
+import { cache } from "@/client";
+import router from "@/router";
 
 export const MyIdQuery = graphql(/* GraphQL */ `
   query MyIdQuery {
@@ -20,7 +23,11 @@ export const download = async (classId: string, item: any) => {
 };
 
 export const downloadFile = async (url: string, filename: string) => {
-  const data = await fetch(url);
+  const data = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")} `,
+    },
+  });
   const blob = await data.blob();
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -42,4 +49,27 @@ export async function validate(inputs: any[]) {
 export const toLocaleString = (date?: string | null) => {
   if (!date) return "";
   return new Date(date).toLocaleString();
+};
+
+const ClassDeletedSubscription = graphql(/* GraphQL */ `
+  subscription ClassDeletedSubscription($classId: ID!) {
+    classDeleted(classId: $classId) {
+      id
+    }
+  }
+`);
+
+export const useClassDeleted = (classId: string) => {
+  const { onResult: onClassDeleted } = useSubscription(
+    ClassDeletedSubscription,
+    { classId }
+  );
+
+  onClassDeleted((result) => {
+    const receivedId = result.data?.classDeleted.id;
+    if (router.currentRoute.value.params.classId === receivedId) {
+      router.push({ name: "My Classes" });
+      cache.evict({ id: `Class:${classId}` });
+    }
+  });
 };

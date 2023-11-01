@@ -74,11 +74,7 @@ impl ClassSubscription {
         ctx: &Context<'_>,
         class_id: ID,
     ) -> Result<impl Stream<Item = ClassDelete>, AppError> {
-        make_subscription(
-            ctx,
-            format!("{}:{}", CLASS_DELETED, class_id.as_str()),
-        )
-        .await
+        make_subscription(ctx, format!("{}:{}", CLASS_DELETED, class_id.as_str())).await
     }
 }
 
@@ -100,7 +96,7 @@ async fn make_subscription<T: DeserializeOwned>(
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct ClassDelete {
-    id: ID
+    pub id: ID,
 }
 
 #[derive(Debug, Serialize, Deserialize, Union)]

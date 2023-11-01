@@ -102,6 +102,7 @@ import { computed } from "vue";
 import { ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useDisplay } from "vuetify";
+import { downloadFile } from "../shared";
 
 const route = useRoute();
 const classId = route.params.classId as string;
@@ -182,17 +183,6 @@ const open = (item: any) => {
   selectedFiles.value = [];
 };
 
-const downloadFile = async (url: string, filename: string) => {
-  const data = await fetch(url);
-  const blob = await data.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", objectUrl);
-  link.setAttribute("download", filename);
-  link.style.display = "none";
-  link.click();
-};
-
 const newDirName = ref("");
 
 const CreateDirectoryMutation = graphql(/* GraphQL */ `
@@ -268,6 +258,7 @@ const downloadAll = async () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")} `,
       },
       body: JSON.stringify({
         file_ids: selectedFiles.value,

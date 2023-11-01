@@ -26,7 +26,7 @@
       <ClassAssignments :class_="class_"></ClassAssignments>
     </v-window-item>
     <v-window-item value="Meeting">
-      <ClassMeeting :class_="class_"></ClassMeeting>
+      <ClassMeeting :class_="class_" :meetingRoom="ws"></ClassMeeting>
     </v-window-item>
     <v-window-item value="Settings">
       <ClassSettings :class_="class_"></ClassSettings>
@@ -51,8 +51,9 @@ import { useRoute, useRouter } from "vue-router";
 import { ChannelsFragmentFragment, ChatFragmentFragment } from "@/gql/graphql";
 import { FragmentType } from "@/gql";
 import { cache } from "@/client";
-import { MyIdQuery } from "@/shared";
+import { MyIdQuery, useClassDeleted } from "@/shared";
 import UserClassSettings from "@/components/UserClassSettings.vue";
+import { ClassMeetingWS } from "@/class-meeting";
 
 const MeQuery = graphql(/* GraphQL */ `
   query MeetingMeQuery {
@@ -207,7 +208,6 @@ subscribeToMore(() => ({
     }
 
     if (updatedClass.__typename == "FileBatch") {
-      console.log(updatedClass);
       return {
         classById: {
           ...prev.classById!,
@@ -278,8 +278,6 @@ subscribeToMore(() => ({
     }
 
     if (updatedClass.__typename == "Assignment") {
-      console.log(updatedClass);
-
       return {
         ...prev,
         assignments: {
@@ -361,22 +359,7 @@ const isOwner = computed(() => {
   return myIdResult.value?.me?.id === class_.value?.ownerId;
 });
 
-const ClassDeletedSubscription = graphql(/* GraphQL */ `
-  subscription ClassDeletedSubscription($classId: ID!) {
-    classDeleted(classId: $classId) {
-     id
-    }
-  }
-`);
+useClassDeleted(classId);
 
-const { onResult  } = useSubscription(ClassDeletedSubscription);
-
-onResult(result => {
-  const receivedId = result.value.id;
-  if (receivedId === classId) {
-    router.push({ name: "Home" });
-    cache.evict({ id: `Class:${classId}` });
-  }
-})
-
+const ws = new ClassMeetingWS(classId);
 </script>

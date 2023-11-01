@@ -7,6 +7,7 @@ use auth::Claims;
 
 use deadpool_redis::redis::AsyncCommands;
 use deadpool_redis::Pool;
+use entity::class;
 use sea_orm::DatabaseConnection;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tracing::instrument;
@@ -14,8 +15,9 @@ use uuid::Uuid;
 
 use super::object::{CreateClassInput, CreateInviteInput, InviteObject, UpdateClassInput};
 use super::{
-    ClassObject, ClassRepo, ClassResourceCreate, ClassResourceDelete, ClassResourceUpdate,
-    CLASS_RESOURCE_CREATED, CLASS_RESOURCE_DELETED, CLASS_RESOURCE_UPDATED, CLASS_DELETED,
+    ClassDelete, ClassObject, ClassRepo, ClassResourceCreate, ClassResourceDelete,
+    ClassResourceUpdate, CLASS_DELETED, CLASS_RESOURCE_CREATED, CLASS_RESOURCE_DELETED,
+    CLASS_RESOURCE_UPDATED,
 };
 
 #[derive(Default)]
@@ -236,9 +238,13 @@ impl ClassMutation {
         let redis_pool = ctx.data_unchecked::<Pool>();
         let mut conn = redis_pool.get().await?;
 
-        let update_data = ClassDelete { id };
+        let id = Uuid::parse_str(class_id.as_str())?;
+        ClassRepo::delete_class(data_loader, id).await?;
+
+        let channel = format!("{}:{}", CLASS_DELETED, class_id.as_str());
+        let update_data = ClassDelete { id: class_id };
         conn.publish(
-            format!("{}:{}", CLASS_DELETED, class_id),
+            channel,
             serde_json::to_string(&update_data).expect("Class should serialize"),
         )
         .await?;

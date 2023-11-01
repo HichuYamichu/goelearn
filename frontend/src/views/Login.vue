@@ -47,27 +47,23 @@ const Login = graphql(/* GraphQL */ `
 const { mutate: sendCredentials } = useMutation(Login);
 
 const login = async () => {
-  try {
-    const res = await sendCredentials({
-      username: username.value,
-      password: password.value,
-    });
-    localStorage.setItem("token", res?.data?.login.token!);
-    client.writeQuery({
-      query: gql(`
+  const res = await sendCredentials({
+    username: username.value,
+    password: password.value,
+  });
+  localStorage.setItem("token", res?.data?.login.token!);
+  client.writeQuery({
+    query: gql(`
         query {
           isLoggedIn
         }
       `),
-      data: {
-        isLoggedIn: true,
-      },
-    });
+    data: {
+      isLoggedIn: true,
+    },
+  });
 
-    router.push({ name: "Home" });
-  } catch (e) {
-    console.log(e);
-  }
+  router.push({ name: "Home" });
 };
 
 const clear = () => {

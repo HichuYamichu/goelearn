@@ -25,42 +25,39 @@ type IceCandidateData = {
 
 type SignalServerMessage = {};
 
-export class RTCWS {
+export class ClassMeetingWS {
   ws: WebSocket;
 
-  meetingStartedHandler?: (data: MeetingStartedData) => Promise<void>;
-  userJoinedHandler?: (data: UserJoinedData) => Promise<void>;
-  offerHandler?: (data: OfferData) => Promise<void>;
-  answerHandler?: (data: AnswerData) => Promise<void>;
-  iceCandidateHandler?: (data: IceCandidateData) => Promise<void>;
+  onMeetingStarted?: (data: MeetingStartedData) => Promise<void>;
+  onUserJoined?: (data: UserJoinedData) => Promise<void>;
+  onOffer?: (data: OfferData) => Promise<void>;
+  onAnswer?: (data: AnswerData) => Promise<void>;
+  onICECandidate?: (data: IceCandidateData) => Promise<void>;
 
-  constructor(url: string) {
-    this.ws = new WebSocket(url);
+  constructor(classId: string) {
+    this.ws = new WebSocket("ws://localhost:3000/rtc-ws");
+    const token = localStorage.getItem("token");
+
+    this.ws.addEventListener("open", async (event) => {
+      this.ws.send(JSON.stringify({ type: "Auth", token }));
+      this.ws.send(
+        JSON.stringify({ type: "Subscribe", target_class_id: classId })
+      );
+    });
+
     this.ws.addEventListener("message", async (event) => {
       const data: SignalServerEventData = JSON.parse(event.data);
       if (data.type === "MeetingStarted") {
-        await this.meetingStartedHandler?.(data);
+        await this.onMeetingStarted?.(data);
       } else if (data.type === "UserJoined") {
-        await this.userJoinedHandler?.(data);
+        await this.onUserJoined?.(data);
       } else if (data.type === "Offer") {
-        await this.offerHandler?.(data);
+        await this.onOffer?.(data);
       } else if (data.type === "Answer") {
-        await this.answerHandler?.(data);
+        await this.onAnswer?.(data);
       } else if (data.type === "IceCandidate") {
-        await this.iceCandidateHandler?.(data);
+        await this.onICECandidate?.(data);
       }
-    });
-  }
-
-  auth(token: string) {
-    this.ws.addEventListener("open", (event) => {
-      this.ws.send(JSON.stringify({ type: "Auth", token }));
-    });
-  }
-
-  subscribe(target_class_id: string) {
-    this.ws.addEventListener("open", (event) => {
-      this.ws.send(JSON.stringify({ type: "Subscribe", target_class_id }));
     });
   }
 

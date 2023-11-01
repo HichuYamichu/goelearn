@@ -79,7 +79,6 @@ const addTag = () => {
 };
 
 const removeTag = (index: number) => {
-  console.log(classInput.tags);
   classInput.tags.splice(index, 1);
 };
 
@@ -154,6 +153,5 @@ const deleteClass = () => {
   deleteMutation({
     classId: props.class_?.id ?? "",
   });
-  router.push("/classes");
 };
 </script>

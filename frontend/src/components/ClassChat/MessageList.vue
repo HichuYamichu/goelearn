@@ -65,7 +65,6 @@ import { useMutation, useQuery } from "@vue/apollo-composable";
 import { Ref, computed, nextTick, ref, toRef, watch } from "vue";
 import { useRoute } from "vue-router";
 const baseURL = import.meta.env.VITE_BASE_ENDPOINT;
-console.log(import.meta.env);
 
 const route = useRoute();
 

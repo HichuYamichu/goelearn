@@ -90,7 +90,7 @@ pub enum ErrorKind {
 
 // INFO: remove clone when `extend` teakes ownership if ever
 impl ErrorExtensions for AppError {
-    fn extend(&self) -> std::erorr::Error {
+    fn extend(&self) -> async_graphql::Error {
         let AppError { message, kind } = self;
 
         async_graphql::Error::new(message).extend_with(|_err, e| match kind {
