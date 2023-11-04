@@ -1,23 +1,23 @@
 # TODAY
 
-- fix update assignment (change folder name if assignment name was changed + dynamic update)
-- fix dynamic data submissions
-
-- build and serve + deploy config
-- zip not working again
+- finish up meeting
 
 # TODO
 
 - user settings
-- finish up meeting
 - my assignmensts forntend
+- build and serve + deploy config
 
 - home page images
 - admin functionality (create privileged accounts)
 - user first/last name display
+- change password on login
 
 # SHOULD IMPROVE
 
+- online status
+- fix update assignment (change folder name if assignment name was changed + dynamic update)
+- fix dynamic data submissions
 - class search
 - remove user folder when submission is deleted
 

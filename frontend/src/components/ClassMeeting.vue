@@ -1,7 +1,13 @@
 <template>
   <v-toolbar dark>
-    <v-btn @click="start">Start</v-btn>
-    <v-btn @click="join" :disabled="!meetingAvalible">Join</v-btn>
+    <div v-if="isOwner">
+      <v-btn @click="start">Start</v-btn>
+      <v-btn @click="stop">Stop</v-btn>
+    </div>
+    <div v-else>
+      <v-btn @click="join" :disabled="!meetingAvalible">Join</v-btn>
+      <v-btn @click="leave">Leave</v-btn>
+    </div>
   </v-toolbar>
   <v-container class="fill-height">
     <div class="videos">
@@ -41,24 +47,47 @@ const props = defineProps<{
 }>();
 
 const class_ = computed(() => useFragment(MeetingFragment, props.class_));
+const isOwner = computed(() => class_.value?.ownerId === myId.value);
 
 let localstream: MediaStream | null = null;
-let meetingAvalible = ref(false);
-
+const meetingAvalible = ref(false);
 const meetingRoom = props.meetingRoom;
 const streams = reactive(new Map<string, MediaStream>());
 const connectedPeers = reactive(new Map<string, RTCPeerConnection>());
 
+onMounted(async () => {
+  const meetingData = await meetingRoom.getCurrentMeeting();
+  if (meetingData?.peer_ids.length > 0) {
+    meetingAvalible.value = true;
+    console.log(meetingData);
+  }
+});
+
 meetingRoom.onMeetingStarted = async () => {
   meetingAvalible.value = true;
+};
+
+meetingRoom.onMeetingStopped = async () => {
+  meetingAvalible.value = false;
+  connectedPeers.clear();
+  streams.clear();
 };
 
 meetingRoom.onUserJoined = async (data) => {
   if (data.user_id === myId.value) {
     return;
   }
+  if (!streams.has(myId.value)) {
+    return;
+  }
+
   streams.set(data.user_id, new MediaStream());
   await createOffer(data.user_id);
+};
+
+meetingRoom.onUserLeft = async (data) => {
+  streams.delete(data.user_id);
+  connectedPeers.delete(data.user_id);
 };
 
 meetingRoom.onOffer = async (data) => {
@@ -72,9 +101,6 @@ meetingRoom.onAnswer = async (data) => {
 
 meetingRoom.onICECandidate = async (data) => {
   const peerConnection = connectedPeers.get(data.sender_id)!;
-  console.log(connectedPeers);
-  console.log(data);
-  console.log(peerConnection);
   await peerConnection.addIceCandidate(data.candidate);
 };
 
@@ -85,22 +111,35 @@ const start = async () => {
   });
   streams.set(myId.value, localstream);
 
-  meetingRoom.startMeeting(class_.value!.id);
+  meetingRoom.startMeeting();
 };
+
+const stop = async () => {
+  meetingRoom.stopMeeting();
+  streams.clear();
+  connectedPeers.clear();
+};
+
 const join = async () => {
   localstream = await navigator.mediaDevices.getUserMedia({
     video: true,
     audio: false,
   });
   streams.set(myId.value, localstream);
-  meetingRoom.joinMeeting(class_.value!.id);
+  meetingRoom.joinMeeting();
+};
+
+const leave = async () => {
+  meetingRoom.leaveMeeting();
+  streams.clear();
+  connectedPeers.clear();
 };
 
 const createOffer = async (targetUserId: string) => {
   const peerConnection = await createPeerConnection(targetUserId);
   let offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
-  meetingRoom.sendOffer(targetUserId, class_.value!.id, offer);
+  meetingRoom.sendOffer(targetUserId, offer);
   connectedPeers.set(targetUserId, peerConnection);
 };
 
@@ -113,7 +152,7 @@ const createAnswer = async (
   await peerConnection.setRemoteDescription(offer);
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(answer);
-  meetingRoom.sendAnswer(targetUserId, class_.value!.id, answer);
+  meetingRoom.sendAnswer(targetUserId, answer);
   connectedPeers.set(targetUserId, peerConnection);
   console.log(connectedPeers);
   console.timeEnd("createAnswer");
@@ -146,11 +185,7 @@ const createPeerConnection = async (
     if (!event.candidate) {
       return;
     }
-    meetingRoom.sendIceCandidate(
-      targetUserId,
-      class_.value!.id,
-      event.candidate
-    );
+    meetingRoom.sendIceCandidate(targetUserId, event.candidate);
   };
 
   return peerConnection;

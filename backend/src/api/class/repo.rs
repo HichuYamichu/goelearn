@@ -173,6 +173,7 @@ pub trait ClassRepo {
     async fn delete_invite(&self, invite_id: Uuid) -> Result<(), DbErr>;
     async fn get_invites(&self, class_id: Uuid) -> Result<Vec<invite::Model>, DbErr>;
     async fn is_valid_invite(&self, invite_id: Uuid, class_id: Uuid) -> Result<bool, DbErr>;
+    async fn get_members(&self, class_id: Uuid) -> Result<Vec<user::Model>, DbErr>;
 }
 
 #[async_trait]
@@ -490,5 +491,18 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
         }
 
         Ok(true)
+    }
+
+    async fn get_members(&self, class_id: Uuid) -> Result<Vec<user::Model>, DbErr> {
+        let members = Membership::find()
+            .filter(membership::Column::ClassId.eq(class_id))
+            .find_also_related(User)
+            .all(self.loader())
+            .await?;
+
+        Ok(members
+            .into_iter()
+            .map(|(_, u)| u.expect("relation is not optional"))
+            .collect())
     }
 }

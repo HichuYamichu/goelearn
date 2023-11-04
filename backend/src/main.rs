@@ -61,12 +61,7 @@ pub async fn main() {
     dotenv().ok();
 
     let filter = filter::Targets::new()
-        // .with_target("tower_http::trace::on_response", Level::WARN)
-        // .with_target("tower_http::trace::on_request", Level::WARN)
         .with_target("backend", Level::TRACE)
-        // .with_target("sqlx", Level::WARN)
-        // .with_target("hyper", Level::WARN)
-        // .with_target("async_graphql", Level::INFO)
         .with_default(Level::WARN);
 
     tracing_subscriber::registry()
@@ -131,6 +126,7 @@ pub async fn main() {
         )
         .route("/rtc-ws", get(rtc::websocket))
         .route_service("/ws", ws::GraphQLSubscription::new(schema, state.clone()))
+        .route("/api/v1/meeting/:class_id", get(rtc::current_meeting))
         .nest("/api/v1/user", user_routes)
         .nest("/files", file_routes)
         .with_state(state)

@@ -1,13 +1,17 @@
-// https://github.com/meeting-rs/meeting.rs/blob/master/coordinator/src/main.rs
-// https://github.com/webrtc-rs/webrtc/tree/master/examples/examples/broadcast
+use std::collections::HashMap;
 
-use crate::core::AppError;
+use crate::{
+    api::ClassRepo,
+    core::{AppError, Claims},
+};
+use async_graphql::dataloader::DataLoader;
 use axum::{
     extract::{
         ws::{Message, WebSocket},
-        State, WebSocketUpgrade,
+        Path, State, WebSocketUpgrade,
     },
     response::IntoResponse,
+    Json,
 };
 use deadpool_redis::{
     redis::{self, aio::PubSub},
@@ -16,36 +20,31 @@ use deadpool_redis::{
 use futures_util::SinkExt;
 use futures_util::StreamExt;
 use redis::AsyncCommands;
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use tracing::instrument;
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 enum InMessageType {
     Auth {
         token: String,
+        class_id: String,
     },
-    Subscribe {
-        target_class_id: uuid::Uuid,
-    },
-    StartMeeting {
-        target_class_id: uuid::Uuid,
-    },
-    JoinMeeting {
-        target_class_id: uuid::Uuid,
-    },
+    StartMeeting,
+    StopMeeting,
+    JoinMeeting,
+    LeaveMeeting,
     SendOffer {
-        target_class_id: uuid::Uuid,
         target_user_id: String,
         offer: Map<String, Value>,
     },
     SendAnswer {
-        target_class_id: uuid::Uuid,
         target_user_id: String,
         answer: Map<String, Value>,
     },
     SendIceCandidate {
-        target_class_id: uuid::Uuid,
         target_user_id: String,
         candidate: Map<String, Value>,
     },
@@ -55,7 +54,11 @@ enum InMessageType {
 #[serde(tag = "type")]
 enum OutMessageType {
     MeetingStarted,
+    MeetingStopped,
     UserJoined {
+        user_id: String,
+    },
+    UserLeft {
         user_id: String,
     },
     Offer {
@@ -76,8 +79,12 @@ enum OutMessageType {
 #[serde(tag = "type")]
 enum SocketHandlerMessage {
     BroadcastMeetingStarted,
+    BroadcastMeetingStopped,
     BroadcastUserJoined {
         joined_user_id: String,
+    },
+    BroadcastUserLeft {
+        left_user_id: String,
     },
     SendOffer {
         sender_id: String,
@@ -93,18 +100,61 @@ enum SocketHandlerMessage {
     },
 }
 
-pub async fn websocket(ws: WebSocketUpgrade, State(redis_pool): State<Pool>) -> impl IntoResponse {
-    let conn = redis_pool.get().await.unwrap();
-    let conn2 = deadpool_redis::Connection::take(redis_pool.get().await.unwrap());
-    let pubsub = conn2.into_pubsub();
-    ws.on_upgrade(|socket| handle_socket(socket, conn, pubsub))
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MeetingData {
+    peer_ids: Vec<String>,
 }
 
-async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub: PubSub) {
+pub async fn current_meeting(
+    State(redis_pool): State<Pool>,
+    Path(class_id): Path<uuid::Uuid>,
+    claims: Claims,
+) -> Result<Json<MeetingData>, AppError> {
+    let mut conn = redis_pool.get().await.unwrap();
+    let user_id = claims.sub;
+    let peer_ids: HashMap<String, u32> = conn.hgetall(format!("meeting:{}", class_id)).await?;
+    let filtered = peer_ids
+        .into_iter()
+        .filter(|(_, v)| *v == 1)
+        .filter(|(k, _)| k != &user_id)
+        .map(|(k, _)| k)
+        .collect();
+
+    Ok(MeetingData { peer_ids: filtered }.into())
+}
+
+pub async fn websocket(
+    ws: WebSocketUpgrade,
+    State(redis_pool): State<Pool>,
+    State(conn): State<DatabaseConnection>,
+) -> impl IntoResponse {
+    let redis_conn = deadpool_redis::Connection::take(redis_pool.get().await.unwrap());
+    let pubsub = redis_conn.into_pubsub();
+    let data_loader = DataLoader::new(conn, tokio::spawn);
+    ws.on_upgrade(|socket| handle_socket_wrapper(socket, redis_pool, pubsub, data_loader))
+}
+
+async fn handle_socket_wrapper(
+    socket: WebSocket,
+    redis_pool: Pool,
+    pubsub: PubSub,
+    data_loader: DataLoader<DatabaseConnection>,
+) {
+    let _ = handle_socket(socket, redis_pool, pubsub, data_loader).await;
+}
+
+#[instrument(skip(socket, redis_pool, pubsub, data_loader), err)]
+async fn handle_socket(
+    socket: WebSocket,
+    redis_pool: Pool,
+    mut pubsub: PubSub,
+    data_loader: DataLoader<DatabaseConnection>,
+) -> Result<(), AppError> {
     let (mut sender, mut receiver) = socket.split();
     let (tx, mut rx) = tokio::sync::mpsc::channel(100);
+    let mut redis_conn = redis_pool.get().await?;
 
-    let user_id = receiver
+    let msg = receiver
         .next()
         .await
         .and_then(|msg| msg.ok())
@@ -113,114 +163,146 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
             _ => None,
         })
         .and_then(|msg| serde_json::from_str::<InMessageType>(&msg).ok())
-        .and_then(|msg| match msg {
-            InMessageType::Auth { token } => {
-                let claims = crate::core::auth::validate_token(&token).ok()?;
-                Some(claims.sub)
+        .ok_or(AppError::auth("invalid first message"))?;
+
+    let connection_data = match msg {
+        InMessageType::Auth { token, class_id } => {
+            let claims = crate::core::auth::validate_token(&token)?;
+            let user_id = uuid::Uuid::parse_str(claims.sub.as_str()).expect("id is valid uuid");
+            let class_id = uuid::Uuid::parse_str(class_id.as_str())?;
+
+            let cloned_user_id = claims.sub.clone();
+            let cloned_class_id = class_id.to_string();
+
+            let class = ClassRepo::find_by_id(&data_loader, class_id)
+                .await?
+                .ok_or_else(|| AppError::auth("invalid first message"))?;
+
+            let is_owner = class.owner_id == user_id;
+            let members = ClassRepo::get_members(&data_loader, class_id).await?;
+            let is_member = members.iter().any(|member| member.id == user_id);
+
+            if !is_member {
+                return Err(AppError::auth("invalid first message"));
             }
-            _ => None,
-        });
 
-    let user_id = match user_id {
-        Some(user_id) => user_id,
-        None => {
-            return;
-        }
-    };
-    let user_id2 = user_id.clone();
+            let handle = tokio::spawn(async move {
+                pubsub
+                    .subscribe(format!("meeting:{}", class_id))
+                    .await
+                    .expect("is is possible to subscribe");
+                pubsub
+                    .subscribe(format!("meeting:{}.{}", class_id, user_id))
+                    .await
+                    .expect("is is possible to subscribe");
 
-    let pubsub_handle = receiver
-        .next()
-        .await
-        .and_then(|msg| msg.ok())
-        .and_then(|msg| match msg {
-            Message::Text(msg) => Some(msg),
-            _ => None,
-        })
-        .and_then(|msg| serde_json::from_str::<InMessageType>(&msg).ok())
-        .and_then(|msg| match msg {
-            InMessageType::Subscribe { target_class_id } => {
-                let handle = tokio::spawn(async move {
-                    pubsub
-                        .subscribe(format!("meeting:{}", target_class_id))
-                        .await
-                        .expect("is is possible to subscribe");
-                    pubsub
-                        .subscribe(format!("meeting:{}.{}", target_class_id, user_id))
-                        .await
-                        .expect("is is possible to subscribe");
+                let _: u32 = redis_conn
+                    .hset(format!("meeting:{}", class_id), user_id.to_string(), 0)
+                    .await
+                    .expect("it is possible to set");
 
-                    let mut stream = pubsub.on_message();
-                    while let Some(msg) = stream.next().await {
-                        tracing::debug!("PubSub message: {:?}", msg);
-                        let pubsub_msg: SocketHandlerMessage = msg
-                            .get_payload()
-                            .ok()
-                            .and_then(|s: String| serde_json::from_str(s.as_str()).ok())
-                            .expect("types are compatible");
+                let mut stream = pubsub.on_message();
+                while let Some(msg) = stream.next().await {
+                    let pubsub_msg: SocketHandlerMessage = msg
+                        .get_payload()
+                        .ok()
+                        .and_then(|s: String| serde_json::from_str(s.as_str()).ok())
+                        .expect("types are compatible");
 
-                        let pattern: Option<String> =
-                            msg.get_pattern().expect("it is possible to get pattern");
-                        match pattern {
-                            Some(target_user_id) if target_user_id == user_id => {
-                                // directed message
-                                tx.send(Ok::<_, AppError>(pubsub_msg))
-                                    .await
-                                    .expect("receiver is not dropped");
-                            }
-                            Some(_) => {
-                                // ignore
-                            }
-                            None => {
-                                // broadcast message
-                                tx.send(Ok::<_, AppError>(pubsub_msg))
-                                    .await
-                                    .expect("receiver is not dropped");
-                            }
+                    let pattern: Option<String> =
+                        msg.get_pattern().expect("it is possible to get pattern");
+                    match pattern {
+                        Some(target_user_id) if target_user_id == user_id.to_string() => {
+                            // directed message
+                            tx.send(Ok::<_, AppError>(pubsub_msg))
+                                .await
+                                .expect("receiver is not dropped");
+                        }
+                        Some(_) => {
+                            // ignore
+                        }
+                        None => {
+                            // broadcast message
+                            tx.send(Ok::<_, AppError>(pubsub_msg))
+                                .await
+                                .expect("receiver is not dropped");
                         }
                     }
-                });
-                Some(handle)
-            }
-            _ => None,
-        });
+                }
+            });
 
-    let mut pubsub_handle = match pubsub_handle {
-        Some(pubsub_handle) => pubsub_handle,
-        None => {
-            return;
+            Some((cloned_user_id, cloned_class_id, is_owner, handle))
         }
+        _ => None,
     };
 
+    let (user_id, class_id, is_owner, mut pubsub_handle) =
+        connection_data.ok_or(AppError::auth("invalid first message"))?;
+    let cloned_user_id = user_id.clone();
+    let cloned_class_id = class_id.clone();
+    let mut redis_conn = redis_pool.get().await?;
+
     let mut send_task = tokio::spawn(async move {
-        let user_id = user_id2;
+        let user_id = cloned_user_id;
+        let class_id = cloned_class_id;
         tracing::debug!("User {} connected", &user_id);
 
         while let Some(Ok(Message::Text(msg))) = receiver.next().await {
             if let Ok(msg) = serde_json::from_str::<InMessageType>(&msg) {
-                tracing::debug!("Message: {:?}", &msg);
                 match msg {
-                    InMessageType::StartMeeting { target_class_id } => {
-                        let meeting_id = uuid::Uuid::new_v4();
+                    InMessageType::StartMeeting if is_owner => {
+                        let _: u32 = redis_conn
+                            .hset(format!("meeting:{}", class_id), user_id.clone(), 1)
+                            .await
+                            .expect("it is possible to set");
                         let message = SocketHandlerMessage::BroadcastMeetingStarted;
                         redis_conn
-                            .publish_broadcast(&target_class_id.to_string(), message)
+                            .publish_broadcast(&class_id, message)
                             .await
                             .expect("it is possible to send");
-                        tracing::debug!("Meeting started: {}", meeting_id);
+                        tracing::debug!("Meeting started: {}", &class_id);
                     }
-                    InMessageType::JoinMeeting { target_class_id } => {
+                    InMessageType::StopMeeting => {
+                        let _: u32 = redis_conn
+                            .hdel("meeting", &class_id)
+                            .await
+                            .expect("it is possible to remove");
+                        let message = SocketHandlerMessage::BroadcastMeetingStopped;
+                        redis_conn
+                            .publish_broadcast(&class_id, message)
+                            .await
+                            .expect("it is possible to send");
+                        tracing::debug!("Meeting stopped: {}", &class_id);
+                    }
+                    InMessageType::JoinMeeting => {
+                        let _: u32 = redis_conn
+                            .hset(format!("meeting:{}", class_id), user_id.clone(), 1)
+                            .await
+                            .expect("it is possible to set");
                         let message = SocketHandlerMessage::BroadcastUserJoined {
                             joined_user_id: user_id.clone(),
                         };
                         redis_conn
-                            .publish_broadcast(&target_class_id.to_string(), message)
+                            .publish_broadcast(&class_id, message)
                             .await
                             .expect("it is possible to send");
-                        tracing::debug!("User {} joined meeting:{}", user_id, target_class_id);
+                        tracing::debug!("User {} joined meeting:{}", user_id, class_id);
+                    }
+                    InMessageType::LeaveMeeting => {
+                        let _: u32 = redis_conn
+                            .hset(format!("meeting:{}", class_id), &user_id, 0)
+                            .await
+                            .expect("it is possible to remove");
+                        let message = SocketHandlerMessage::BroadcastUserLeft {
+                            left_user_id: user_id.clone(),
+                        };
+                        redis_conn
+                            .publish_broadcast(&class_id, message)
+                            .await
+                            .expect("it is possible to send");
+                        tracing::debug!("User {} left meeting:{}", user_id, class_id);
                     }
                     InMessageType::SendOffer {
-                        target_class_id,
                         target_user_id,
                         offer,
                     } => {
@@ -229,17 +311,12 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
                             offer,
                         };
                         redis_conn
-                            .publish_directed(
-                                &target_class_id.to_string(),
-                                &target_user_id,
-                                message,
-                            )
+                            .publish_directed(&class_id, &target_user_id, message)
                             .await
                             .expect("it is possible to send");
                         tracing::debug!("User {} sent offer to {}", user_id, target_user_id);
                     }
                     InMessageType::SendAnswer {
-                        target_class_id,
                         target_user_id,
                         answer,
                     } => {
@@ -248,17 +325,12 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
                             answer,
                         };
                         redis_conn
-                            .publish_directed(
-                                &target_class_id.to_string(),
-                                &target_user_id,
-                                message,
-                            )
+                            .publish_directed(&class_id, &target_user_id, message)
                             .await
                             .expect("it is possible to send");
                         tracing::debug!("User {} sent answer to {}", user_id, target_user_id);
                     }
                     InMessageType::SendIceCandidate {
-                        target_class_id,
                         target_user_id,
                         candidate,
                     } => {
@@ -267,11 +339,7 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
                             candidate,
                         };
                         redis_conn
-                            .publish_directed(
-                                &target_class_id.to_string(),
-                                &target_user_id,
-                                message,
-                            )
+                            .publish_directed(&class_id, &target_user_id, message)
                             .await
                             .expect("it is possible to send");
                         tracing::debug!(
@@ -290,8 +358,19 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
         }
     });
 
+    let cloned_user_id = user_id.clone();
+    let cloned_class_id = class_id.clone();
+    let mut redis_conn = redis_pool.get().await?;
+
     let mut recv_task = tokio::spawn(async move {
+        let user_id = cloned_user_id;
+        let class_id = cloned_class_id;
         while let Some(msg) = rx.recv().await {
+            let is_user_joined = redis_conn
+                .hget::<_, _, u32>(format!("meeting:{}", class_id), &user_id)
+                .await
+                .expect("it is possible to get")
+                == 1;
             match msg {
                 Ok(SocketHandlerMessage::BroadcastMeetingStarted) => {
                     sender
@@ -302,7 +381,23 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
                         .await
                         .expect("send error");
                 }
-                Ok(SocketHandlerMessage::BroadcastUserJoined { joined_user_id }) => {
+                Ok(SocketHandlerMessage::BroadcastMeetingStopped) => {
+                    let _: u32 = redis_conn
+                        .hset(format!("meeting:{}", class_id), &user_id, 0)
+                        .await
+                        .expect("it is possible to send");
+
+                    sender
+                        .send(Message::Text(
+                            serde_json::to_string(&OutMessageType::MeetingStopped)
+                                .expect("types are compatible"),
+                        ))
+                        .await
+                        .expect("send error");
+                }
+                Ok(SocketHandlerMessage::BroadcastUserJoined { joined_user_id })
+                    if is_user_joined =>
+                {
                     sender
                         .send(Message::Text(
                             serde_json::to_string(&OutMessageType::UserJoined {
@@ -313,7 +408,18 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
                         .await
                         .expect("send error");
                 }
-                Ok(SocketHandlerMessage::SendOffer { sender_id, offer }) => {
+                Ok(SocketHandlerMessage::BroadcastUserLeft { left_user_id }) if is_user_joined => {
+                    sender
+                        .send(Message::Text(
+                            serde_json::to_string(&OutMessageType::UserLeft {
+                                user_id: left_user_id,
+                            })
+                            .expect("types are compatible"),
+                        ))
+                        .await
+                        .expect("send error");
+                }
+                Ok(SocketHandlerMessage::SendOffer { sender_id, offer }) if is_user_joined => {
                     sender
                         .send(Message::Text(
                             serde_json::to_string(&OutMessageType::Offer { sender_id, offer })
@@ -322,7 +428,7 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
                         .await
                         .expect("send error");
                 }
-                Ok(SocketHandlerMessage::SendAnswer { sender_id, answer }) => {
+                Ok(SocketHandlerMessage::SendAnswer { sender_id, answer }) if is_user_joined => {
                     sender
                         .send(Message::Text(
                             serde_json::to_string(&OutMessageType::Answer { sender_id, answer })
@@ -334,7 +440,7 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
                 Ok(SocketHandlerMessage::SendIceCandidate {
                     sender_id,
                     candidate,
-                }) => {
+                }) if is_user_joined => {
                     sender
                         .send(Message::Text(
                             serde_json::to_string(&OutMessageType::IceCandidate {
@@ -346,6 +452,7 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
                         .await
                         .expect("send error");
                 }
+                Ok(_) => {}
                 Err(_) => {
                     sender
                         .send(Message::Text("Error".to_string()))
@@ -370,6 +477,21 @@ async fn handle_socket(socket: WebSocket, mut redis_conn: Connection, mut pubsub
             recv_task.abort();
         }
     }
+    let mut redis_conn = redis_pool.get().await?;
+
+    if is_owner {
+        let message = SocketHandlerMessage::BroadcastMeetingStopped;
+        redis_conn
+            .publish_broadcast(&class_id, message)
+            .await
+            .expect("it is possible to send");
+    } else {
+        let _: u32 = redis_conn
+            .hdel(format!("meeting:{}", class_id), &user_id)
+            .await
+            .expect("it is possible to remove");
+    }
+    Ok(())
 }
 
 #[async_trait::async_trait]
