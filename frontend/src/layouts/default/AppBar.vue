@@ -25,14 +25,20 @@
       <v-btn to="/register"> Register </v-btn>
     </div>
     <div class="fill-height d-flex align-center mr-3" v-else>
-      <v-avatar v-if="hasAvatar">
-        <v-img :src="`${baseURL}/files/user-avatar/${id}`" alt="avatar"></v-img>
-      </v-avatar>
-      <v-avatar v-else> <v-icon icon="mdi-account-circle"></v-icon></v-avatar>
-      <p class="ml-4">
-        {{ username }}
-      </p>
-      <v-btn to="/settings">Settings</v-btn>
+      <v-btn to="/settings">
+        <template v-slot:default>
+          {{ username }}
+        </template>
+        <template v-slot:prepend>
+          <v-avatar v-if="hasAvatar">
+            <v-img
+              :src="`${baseURL}/files/user-avatar/${id}`"
+              alt="avatar"
+            ></v-img>
+          </v-avatar>
+          <v-icon v-else icon="mdi-account-circle"></v-icon>
+        </template>
+      </v-btn>
       <v-btn @click="logout">Logout</v-btn>
     </div>
   </v-app-bar>

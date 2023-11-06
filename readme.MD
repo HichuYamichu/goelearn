@@ -2,15 +2,14 @@
 
 - user settings
 - my assignmensts forntend
-- home page images
+- change password on login
+- better coppy invite link
+- create invite page with confirm join & redirect
 
 # TODO
 
 - build and serve + deploy config
-
 - admin functionality (create privileged accounts)
-- user first/last name display
-- change password on login
 
 # SHOULD IMPROVE
 
@@ -32,5 +31,4 @@
 
 # HARD PROBLEMS (dont want to do it)
 
-- same name users
 - confirm resource delete (assigment)

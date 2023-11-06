@@ -8,9 +8,13 @@
   <v-list class="pa-0">
     <v-list-item v-for="(member, idx) in filteredMembers!" :key="member.id">
       <div class="d-flex">
-        <h3 class="mr-8">
-          {{ member.username }}
-        </h3>
+        <v-tooltip :text="member.username" location="start">
+          <template v-slot:activator="{ props }">
+            <h3 class="mr-8" v-bind="props">
+              {{ member.firstName }} {{ member.lastName }}
+            </h3>
+          </template>
+        </v-tooltip>
         <v-btn class="bg-error" @click="ban(member)">Ban</v-btn>
       </div>
     </v-list-item>
@@ -24,9 +28,13 @@
   <v-list class="pa-0">
     <v-list-item v-for="(member, idx) in bannedMembers!" :key="member.id">
       <div class="d-flex">
-        <h3 class="mr-8">
-          {{ member.username }}
-        </h3>
+        <v-tooltip :text="member.username" location="start">
+          <template v-slot:activator="{ props }">
+            <h3 class="mr-8" v-bind="props">
+              {{ member.firstName }} {{ member.lastName }}
+            </h3>
+          </template>
+        </v-tooltip>
         <v-btn class="bg-success" @click="unban(member)">Unban</v-btn>
       </div>
     </v-list-item>
@@ -57,6 +65,8 @@ const classId = router.currentRoute.value.params.classId as string;
 interface Member {
   id: string;
   username: string;
+  firstName: string;
+  lastName: string;
 }
 
 const props = defineProps<{
@@ -78,6 +88,8 @@ const BannedMemberQuery = graphql(/* GraphQL */ `
     bannedMembers(classId: $classId) {
       id
       username
+      firstName
+      lastName
     }
   }
 `);

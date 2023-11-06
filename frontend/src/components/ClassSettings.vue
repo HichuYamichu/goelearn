@@ -73,6 +73,8 @@ const ClassDataFragment = graphql(/* GraphQL */ `
     members {
       id
       username
+      firstName
+      lastName
     }
   }
 `);

@@ -23,6 +23,7 @@
     </div>
     <div class="pa-4 full-mobile w-25">
       <v-text-field
+        v-if="isOwner"
         :style="!mobile ? 'visibility: hidden' : 'display: none'"
         variant="outlined"
         hide-details="auto"

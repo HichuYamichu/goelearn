@@ -10,10 +10,15 @@
           class="py-2"
           :prependAvatar="`${baseURL}/files/user-avatar/${item.author.id}`"
         >
-          <v-list-item-title
-            class="font-weight-bold"
-            v-text="item.author.username"
-          ></v-list-item-title>
+          <v-tooltip :text="item.author.username" location="start">
+            <template v-slot:activator="{ props }">
+              <v-list-item-title
+                v-bind="props"
+                class="font-weight-bold"
+                v-text="`${item.author.firstName} ${item.author.lastName}`"
+              ></v-list-item-title>
+            </template>
+          </v-tooltip>
           {{ item.content }}
           <template v-slot:append>
             <v-list-item-subtitle
@@ -130,6 +135,8 @@ const MessageFragment = graphql(/* GraphQL */ `
     author {
       id
       username
+      firstName
+      lastName
     }
   }
 `);

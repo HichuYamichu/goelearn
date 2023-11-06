@@ -103,7 +103,9 @@ const routes = [
         name: "Assignments",
         beforeEnter: isLoggedIn,
         component: () =>
-          import(/* webpackChunkName: "assignments" */ "@/views/Register.vue"),
+          import(
+            /* webpackChunkName: "assignments" */ "@/views/UserAssignments.vue"
+          ),
       },
       {
         path: "/class-create",

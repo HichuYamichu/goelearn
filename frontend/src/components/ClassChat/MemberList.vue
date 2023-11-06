@@ -5,10 +5,18 @@
     <v-list-item
       v-for="user in users!"
       :key="user.id"
-      :title="user.username"
       link
       :prependAvatar="`${baseURL}/files/user-avatar/${user.id}`"
     >
+      <v-tooltip :text="user.username" location="end">
+        <template v-slot:activator="{ props }">
+          <v-list-item-title
+            v-bind="props"
+            v-text="`${user.firstName} ${user.lastName}`"
+          >
+          </v-list-item-title>
+        </template>
+      </v-tooltip>
     </v-list-item>
   </v-list>
   <v-divider></v-divider>
@@ -24,6 +32,8 @@ const MembersFragment = graphql(/* GraphQL */ `
   fragment MembersFragment on User {
     id
     username
+    firstName
+    lastName
   }
 `);
 

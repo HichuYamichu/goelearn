@@ -1,6 +1,6 @@
 <template>
   <v-app-bar density="compact" border flat>
-    <v-skeleton-loader v-if="loading" type="heading"> </v-skeleton-loader>
+    <v-skeleton-loader v-if="loading" type="list-item"> </v-skeleton-loader>
     <h5 v-else class="text-h5 mx-4 pa-3 font-weight-medium d-none d-sm-flex">
       {{ name }}
     </h5>
