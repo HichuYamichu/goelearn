@@ -1,14 +1,13 @@
 # TODAY
 
-- finish up meeting
+- user settings
+- my assignmensts forntend
+- home page images
 
 # TODO
 
-- user settings
-- my assignmensts forntend
 - build and serve + deploy config
 
-- home page images
 - admin functionality (create privileged accounts)
 - user first/last name display
 - change password on login
