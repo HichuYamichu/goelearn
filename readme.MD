@@ -2,12 +2,12 @@
 
 - user settings
 - my assignmensts forntend
-- change password on login
-- better coppy invite link
+- better coppy invite link (click on whole row)
 - create invite page with confirm join & redirect
 
 # TODO
 
+- password reset system
 - build and serve + deploy config
 - admin functionality (create privileged accounts)
 

@@ -1,64 +1,41 @@
 <template>
   <v-container fluid class="mt-4">
     <v-row>
-      <v-col xl="4" sm="12" class="mx-auto">
+        <v-col sm="12" class="d-flex fustify-center">
+          <h2 class="w-100 text-center text-h2">Settings</h2>
+        </v-col>
+      </v-row>
+    <v-row>
+      <v-col xl="4" md="6" sm="12" class="mx-auto">
         <form @submit.prevent="submit">
-          <v-text-field
-            v-model="state.username"
-            label="Username"
-            required
-            focused
-            variant="outlined"
-            :rules="usernameRules"
-            ref="usernameRulesState"
-          ></v-text-field>
-          <v-text-field
-            v-model="state.firstName"
-            label="Firstname"
-            required
-            variant="outlined"
-            :rules="firstnameRules"
-            ref="firstnameRulesState"
-          ></v-text-field>
-          <v-text-field
-            v-model="state.lastName"
-            label="Lastname"
-            required
-            variant="outlined"
-            :rules="lastnameRules"
-            ref="lastnameRulesState"
-          ></v-text-field>
-          <v-text-field
-            v-model="state.email"
-            label="Email"
-            required
-            variant="outlined"
-            :rules="emailRules"
-            ref="emailRulesState"
-          ></v-text-field>
-          <v-text-field
-            v-model="state.password"
-            label="Password"
-            required
-            variant="outlined"
-            :rules="passwordRules"
-            type="password"
-            ref="passwordRulesState"
-          ></v-text-field>
-          <v-text-field
-            label="Confirm Password"
-            required
-            variant="outlined"
-            type="password"
-            :rules="passwordRules"
-          ></v-text-field>
-          <v-file-input
-            v-model="state.avatar"
-            label="Avatar"
-            variant="outlined"
-          ></v-file-input>
+          <v-text-field v-model="state.username" disabled label="Username cannot be changed" required focused variant="outlined"
+            :rules="usernameRules" ref="usernameRulesState"></v-text-field>
+          <v-text-field v-model="state.firstName" label="Firstname" required variant="outlined" :rules="firstnameRules"
+            ref="firstnameRulesState"></v-text-field>
+          <v-text-field v-model="state.lastName" label="Lastname" required variant="outlined" :rules="lastnameRules"
+            ref="lastnameRulesState"></v-text-field>
+          <v-text-field v-model="state.email" label="Email" required variant="outlined" :rules="emailRules"
+            ref="emailRulesState"></v-text-field>
+          <v-file-input v-model="state.avatar" label="Avatar" variant="outlined"></v-file-input>
 
-          <v-btn class="me-4 bg-primary" type="submit"> submit </v-btn>
+          <v-card variant="outlined" class="mt-12" title="Save" >
+            <div class="d-flex align-center pa-4">
+              <v-btn class="me-4 bg-primary" type="submit"> Save </v-btn>
+              <v-text-field v-model="state.password" label="Confirm your password" required variant="outlined" :rules="passwordRules"
+              type="password" ref="passwordRulesState"></v-text-field>
+            </div>
+          </v-card>
+
+          <v-card variant="outlined" title="Change your password" color="error" class="mt-12">
+            <div class="d-flex align-center pa-4 flex-wrap gap">
+              <v-btn class=" bg-primary" type="submit"> Save </v-btn>
+              <v-text-field class="w-100" v-model="state.password" label="Confirm your password" required variant="outlined" :rules="passwordRules"
+              type="password" ref="passwordRulesState"></v-text-field>
+              <v-text-field class="w-100" v-model="state.password" label="Confirm your password" required variant="outlined" :rules="passwordRules"
+              type="password" ref="passwordRulesState"></v-text-field>
+            </div>
+          </v-card>
+
         </form>
         <p class="error">{{ errorMessage }}</p>
       </v-col>
@@ -169,3 +146,9 @@ const passwordRules = [
 ];
 const passwordRulesState = ref(null);
 </script>
+
+<style scoped>
+.gap {
+  gap: 15px;
+}
+</style>

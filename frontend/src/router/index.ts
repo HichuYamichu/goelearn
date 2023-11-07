@@ -71,6 +71,13 @@ const routes = [
           import(/* webpackChunkName: "class" */ "@/views/Class.vue"),
       },
       {
+        path: "/invite/:inviteId",
+        name: "Invite",
+        // beforeEnter: isLoggedIn,
+        component: () =>
+          import(/* webpackChunkName: "invite" */ "@/views/Invite.vue"),
+      },
+      {
         path: "/classes",
         name: "My Classes",
         beforeEnter: isLoggedIn,
@@ -101,7 +108,7 @@ const routes = [
       {
         path: "/assignments",
         name: "Assignments",
-        beforeEnter: isLoggedIn,
+        // beforeEnter: isLoggedIn,
         component: () =>
           import(
             /* webpackChunkName: "assignments" */ "@/views/UserAssignments.vue"
@@ -119,7 +126,7 @@ const routes = [
       {
         path: "/settings",
         name: "Settings",
-        beforeEnter: isLoggedIn,
+        // beforeEnter: isLoggedIn,
         component: () =>
           import(/* webpackChunkName: "settings" */ "@/views/UserSettings.vue"),
       },

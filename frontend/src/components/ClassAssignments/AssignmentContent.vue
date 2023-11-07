@@ -22,7 +22,6 @@ import { useMutation, useQuery } from "@vue/apollo-composable";
 import { computed } from "vue";
 import { ref, watch } from "vue";
 import { MyIdQuery } from "@/shared";
-import ClassAssignmentForm from "@/components/ClassAssignments/ClassAssignmentForm.vue";
 import MemberList from "@/components/ClassChat/MemberList.vue";
 import { useDisplay } from "vuetify";
 import { useRouter } from "vue-router";
