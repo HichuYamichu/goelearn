@@ -103,4 +103,18 @@ impl ClassQuery {
             ClassRepo::get_invites(data_loader, Uuid::parse_str(class_id.as_str())?).await?;
         Ok(invites.into_iter().map(|i| i.into()).collect())
     }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard")]
+    pub async fn class_by_invite_id(
+        &self,
+        ctx: &Context<'_>,
+        invite_id: ID,
+    ) -> Result<Option<ClassObject>, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+
+        let invite_id = Uuid::parse_str(invite_id.as_str())?;
+        let class = ClassRepo::find_by_invite_id(data_loader, invite_id).await?;
+        Ok(class.map(|c| c.into()))
+    }
 }

@@ -764,9 +764,7 @@ impl AssignmentRepo for DataLoader<DatabaseConnection> {
 
     #[instrument(skip(self), err(Debug))]
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Vec<assignment::Model>, Arc<DbErr>> {
-        let classes = ClassRepo::find_by_user_id(self, user_id)
-            .await?
-            .expect("user_id is valid");
+        let classes = ClassRepo::find_by_user_id_no_owner(self, user_id).await?;
 
         let assigmnents = Assignment::find()
             .filter(assignment::Column::ClassId.is_in(classes.into_iter().map(|c| c.id)))

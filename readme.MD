@@ -1,15 +1,13 @@
 # TODAY
 
-- user settings
-- my assignmensts forntend
-- better coppy invite link (click on whole row)
-- create invite page with confirm join & redirect
+- admin functionality
+  - create priveliged acc
+  - delete classes
 
 # TODO
 
 - password reset system
 - build and serve + deploy config
-- admin functionality (create privileged accounts)
 
 # SHOULD IMPROVE
 
@@ -18,9 +16,12 @@
 - fix dynamic data submissions
 - class search
 - remove user folder when submission is deleted
+- entering invite page when already a member should inform you of this
+- my submissions is not dyanmic
 
 # BUGS
 
+- numbers cannot be used as name
 - banned user is still able to see class from `my classes` view
 - class serch allow banned users to view class they were banned from
 - empty `tags` array is interpreted as single empty tag string

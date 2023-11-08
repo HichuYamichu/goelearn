@@ -27,7 +27,7 @@
     <div class="fill-height d-flex align-center mr-3" v-else>
       <v-btn to="/settings">
         <template v-slot:default>
-          {{ username }}
+          {{ me?.username }}
         </template>
         <template v-slot:prepend>
           <v-avatar v-if="hasAvatar">
@@ -107,9 +107,10 @@ const { result: meResult } = useQuery(MeQuery, null, () => ({
   enabled: isLoggedIn.value,
 }));
 
+const me = computed(() => meResult.value?.me ?? null);
+
 const hasAvatar = computed(() => meResult.value?.me.hasAvatar ?? false);
 const id = computed(() => meResult.value?.me.id ?? "");
-const username = computed(() => meResult.value?.me.username ?? "");
 
 const logout = () => {
   localStorage.removeItem("token");

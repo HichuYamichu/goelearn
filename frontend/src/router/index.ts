@@ -73,7 +73,7 @@ const routes = [
       {
         path: "/invite/:inviteId",
         name: "Invite",
-        // beforeEnter: isLoggedIn,
+        beforeEnter: isLoggedIn,
         component: () =>
           import(/* webpackChunkName: "invite" */ "@/views/Invite.vue"),
       },

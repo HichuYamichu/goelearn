@@ -144,6 +144,8 @@ pub trait ClassRepo {
 
     async fn find_by_user_id(&self, user_id: Uuid)
         -> Result<Option<Vec<class::Model>>, Arc<DbErr>>;
+    async fn find_by_user_id_no_owner(&self, user_id: Uuid) -> Result<Vec<class::Model>, DbErr>;
+
     async fn find_by_owner_id(
         &self,
         owner_id: Uuid,
@@ -174,6 +176,7 @@ pub trait ClassRepo {
     async fn get_invites(&self, class_id: Uuid) -> Result<Vec<invite::Model>, DbErr>;
     async fn is_valid_invite(&self, invite_id: Uuid, class_id: Uuid) -> Result<bool, DbErr>;
     async fn get_members(&self, class_id: Uuid) -> Result<Vec<user::Model>, DbErr>;
+    async fn find_by_invite_id(&self, invite_id: Uuid) -> Result<Option<class::Model>, DbErr>;
 }
 
 #[async_trait]
@@ -504,5 +507,38 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
             .into_iter()
             .map(|(_, u)| u.expect("relation is not optional"))
             .collect())
+    }
+
+    async fn find_by_invite_id(&self, invite_id: Uuid) -> Result<Option<class::Model>, DbErr> {
+        let invite = Invite::find_by_id(invite_id).one(self.loader()).await?;
+
+        let Some(invite) = invite else {
+            return Ok(None);
+        };
+
+        let class = Class::find_by_id(invite.class_id)
+            .filter(class::Column::DeletedAt.is_null())
+            .one(self.loader())
+            .await?;
+
+        Ok(class)
+    }
+
+    async fn find_by_user_id_no_owner(&self, user_id: Uuid) -> Result<Vec<class::Model>, DbErr> {
+        let condition = Condition::all()
+            .add(membership::Column::UserId.eq(user_id))
+            .add(class::Column::OwnerId.ne(user_id))
+            .add(class::Column::DeletedAt.is_null());
+
+        let classes = Membership::find()
+            .filter(condition)
+            .find_also_related(Class)
+            .all(self.loader())
+            .await?
+            .into_iter()
+            .map(|(_, c)| c.expect("class should be present"))
+            .collect::<Vec<_>>();
+
+        Ok(classes)
     }
 }

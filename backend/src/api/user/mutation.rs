@@ -3,7 +3,10 @@ use crate::core::auth::Claims;
 use crate::core::AppError;
 use crate::core::UserError;
 use crate::{HOST_URL, MAIL_PASSWORD, MAIL_USERNAME, SECRET};
+use async_graphql::Upload;
+use async_graphql::ID;
 use async_graphql::{dataloader::DataLoader, Context, Object};
+use entity::user;
 use lettre::AsyncTransport;
 use tracing::instrument;
 
@@ -12,6 +15,7 @@ use tokio_util::compat::FuturesAsyncReadCompatExt;
 use uuid::Uuid;
 
 use super::object::{LoginInput, LoginResult, SignupInput};
+use super::UserObject;
 use super::UserRepo;
 
 #[derive(Default)]
@@ -69,6 +73,67 @@ impl UserMutation {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let res = login_user(input, data_loader).await?;
         Ok(res)
+    }
+
+    #[instrument(skip(self, ctx, avatar), err(Debug))]
+    pub async fn update_user(
+        &self,
+        ctx: &Context<'_>,
+        user_id: ID,
+        first_name: Option<String>,
+        last_name: Option<String>,
+        avatar: Option<Upload>,
+        password: String,
+    ) -> Result<UserObject, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let s3_bucket = ctx.data_unchecked::<s3::Bucket>();
+
+        let user_id = Uuid::parse_str(&user_id)?;
+        if let Some(avatar) = avatar {
+            let avatar = avatar.value(ctx)?;
+            let exeeds_limit = avatar.size()? > MAX_FILE_SIZE;
+            if exeeds_limit {
+                return Err(AppError::user("file too large", UserError::FileTooLarge));
+            }
+
+            if avatar.content_type.is_none()
+                || avatar.content_type.as_ref().unwrap() != "image/jpeg"
+            {
+                return Err(AppError::user(
+                    "Avatar must be a jpeg",
+                    UserError::BadInput {
+                        parameter: "avatar",
+                        given_value: "non jpeg image".into(),
+                    },
+                ));
+            }
+
+            let s3_path = format!("user-avatars/{user_id}");
+            let mut reader = avatar.into_async_read().compat();
+            s3_bucket
+                .put_object_stream_with_content_type(&mut reader, s3_path, "image/jpeg")
+                .await?;
+        }
+
+        let user = UserRepo::update(data_loader, user_id, first_name, last_name, password).await?;
+
+        Ok(user.into())
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    async fn change_password(
+        &self,
+        ctx: &Context<'_>,
+        user_id: ID,
+        old_password: String,
+        new_password: String,
+    ) -> Result<UserObject, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let user_id = Uuid::parse_str(&user_id)?;
+        let user =
+            UserRepo::change_password(data_loader, user_id, old_password, new_password).await?;
+
+        Ok(user.into())
     }
 }
 

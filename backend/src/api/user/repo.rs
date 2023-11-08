@@ -10,6 +10,8 @@ use std::sync::Arc;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::core::{option_to_active_value, AppError};
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 struct UsersByClassId(Uuid);
 
@@ -84,6 +86,21 @@ pub trait UserRepo {
         &self,
         class_id: Uuid,
     ) -> Result<Option<Vec<user::Model>>, Arc<DbErr>>;
+
+    async fn update(
+        &self,
+        user_id: Uuid,
+        first_name: Option<String>,
+        last_name: Option<String>,
+        password: String,
+    ) -> Result<user::Model, AppError>;
+
+    async fn change_password(
+        &self,
+        user_id: Uuid,
+        old_password: String,
+        new_password: String,
+    ) -> Result<user::Model, AppError>;
 }
 
 #[async_trait]
@@ -136,5 +153,88 @@ impl UserRepo for DataLoader<DatabaseConnection> {
     ) -> Result<Option<Vec<user::Model>>, Arc<DbErr>> {
         let users = self.load_one(UsersByClassId(class_id)).await?;
         Ok(users)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn update(
+        &self,
+        user_id: Uuid,
+        first_name: Option<String>,
+        last_name: Option<String>,
+        password: String,
+    ) -> Result<user::Model, AppError> {
+        let user = User::find()
+            .filter(user::Column::Id.eq(user_id))
+            .one(self.loader())
+            .await?;
+
+        let user = match user {
+            Some(user) => user,
+            None => {
+                return Err(AppError::not_found(
+                    "user not found",
+                    "user",
+                    "id",
+                    &user_id.to_string(),
+                ));
+            }
+        };
+
+        let is_match = argon2_async::verify(password, user.password).await?;
+        if !is_match {
+            return Err(AppError::auth("Bad credentials"));
+        }
+
+        let user = User::update(user::ActiveModel {
+            id: Set(user_id),
+            first_name: option_to_active_value(first_name),
+            last_name: option_to_active_value(last_name),
+            ..Default::default()
+        })
+        .exec(self.loader())
+        .await?;
+
+        Ok(user)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn change_password(
+        &self,
+        user_id: Uuid,
+        old_password: String,
+        new_password: String,
+    ) -> Result<user::Model, AppError> {
+        let user = User::find()
+            .filter(user::Column::Id.eq(user_id))
+            .one(self.loader())
+            .await?;
+
+        let user = match user {
+            Some(user) => user,
+            None => {
+                return Err(AppError::not_found(
+                    "user not found",
+                    "user",
+                    "id",
+                    &user_id.to_string(),
+                ));
+            }
+        };
+        let is_match = argon2_async::verify(old_password, user.password).await?;
+        if !is_match {
+            return Err(AppError::auth("Bad credentials"));
+        }
+
+        let hash = argon2_async::hash(new_password).await?;
+
+        let user_update = user::ActiveModel {
+            id: Set(user_id),
+            password: Set(hash),
+            ..Default::default()
+        };
+
+        let user = User::update(user_update).exec(self.loader()).await?;
+
+        Ok(user)
     }
 }

@@ -32,7 +32,8 @@
         </td>
         <td>{{ invite.expiresAt }}</td>
         <td>{{ invite.multiuse }}</td>
-        <td>
+        <td class="d-flex">
+          <v-btn class="bg-success" @click="copyInvite(invite.id)">Copy</v-btn>
           <v-btn class="bg-error" @click="delete_(invite.id)">Delete</v-btn>
         </td>
       </tr>
@@ -104,7 +105,8 @@ const create = async () => {
 };
 
 const copyInvite = (inviteId: string) => {
-  navigator.clipboard.writeText(inviteId);
+  const url = `${window.location.origin}/invite/${inviteId}`;
+  navigator.clipboard.writeText(url);
 };
 
 const DeleteInviteMutation = graphql(/* GraphQL */ `

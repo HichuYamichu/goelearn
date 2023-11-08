@@ -22,6 +22,7 @@ use super::AssignmentRepo;
 #[graphql(name = "Assignment")]
 pub struct AssignmentObject {
     pub id: ID,
+    pub class_id: ID,
     pub name: String,
     pub content: String,
     pub due_at: Option<NaiveDateTime>,
@@ -35,6 +36,7 @@ impl ToRedisArgs for AssignmentObject {
     {
         let vec = vec![
             self.id.to_string(),
+            self.class_id.to_string(),
             self.name.clone(),
             self.content.clone(),
             self.due_at.map(|o| o.to_string()).unwrap_or("".to_string()),
@@ -49,9 +51,10 @@ impl FromRedisValue for AssignmentObject {
         let vec = Vec::<String>::from_redis_value(v)?;
         Ok(Self {
             id: ID::from(vec[0].clone()),
-            name: vec[1].clone(),
-            content: vec[2].clone(),
-            due_at: match vec[3].as_str() {
+            class_id: ID::from(vec[1].clone()),
+            name: vec[2].clone(),
+            content: vec[3].clone(),
+            due_at: match vec[4].as_str() {
                 "" => None,
                 _ => Some(
                     NaiveDateTime::parse_from_str(vec[3].as_str(), "%Y-%m-%d %H:%M:%S")
@@ -97,6 +100,7 @@ impl From<::entity::assignment::Model> for AssignmentObject {
     fn from(c: ::entity::assignment::Model) -> Self {
         Self {
             id: ID::from(c.id),
+            class_id: ID::from(c.class_id),
             name: c.name,
             content: c.content,
             due_at: c.due_at,
