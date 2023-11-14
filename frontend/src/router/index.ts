@@ -108,7 +108,7 @@ const routes = [
       {
         path: "/assignments",
         name: "Assignments",
-        // beforeEnter: isLoggedIn,
+        beforeEnter: isLoggedIn,
         component: () =>
           import(
             /* webpackChunkName: "assignments" */ "@/views/UserAssignments.vue"
@@ -126,9 +126,16 @@ const routes = [
       {
         path: "/settings",
         name: "Settings",
-        // beforeEnter: isLoggedIn,
+        beforeEnter: isLoggedIn,
         component: () =>
           import(/* webpackChunkName: "settings" */ "@/views/UserSettings.vue"),
+      },
+      {
+        path: "/admin",
+        name: "Admin",
+        // beforeEnter: isLoggedIn,
+        component: () =>
+          import(/* webpackChunkName: "settings" */ "@/views/Admin.vue"),
       },
     ],
   },
