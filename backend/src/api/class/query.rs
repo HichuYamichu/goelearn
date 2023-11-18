@@ -1,6 +1,7 @@
-use crate::core::ClassOwnerGuard;
+use crate::{api::UserRepo, core::ClassOwnerGuard};
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 
+use entity::sea_orm_active_enums::UserType;
 use sea_orm::DatabaseConnection;
 use tracing::instrument;
 use uuid::Uuid;
@@ -67,13 +68,26 @@ impl ClassQuery {
                 .sub
                 .as_str(),
         )?;
-        let banned_in = ClassRepo::get_user_bans(data_loader, user_id).await?;
-        let c = match query.as_str() {
-            "" => ClassRepo::find_random(data_loader, 10, banned_in).await?,
-            _ => ClassRepo::find_by_query(data_loader, query, banned_in).await?,
-        };
 
-        Ok(c.into_iter().map(|c| c.into()).collect())
+        let user = UserRepo::find_by_id(data_loader, user_id)
+            .await?
+            .expect("User must exist");
+
+        match user.user_type {
+            UserType::Admin => {
+                let c = ClassRepo::find_all(data_loader).await?;
+                return Ok(c.into_iter().map(|c| c.into()).collect());
+            }
+            _ => {
+                let banned_in = ClassRepo::get_user_bans(data_loader, user_id).await?;
+                let c = match query.as_str() {
+                    "" => ClassRepo::find_random(data_loader, 10, banned_in).await?,
+                    _ => ClassRepo::find_by_query(data_loader, query, banned_in).await?,
+                };
+
+                Ok(c.into_iter().map(|c| c.into()).collect())
+            }
+        }
     }
 
     #[instrument(skip(self, ctx), err(Debug))]

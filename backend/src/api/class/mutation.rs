@@ -1,13 +1,12 @@
 use crate::api::user::UserRepo;
 use crate::api::MAX_FILE_SIZE;
 use crate::core::{auth, AppError, UserError};
-use crate::core::{ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
+use crate::core::{AdminGuard, ClassMemberGuard, ClassOwnerGuard, LoggedInGuard};
 use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 use auth::Claims;
 
 use deadpool_redis::redis::AsyncCommands;
 use deadpool_redis::Pool;
-use entity::class;
 use sea_orm::DatabaseConnection;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tracing::instrument;
@@ -232,7 +231,7 @@ impl ClassMutation {
     }
 
     #[instrument(skip(self, ctx), err(Debug))]
-    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()))")]
+    #[graphql(guard = "LoggedInGuard.and(ClassOwnerGuard::new(class_id.clone()).or(AdminGuard))")]
     pub async fn delete_class(&self, ctx: &Context<'_>, class_id: ID) -> Result<bool, AppError> {
         let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
         let redis_pool = ctx.data_unchecked::<Pool>();
@@ -240,6 +239,31 @@ impl ClassMutation {
 
         let id = Uuid::parse_str(class_id.as_str())?;
         ClassRepo::delete_class(data_loader, id).await?;
+
+        let channel = format!("{}:{}", CLASS_DELETED, class_id.as_str());
+        let update_data = ClassDelete { id: class_id };
+        conn.publish(
+            channel,
+            serde_json::to_string(&update_data).expect("Class should serialize"),
+        )
+        .await?;
+
+        Ok(true)
+    }
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(AdminGuard)")]
+    pub async fn admin_delete_class(
+        &self,
+        ctx: &Context<'_>,
+        class_id: ID,
+        deleted_state: bool,
+    ) -> Result<bool, AppError> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let redis_pool = ctx.data_unchecked::<Pool>();
+        let mut conn = redis_pool.get().await?;
+
+        let id = Uuid::parse_str(class_id.as_str())?;
+        ClassRepo::admin_delete_class(data_loader, id, deleted_state).await?;
 
         let channel = format!("{}:{}", CLASS_DELETED, class_id.as_str());
         let update_data = ClassDelete { id: class_id };

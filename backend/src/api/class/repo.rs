@@ -177,6 +177,8 @@ pub trait ClassRepo {
     async fn is_valid_invite(&self, invite_id: Uuid, class_id: Uuid) -> Result<bool, DbErr>;
     async fn get_members(&self, class_id: Uuid) -> Result<Vec<user::Model>, DbErr>;
     async fn find_by_invite_id(&self, invite_id: Uuid) -> Result<Option<class::Model>, DbErr>;
+    async fn find_all(&self) -> Result<Vec<class::Model>, DbErr>;
+    async fn admin_delete_class(&self, class_id: Uuid, deleted_state: bool) -> Result<(), DbErr>;
 }
 
 #[async_trait]
@@ -540,5 +542,29 @@ impl ClassRepo for DataLoader<DatabaseConnection> {
             .collect::<Vec<_>>();
 
         Ok(classes)
+    }
+
+    async fn find_all(&self) -> Result<Vec<class::Model>, DbErr> {
+        let classes = Class::find().all(self.loader()).await?;
+        Ok(classes)
+    }
+
+    async fn admin_delete_class(&self, class_id: Uuid, deleted_state: bool) -> Result<(), DbErr> {
+        if deleted_state {
+            let class = Class::find_by_id(class_id).one(self.loader()).await?;
+            if let Some(class) = class {
+                let mut active = class.into_active_model();
+                active.deleted_at = Set(Some(Utc::now().naive_utc()));
+                active.update(self.loader()).await?;
+            }
+        } else {
+            let class = Class::find_by_id(class_id).one(self.loader()).await?;
+            if let Some(class) = class {
+                let mut active = class.into_active_model();
+                active.deleted_at = Set(None);
+                active.update(self.loader()).await?;
+            }
+        }
+        Ok(())
     }
 }

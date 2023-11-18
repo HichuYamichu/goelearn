@@ -3,7 +3,7 @@ use sea_orm_migration::prelude::*;
 use crate::m20220101_000001_create_table::{
     Assignment, AssignmentFile, AssignmentSubmission, AssignmentSubmissionFeedback,
     AssignmentSubmissionFile, Channel, Class, ClassBlacklist, File, Invite, Membership, Message,
-    Report, User,
+    PasswordResetToken, Report, User,
 };
 
 #[derive(DeriveMigrationName)]
@@ -17,6 +17,18 @@ impl MigrationTrait for Migration {
                 ForeignKey::create()
                     .name("FK_class_owner_id")
                     .from(Class::Table, Class::OwnerId)
+                    .to(User::Table, User::Id)
+                    .on_delete(ForeignKeyAction::Restrict)
+                    .on_update(ForeignKeyAction::Restrict)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_foreign_key(
+                ForeignKey::create()
+                    .name("FK_password_reset_user_id")
+                    .from(PasswordResetToken::Table, PasswordResetToken::UserId)
                     .to(User::Table, User::Id)
                     .on_delete(ForeignKeyAction::Restrict)
                     .on_update(ForeignKeyAction::Restrict)
@@ -438,6 +450,15 @@ impl MigrationTrait for Migration {
                 ForeignKey::drop()
                     .name("FK_file_message_id")
                     .table(File::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_foreign_key(
+                ForeignKey::drop()
+                    .name("FK_password_reset_user_id")
+                    .table(PasswordResetToken::Table)
                     .to_owned(),
             )
             .await?;

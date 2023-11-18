@@ -82,15 +82,25 @@ const isLoggedIn = computed(() => result.value?.isLoggedIn ?? false);
 
 const links = computed(() => {
   if (isLoggedIn.value) {
+    console.log(me.value?.userType);
+    if (me.value?.userType === "ADMIN") {
+      return [
+        { text: "Home", target: "/" },
+        { text: "My Classes", target: "/classes" },
+        { text: "My Assignments", target: "/assignments" },
+        { text: "Explore", target: "/explore" },
+        { text: "Admin", target: "/admin" },
+      ];
+    }
     return [
       { text: "Home", target: "/" },
       { text: "My Classes", target: "/classes" },
       { text: "My Assignments", target: "/assignments" },
       { text: "Explore", target: "/explore" },
     ];
-  } else {
-    return [{ text: "Home", target: "/" }];
   }
+
+  return [{ text: "Home", target: "/" }];
 });
 
 const MeQuery = graphql(/* GraphQL */ `
@@ -99,6 +109,7 @@ const MeQuery = graphql(/* GraphQL */ `
       id
       username
       hasAvatar
+      userType
     }
   }
 `);

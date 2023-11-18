@@ -29,27 +29,20 @@ const ClassOwner = graphql(/* GraphQL */ `
 `);
 
 const Me = graphql(/* GraphQL */ `
-  query routerMe($id: ID!) {
+  query routerMe {
     me {
       id
+      userType
     }
   }
 `);
 
-const isClassOwner = async (to: RouteLocation, from: RouteLocation) => {
-  const classId = to.params.classId as string;
-  const ownerResult = client.readQuery({
-    query: ClassOwner,
-    variables: {
-      id: classId,
-    },
-  });
-
-  const meResult = client.readQuery({
+const isAdmin = async (to: RouteLocation, from: RouteLocation) => {
+  const meResult = await client.query({
     query: Me,
   });
 
-  return ownerResult?.classById?.owner?.id === meResult?.me?.id;
+  return meResult?.data.me.userType === "ADMIN";
 };
 
 const routes = [
@@ -133,9 +126,17 @@ const routes = [
       {
         path: "/admin",
         name: "Admin",
-        // beforeEnter: isLoggedIn,
+        beforeEnter: [isLoggedIn, isAdmin],
         component: () =>
           import(/* webpackChunkName: "settings" */ "@/views/Admin.vue"),
+      },
+      {
+        path: "/password-reset/:token",
+        name: "Reset Password",
+        component: () =>
+          import(
+            /* webpackChunkName: "change-password" */ "@/views/ChangePassword.vue"
+          ),
       },
     ],
   },

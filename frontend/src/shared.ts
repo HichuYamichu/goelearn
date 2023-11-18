@@ -9,6 +9,7 @@ export const MyIdQuery = graphql(/* GraphQL */ `
   query MyIdQuery {
     me {
       id
+      userType
     }
   }
 `);

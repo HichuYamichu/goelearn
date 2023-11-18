@@ -1,9 +1,11 @@
 <template>
   <div class="d-flex flex-wrap px-lg-16 py-8 pa-6">
     <div class="d-flex w-100 flex-wrap">
-      <v-btn to="/class-create" class="bg-primary">Create new class</v-btn>
-      <p class="font-weight-bold mx-5 my-3">OR</p>
-      <v-btn to="/explore">Join join existing</v-btn>
+      <template v-if="isMod">
+        <v-btn to="/class-create" class="bg-primary">Create new class</v-btn>
+        <p class="font-weight-bold mx-5 my-3">OR</p>
+      </template>
+      <v-btn to="/explore">Join existing</v-btn>
     </div>
     <div class="d-flex w-100 mt-4">
       <v-text-field
@@ -56,6 +58,7 @@ const MeQuery = graphql(/* GraphQL */ `
   query UserClassesMeQuery {
     me {
       id
+      userType
       clesses {
         id
         name
@@ -67,6 +70,10 @@ const MeQuery = graphql(/* GraphQL */ `
 `);
 
 const { result } = useQuery(MeQuery);
+const isMod = computed(
+  () =>
+    result.value?.me.userType === "MOD" || result.value?.me.userType === "ADMIN"
+);
 
 const classes = computed(() => {
   if (filter.value === "") {

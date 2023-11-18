@@ -1,6 +1,6 @@
-use crate::core::{Claims, LoggedInGuard};
+use crate::core::{AdminGuard, AppError, Claims, LoggedInGuard};
 
-use async_graphql::{dataloader::DataLoader, Context, Object};
+use async_graphql::{dataloader::DataLoader, Context, Object, ID};
 use sea_orm::DatabaseConnection;
 use tracing::instrument;
 use uuid::Uuid;
@@ -22,5 +22,13 @@ impl UserQuery {
             .await?
             .expect("User id cannot be invalid here");
         Ok(u.into())
+    }
+
+    #[instrument(skip(self, ctx), err(Debug))]
+    #[graphql(guard = "LoggedInGuard.and(AdminGuard)")]
+    async fn users(&self, ctx: &Context<'_>) -> Result<Vec<UserObject>, async_graphql::Error> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let users = UserRepo::find_all(data_loader).await?;
+        Ok(users.into_iter().map(|u| u.into()).collect())
     }
 }

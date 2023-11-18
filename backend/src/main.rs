@@ -80,22 +80,6 @@ pub async fn main() {
         .unwrap();
     Migrator::up(&conn, None).await.unwrap();
 
-    for (key, value) in env::vars() {
-        let hasPrefix = key.starts_with("ADMIN_ACCOUNT");
-        if hasPrefix {
-            let values = value.split(";").collect();
-            let user_active_model = user::ActiveModel {
-                username: Set(values[0])
-                ..Default::default()
-            }
-
-            let exists = conn.find(User).await?.is_some();
-            if !exists {
-                conn.insert(user_active_model);
-            }
-        }
-    }
-
     let s3_credentials = Credentials::new(None, None, None, None, None).unwrap();
     let s3_bucket = s3::Bucket::new(
         "goelearn",

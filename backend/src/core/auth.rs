@@ -11,6 +11,7 @@ use axum::{
     TypedHeader,
 };
 
+use entity::sea_orm_active_enums::UserType;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
@@ -147,5 +148,45 @@ pub struct ResourceOwnerGuard;
 impl Guard for ResourceOwnerGuard {
     async fn check(&self, _ctx: &Context<'_>) -> Result<(), async_graphql::Error> {
         todo!()
+    }
+}
+
+pub struct AdminGuard;
+
+#[async_trait]
+impl Guard for AdminGuard {
+    async fn check(&self, ctx: &Context<'_>) -> Result<(), async_graphql::Error> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
+
+        let user_id = Uuid::parse_str(claims.as_ref().expect("claims exist").sub.as_str())?;
+        let user = UserRepo::find_by_id(data_loader, user_id)
+            .await?
+            .expect("user must exist");
+
+        match user.user_type {
+            UserType::Admin => Ok(()),
+            _ => Err(AppError::auth("User is not an admin").into()),
+        }
+    }
+}
+
+pub struct ModGuard;
+
+#[async_trait]
+impl Guard for ModGuard {
+    async fn check(&self, ctx: &Context<'_>) -> Result<(), async_graphql::Error> {
+        let data_loader = ctx.data_unchecked::<DataLoader<DatabaseConnection>>();
+        let claims = ctx.data_unchecked::<Option<Claims>>();
+
+        let user_id = Uuid::parse_str(claims.as_ref().expect("claims exist").sub.as_str())?;
+        let user = UserRepo::find_by_id(data_loader, user_id)
+            .await?
+            .expect("user must exist");
+
+        match user.user_type {
+            UserType::Admin | UserType::Mod => Ok(()),
+            _ => Err(AppError::auth("User is not a mod").into()),
+        }
     }
 }

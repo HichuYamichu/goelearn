@@ -1,9 +1,14 @@
 use std::collections::HashMap;
 
 use ::entity::membership;
-use ::entity::{membership::Entity as Membership, user, user::Entity as User};
+use ::entity::sea_orm_active_enums::UserType;
+use ::entity::{
+    membership::Entity as Membership, password_reset_token,
+    password_reset_token::Entity as PasswordResetToken, user, user::Entity as User,
+};
 use async_graphql::dataloader::{DataLoader, Loader};
 use async_trait::async_trait;
+use chrono::NaiveDateTime;
 use sea_orm::DatabaseConnection;
 use sea_orm::*;
 use std::sync::Arc;
@@ -101,6 +106,26 @@ pub trait UserRepo {
         old_password: String,
         new_password: String,
     ) -> Result<user::Model, AppError>;
+
+    async fn find_all(&self) -> Result<Vec<user::Model>, DbErr>;
+    async fn admin_user_update(
+        &self,
+        user_id: Uuid,
+        user_type: UserType,
+        deleted_at: Option<NaiveDateTime>,
+    ) -> Result<user::Model, AppError>;
+
+    async fn emergency_change_password(
+        &self,
+        token: Uuid,
+        password: String,
+    ) -> Result<user::Model, AppError>;
+
+    async fn find_user_by_reset_token(&self, token: Uuid) -> Result<Option<user::Model>, DbErr>;
+    async fn create_password_change_token(
+        &self,
+        user_email: String,
+    ) -> Result<(Uuid, user::Model), AppError>;
 }
 
 #[async_trait]
@@ -236,5 +261,138 @@ impl UserRepo for DataLoader<DatabaseConnection> {
         let user = User::update(user_update).exec(self.loader()).await?;
 
         Ok(user)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn find_all(&self) -> Result<Vec<user::Model>, DbErr> {
+        let users = User::find()
+            .filter(user::Column::UserType.ne(UserType::Admin))
+            .all(self.loader())
+            .await?;
+        Ok(users)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn admin_user_update(
+        &self,
+        user_id: Uuid,
+        user_type: UserType,
+        deleted_at: Option<NaiveDateTime>,
+    ) -> Result<user::Model, AppError> {
+        let user = User::find()
+            .filter(user::Column::Id.eq(user_id))
+            .one(self.loader())
+            .await?;
+
+        let user = match user {
+            Some(user) => user,
+            None => {
+                return Err(AppError::not_found(
+                    "user not found",
+                    "user",
+                    "id",
+                    &user_id.to_string(),
+                ));
+            }
+        };
+
+        let user_update = user::ActiveModel {
+            id: Set(user_id),
+            user_type: Set(user_type),
+            deleted_at: Set(deleted_at),
+            ..Default::default()
+        };
+
+        let user = User::update(user_update).exec(self.loader()).await?;
+
+        Ok(user)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn emergency_change_password(
+        &self,
+        token: Uuid,
+        password: String,
+    ) -> Result<user::Model, AppError> {
+        let user = PasswordResetToken::find()
+            .filter(password_reset_token::Column::Id.eq(token))
+            .find_also_related(User)
+            .one(self.loader())
+            .await?
+            .map(|(_, u)| u.expect("PasswordResetToken to User is not optional"));
+
+        let user = match user {
+            Some(user) => user,
+            None => {
+                return Err(AppError::not_found(
+                    "user not found",
+                    "user",
+                    "id",
+                    &token.to_string(),
+                ));
+            }
+        };
+
+        let hash = argon2_async::hash(password).await?;
+
+        let user_update = user::ActiveModel {
+            id: Set(user.id),
+            password: Set(hash),
+            ..Default::default()
+        };
+
+        let user = User::update(user_update).exec(self.loader()).await?;
+        PasswordResetToken::delete_by_id(token)
+            .exec(self.loader())
+            .await?;
+
+        Ok(user)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn find_user_by_reset_token(&self, token: Uuid) -> Result<Option<user::Model>, DbErr> {
+        let user = PasswordResetToken::find()
+            .filter(password_reset_token::Column::Id.eq(token))
+            .find_also_related(User)
+            .one(self.loader())
+            .await?
+            .map(|(_, u)| u.expect("PasswordResetToken to User is not optional"));
+
+        Ok(user)
+    }
+
+    #[instrument(skip(self), err(Debug))]
+    async fn create_password_change_token(
+        &self,
+        user_email: String,
+    ) -> Result<(Uuid, user::Model), AppError> {
+        let user = User::find()
+            .filter(user::Column::Email.eq(user_email.clone()))
+            .one(self.loader())
+            .await?;
+
+        let user = match user {
+            Some(user) => user,
+            None => {
+                return Err(AppError::not_found(
+                    "user not found".to_string(),
+                    "user",
+                    "email",
+                    user_email,
+                ));
+            }
+        };
+
+        let active_token = password_reset_token::ActiveModel {
+            id: Set(Uuid::new_v4()),
+            user_id: Set(user.id),
+            ..Default::default()
+        };
+        let token_id = PasswordResetToken::insert(active_token)
+            .exec(self.loader())
+            .await?
+            .last_insert_id;
+
+        Ok((token_id, user))
     }
 }

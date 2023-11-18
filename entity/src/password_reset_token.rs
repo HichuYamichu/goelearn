@@ -3,19 +3,18 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "report")]
+#[sea_orm(table_name = "password_reset_token")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-    pub content: String,
-    pub author_id: Uuid,
+    pub user_id: Uuid,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::user::Entity",
-        from = "Column::AuthorId",
+        from = "Column::UserId",
         to = "super::user::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"

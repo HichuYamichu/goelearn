@@ -39,6 +39,7 @@ pub struct ClassObject {
     pub public: bool,
     pub tags: Vec<String>,
     pub has_image: bool,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 #[ComplexObject]
@@ -122,6 +123,7 @@ impl From<::entity::class::Model> for ClassObject {
             public: c.public,
             tags: c.tags.split(' ').map(|s| s.to_string()).collect(),
             has_image: c.has_image,
+            deleted_at: c.deleted_at,
         }
     }
 }
@@ -139,6 +141,9 @@ impl ToRedisArgs for ClassObject {
             self.public.to_string(),
             self.tags.join(" "),
             self.has_image.to_string(),
+            self.deleted_at
+                .map(|d| d.timestamp().to_string())
+                .unwrap_or("".into()),
         ];
         vec.write_redis_args(out)
     }
@@ -155,6 +160,14 @@ impl FromRedisValue for ClassObject {
             public: vec[4].parse::<bool>().unwrap(),
             tags: vec[5].split(' ').map(|s| s.to_string()).collect(),
             has_image: vec[6].parse::<bool>().unwrap(),
+            deleted_at: if vec[7].is_empty() {
+                None
+            } else {
+                Some(chrono::NaiveDateTime::from_timestamp(
+                    vec[7].parse::<i64>().unwrap(),
+                    0,
+                ))
+            },
         })
     }
 }

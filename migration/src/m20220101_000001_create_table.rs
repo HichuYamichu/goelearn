@@ -56,6 +56,22 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
+                    .table(PasswordResetToken::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(PasswordResetToken::Id)
+                            .not_null()
+                            .uuid()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(PasswordResetToken::UserId).uuid().not_null())
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
                     .table(Class::Table)
                     .if_not_exists()
                     .col(ColumnDef::new(Class::Id).not_null().uuid().primary_key())
@@ -376,6 +392,11 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(Table::drop().table(User::Table).to_owned())
             .await?;
+
+        manager
+            .drop_table(Table::drop().table(PasswordResetToken::Table).to_owned())
+            .await?;
+
         manager
             .drop_table(Table::drop().table(Class::Table).to_owned())
             .await?;
@@ -427,6 +448,13 @@ pub enum UserType {
     Regular,
     Mod,
     Admin,
+}
+
+#[derive(Iden)]
+pub enum PasswordResetToken {
+    Table,
+    Id,
+    UserId,
 }
 
 impl Iden for UserType {

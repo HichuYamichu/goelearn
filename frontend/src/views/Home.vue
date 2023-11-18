@@ -44,25 +44,25 @@ const side = computed(() => (mobile.value ? "end" : undefined));
 
 const items = [
   {
-    color: "secondary",
+    color: "primary",
     icon: "mdi-account",
     title: "Communication",
     content: "Share your thoughts with your peers and teachers using our chat.",
   },
   {
-    color: "secondary",
+    color: "primary",
     icon: "mdi-layers-triple",
     title: "Knowledge sharing",
     content: "Explore educational resources shared by your peers and teachers.",
   },
   {
-    color: "secondary",
+    color: "primary",
     icon: "mdi-book-variant",
     title: "Student-teacher interaction",
     content: "Publish or solve assignments. Give or receive feedback.",
   },
   {
-    color: "secondary",
+    color: "primary",
     icon: "mdi-star",
     title: "Collaboration",
     content:

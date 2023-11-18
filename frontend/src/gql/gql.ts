@@ -54,11 +54,16 @@ const documents = {
     "\n  mutation BanMemberMutation($classId: ID!, $userId: ID!) {\n    banMember(classId: $classId, userId: $userId)\n  }\n": types.BanMemberMutationDocument,
     "\n  mutation UnbanMemberMutation($classId: ID!, $userId: ID!) {\n    unbanMember(classId: $classId, userId: $userId)\n  }\n": types.UnbanMemberMutationDocument,
     "\n  mutation LeaveClassMutation($classId: ID!) {\n    leaveClass(classId: $classId)\n  }\n": types.LeaveClassMutationDocument,
-    "\n  query AppBarMeQuery {\n    me {\n      id\n      username\n      hasAvatar\n    }\n  }\n": types.AppBarMeQueryDocument,
+    "\n  query AdminClassQuery($query: String!) {\n    classesBySearch(query: $query) {\n      id\n      name\n      deletedAt\n    }\n  }\n": types.AdminClassQueryDocument,
+    "\n  mutation AdminClassUpdate($classId: ID!, $deletedState: Boolean!) {\n    adminDeleteClass(classId: $classId, deletedState: $deletedState)\n  }\n": types.AdminClassUpdateDocument,
+    "\n  query AdminUsersQuery {\n    users {\n      id\n      username\n      userType\n      deletedAt\n    }\n  }\n": types.AdminUsersQueryDocument,
+    "\n  mutation AdminUserUpdate(\n    $userId: ID!\n    $userType: UserType!\n    $deletedAt: NaiveDateTime\n  ) {\n    adminUserUpdate(userId: $userId, userType: $userType, deletedAt: $deletedAt)\n  }\n": types.AdminUserUpdateDocument,
+    "\n  query AppBarMeQuery {\n    me {\n      id\n      username\n      hasAvatar\n      userType\n    }\n  }\n": types.AppBarMeQueryDocument,
     "\n  query routerClassById($id: ID!) {\n    classById(id: $id) {\n      id\n      owner {\n        id\n      }\n    }\n  }\n": types.RouterClassByIdDocument,
-    "\n  query routerMe($id: ID!) {\n    me {\n      id\n    }\n  }\n": types.RouterMeDocument,
-    "\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n": types.MyIdQueryDocument,
+    "\n  query routerMe {\n    me {\n      id\n      userType\n    }\n  }\n": types.RouterMeDocument,
+    "\n  query MyIdQuery {\n    me {\n      id\n      userType\n    }\n  }\n": types.MyIdQueryDocument,
     "\n  subscription ClassDeletedSubscription($classId: ID!) {\n    classDeleted(classId: $classId) {\n      id\n    }\n  }\n": types.ClassDeletedSubscriptionDocument,
+    "\n  mutation EmergencyChangePasswordMutation($token: ID!, $password: String!) {\n    emergencyChangePassword(token: $token, password: $password)\n  }\n": types.EmergencyChangePasswordMutationDocument,
     "\n  query ClassClassByIdQuery($id: ID!) {\n    classById(id: $id) {\n      id\n      name\n      ownerId\n      ...ChatFragment\n      ...FilesFragment\n      ...AssignmentsFragment\n      ...MeetingFragment\n      ...ClassDataFragment\n    }\n  }\n": types.ClassClassByIdQueryDocument,
     "\n  fragment FileFragment on File {\n    id\n    name\n    fileType\n    parent\n  }\n": types.FileFragmentFragmentDoc,
     "\n  fragment AssignmentFragment on Assignment {\n    id\n    name\n    content\n    dueAt\n    submissions {\n      id\n      createdAt\n      updatedAt\n      user {\n        id\n        username\n      }\n      files {\n        id\n        name\n      }\n      feedback {\n        id\n        content\n        createdAt\n        updatedAt\n      }\n    }\n  }\n": types.AssignmentFragmentFragmentDoc,
@@ -71,9 +76,10 @@ const documents = {
     "\n  query InviteClassQuery($inviteId: ID!) {\n    classByInviteId(inviteId: $inviteId) {\n      id\n      name\n      description\n    }\n  }\n": types.InviteClassQueryDocument,
     "\n  mutation JoinClassMutation($inviteId: ID!, $classId: ID!) {\n    joinClass(inviteId: $inviteId, classId: $classId)\n  }\n": types.JoinClassMutationDocument,
     "\n  mutation Login($password: String!, $username: String!) {\n    login(input: { password: $password, username: $username }) {\n      token\n    }\n  }\n": types.LoginDocument,
+    "\n  mutation CreateResetTokenMutation($email: String!) {\n    createPasswordChangeToken(email: $email)\n  }\n": types.CreateResetTokenMutationDocument,
     "\n  mutation Signup($input: SignupInput!) {\n    signup(input: $input)\n  }\n": types.SignupDocument,
     "\n  query MyAssignmentsMeQuery {\n    me {\n      id\n      assignments {\n        id\n        classId\n        name\n        content\n        dueAt\n        createdAt\n        files {\n          id\n          name\n        }\n        submissions {\n          id\n          createdAt\n          files {\n            id\n            name\n          }\n          feedback {\n            id\n            content\n            createdAt\n          }\n        }\n      }\n    }\n  }\n": types.MyAssignmentsMeQueryDocument,
-    "\n  query UserClassesMeQuery {\n    me {\n      id\n      clesses {\n        id\n        name\n        description\n        hasImage\n      }\n    }\n  }\n": types.UserClassesMeQueryDocument,
+    "\n  query UserClassesMeQuery {\n    me {\n      id\n      userType\n      clesses {\n        id\n        name\n        description\n        hasImage\n      }\n    }\n  }\n": types.UserClassesMeQueryDocument,
     "\n  query UserSettingsMeQuery {\n    me {\n      id\n      username\n      firstName\n      lastName\n      email\n    }\n  }\n": types.UserSettingsMeQueryDocument,
     "\n  mutation UpdateUserDataMutation(\n    $userId: ID!\n    $firstName: String\n    $lastName: String\n    $avatar: Upload\n    $password: String!\n  ) {\n    updateUser(\n      userId: $userId\n      firstName: $firstName\n      lastName: $lastName\n      avatar: $avatar\n      password: $password\n    ) {\n      id\n      firstName\n      lastName\n    }\n  }\n": types.UpdateUserDataMutationDocument,
     "\n  mutation ChangePasswordMutation(\n    $userId: ID!\n    $oldPassword: String!\n    $newPassword: String!\n  ) {\n    changePassword(\n      userId: $userId\n      oldPassword: $oldPassword\n      newPassword: $newPassword\n    ) {\n      id\n    }\n  }\n": types.ChangePasswordMutationDocument,
@@ -260,7 +266,23 @@ export function graphql(source: "\n  mutation LeaveClassMutation($classId: ID!) 
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query AppBarMeQuery {\n    me {\n      id\n      username\n      hasAvatar\n    }\n  }\n"): (typeof documents)["\n  query AppBarMeQuery {\n    me {\n      id\n      username\n      hasAvatar\n    }\n  }\n"];
+export function graphql(source: "\n  query AdminClassQuery($query: String!) {\n    classesBySearch(query: $query) {\n      id\n      name\n      deletedAt\n    }\n  }\n"): (typeof documents)["\n  query AdminClassQuery($query: String!) {\n    classesBySearch(query: $query) {\n      id\n      name\n      deletedAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation AdminClassUpdate($classId: ID!, $deletedState: Boolean!) {\n    adminDeleteClass(classId: $classId, deletedState: $deletedState)\n  }\n"): (typeof documents)["\n  mutation AdminClassUpdate($classId: ID!, $deletedState: Boolean!) {\n    adminDeleteClass(classId: $classId, deletedState: $deletedState)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query AdminUsersQuery {\n    users {\n      id\n      username\n      userType\n      deletedAt\n    }\n  }\n"): (typeof documents)["\n  query AdminUsersQuery {\n    users {\n      id\n      username\n      userType\n      deletedAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation AdminUserUpdate(\n    $userId: ID!\n    $userType: UserType!\n    $deletedAt: NaiveDateTime\n  ) {\n    adminUserUpdate(userId: $userId, userType: $userType, deletedAt: $deletedAt)\n  }\n"): (typeof documents)["\n  mutation AdminUserUpdate(\n    $userId: ID!\n    $userType: UserType!\n    $deletedAt: NaiveDateTime\n  ) {\n    adminUserUpdate(userId: $userId, userType: $userType, deletedAt: $deletedAt)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query AppBarMeQuery {\n    me {\n      id\n      username\n      hasAvatar\n      userType\n    }\n  }\n"): (typeof documents)["\n  query AppBarMeQuery {\n    me {\n      id\n      username\n      hasAvatar\n      userType\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -268,15 +290,19 @@ export function graphql(source: "\n  query routerClassById($id: ID!) {\n    clas
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query routerMe($id: ID!) {\n    me {\n      id\n    }\n  }\n"): (typeof documents)["\n  query routerMe($id: ID!) {\n    me {\n      id\n    }\n  }\n"];
+export function graphql(source: "\n  query routerMe {\n    me {\n      id\n      userType\n    }\n  }\n"): (typeof documents)["\n  query routerMe {\n    me {\n      id\n      userType\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n"): (typeof documents)["\n  query MyIdQuery {\n    me {\n      id\n    }\n  }\n"];
+export function graphql(source: "\n  query MyIdQuery {\n    me {\n      id\n      userType\n    }\n  }\n"): (typeof documents)["\n  query MyIdQuery {\n    me {\n      id\n      userType\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  subscription ClassDeletedSubscription($classId: ID!) {\n    classDeleted(classId: $classId) {\n      id\n    }\n  }\n"): (typeof documents)["\n  subscription ClassDeletedSubscription($classId: ID!) {\n    classDeleted(classId: $classId) {\n      id\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation EmergencyChangePasswordMutation($token: ID!, $password: String!) {\n    emergencyChangePassword(token: $token, password: $password)\n  }\n"): (typeof documents)["\n  mutation EmergencyChangePasswordMutation($token: ID!, $password: String!) {\n    emergencyChangePassword(token: $token, password: $password)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -328,6 +354,10 @@ export function graphql(source: "\n  mutation Login($password: String!, $usernam
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "\n  mutation CreateResetTokenMutation($email: String!) {\n    createPasswordChangeToken(email: $email)\n  }\n"): (typeof documents)["\n  mutation CreateResetTokenMutation($email: String!) {\n    createPasswordChangeToken(email: $email)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "\n  mutation Signup($input: SignupInput!) {\n    signup(input: $input)\n  }\n"): (typeof documents)["\n  mutation Signup($input: SignupInput!) {\n    signup(input: $input)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -336,7 +366,7 @@ export function graphql(source: "\n  query MyAssignmentsMeQuery {\n    me {\n   
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query UserClassesMeQuery {\n    me {\n      id\n      clesses {\n        id\n        name\n        description\n        hasImage\n      }\n    }\n  }\n"): (typeof documents)["\n  query UserClassesMeQuery {\n    me {\n      id\n      clesses {\n        id\n        name\n        description\n        hasImage\n      }\n    }\n  }\n"];
+export function graphql(source: "\n  query UserClassesMeQuery {\n    me {\n      id\n      userType\n      clesses {\n        id\n        name\n        description\n        hasImage\n      }\n    }\n  }\n"): (typeof documents)["\n  query UserClassesMeQuery {\n    me {\n      id\n      userType\n      clesses {\n        id\n        name\n        description\n        hasImage\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
